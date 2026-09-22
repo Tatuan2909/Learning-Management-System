@@ -8,6 +8,7 @@ import { LoginPage } from './components/LoginPage';
 import { ProfileDropdown } from './components/ProfileDropdown';
 import { ProfilePage } from './components/ProfilePage';
 import { TeacherDashboard } from './components/TeacherDashboard';
+import { AdminDashboard } from './components/AdminDashboard';
 import { UpcomingDeadline, AuthUser } from './types';
 
 export const App: React.FC = () => {
@@ -99,19 +100,27 @@ export const App: React.FC = () => {
                 }`}
               >
                 <LayoutDashboard className="w-4 h-4" />
-                <span>{user.role === 'TEACHER' ? 'Cổng Giảng viên' : 'Dashboard'}</span>
+                <span>
+                  {user.role === 'ADMIN'
+                    ? 'Cổng Quản trị viên'
+                    : user.role === 'TEACHER'
+                    ? 'Cổng Giảng viên'
+                    : 'Dashboard'}
+                </span>
               </button>
-              <button
-                onClick={() => setActiveTab('my-courses')}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
-                  activeTab === 'my-courses'
-                    ? 'bg-blue-600 text-white shadow-2xs'
-                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                }`}
-              >
-                <BookOpen className="w-4 h-4" />
-                <span>{user.role === 'TEACHER' ? 'Khóa học phụ trách' : 'Khóa học của tôi'}</span>
-              </button>
+              {user.role !== 'ADMIN' && (
+                <button
+                  onClick={() => setActiveTab('my-courses')}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+                    activeTab === 'my-courses'
+                      ? 'bg-blue-600 text-white shadow-2xs'
+                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                >
+                  <BookOpen className="w-4 h-4" />
+                  <span>{user.role === 'TEACHER' ? 'Khóa học phụ trách' : 'Khóa học của tôi'}</span>
+                </button>
+              )}
               <button
                 onClick={() => setActiveTab('courses')}
                 className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
@@ -147,17 +156,25 @@ export const App: React.FC = () => {
               }`}
             >
               <LayoutDashboard className="w-4 h-4" />
-              <span>{user.role === 'TEACHER' ? 'Cổng Giảng viên' : 'Dashboard'}</span>
+              <span>
+                {user.role === 'ADMIN'
+                  ? 'Cổng Quản trị viên'
+                  : user.role === 'TEACHER'
+                  ? 'Cổng Giảng viên'
+                  : 'Dashboard'}
+              </span>
             </button>
-            <button
-              onClick={() => { setActiveTab('my-courses'); setMobileMenuOpen(false); }}
-              className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
-                activeTab === 'my-courses' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
-              }`}
-            >
-              <BookOpen className="w-4 h-4" />
-              <span>{user.role === 'TEACHER' ? 'Khóa học phụ trách' : 'Khóa học của tôi'}</span>
-            </button>
+            {user.role !== 'ADMIN' && (
+              <button
+                onClick={() => { setActiveTab('my-courses'); setMobileMenuOpen(false); }}
+                className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
+                  activeTab === 'my-courses' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
+                }`}
+              >
+                <BookOpen className="w-4 h-4" />
+                <span>{user.role === 'TEACHER' ? 'Khóa học phụ trách' : 'Khóa học của tôi'}</span>
+              </button>
+            )}
             <button
               onClick={() => { setActiveTab('courses'); setMobileMenuOpen(false); }}
               className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
@@ -174,7 +191,9 @@ export const App: React.FC = () => {
       {/* Full-width Main Content Area */}
       <main className="flex-1 w-full px-3 sm:px-6 lg:px-10 py-6 sm:py-8">
         {activeTab === 'dashboard' && (
-          user.role === 'TEACHER' ? (
+          user.role === 'ADMIN' ? (
+            <AdminDashboard user={user} />
+          ) : user.role === 'TEACHER' ? (
             <TeacherDashboard user={user} />
           ) : (
             <div className="space-y-8">
