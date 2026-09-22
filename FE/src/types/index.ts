@@ -23,6 +23,29 @@ export interface UpcomingDeadline {
   targetUrl: string;
 }
 
+export interface LessonItem {
+  id: string;
+  title: string;
+  orderIndex: number;
+  contentType: 'VIDEO' | 'PDF' | 'TEXT';
+  contentUrl?: string;
+  isLocked: boolean;
+  isCompleted: boolean;
+  quizPassed: boolean;
+}
+
+export interface CourseItem {
+  id: string;
+  courseCode: string;
+  title: string;
+  description: string;
+  teacherName: string;
+  progressPercentage: number;
+  isEnrolled: boolean;
+  lessonsCount: number;
+  lessons?: LessonItem[];
+}
+
 export interface QuizOption {
   optionId: string;
   optionText: string;
