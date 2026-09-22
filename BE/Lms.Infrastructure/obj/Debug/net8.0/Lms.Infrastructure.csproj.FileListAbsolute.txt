@@ -1,0 +1,17 @@
+C:\Users\ACXSAB\Desktop\Learning Management System\backend\Lms.Infrastructure\bin\Debug\net8.0\Lms.Infrastructure.deps.json
+C:\Users\ACXSAB\Desktop\Learning Management System\backend\Lms.Infrastructure\bin\Debug\net8.0\Lms.Infrastructure.dll
+C:\Users\ACXSAB\Desktop\Learning Management System\backend\Lms.Infrastructure\bin\Debug\net8.0\Lms.Infrastructure.pdb
+C:\Users\ACXSAB\Desktop\Learning Management System\backend\Lms.Infrastructure\bin\Debug\net8.0\Lms.Application.dll
+C:\Users\ACXSAB\Desktop\Learning Management System\backend\Lms.Infrastructure\bin\Debug\net8.0\Lms.Domain.dll
+C:\Users\ACXSAB\Desktop\Learning Management System\backend\Lms.Infrastructure\bin\Debug\net8.0\Lms.Application.pdb
+C:\Users\ACXSAB\Desktop\Learning Management System\backend\Lms.Infrastructure\bin\Debug\net8.0\Lms.Domain.pdb
+C:\Users\ACXSAB\Desktop\Learning Management System\backend\Lms.Infrastructure\obj\Debug\net8.0\Lms.Infrastructure.csproj.AssemblyReference.cache
+C:\Users\ACXSAB\Desktop\Learning Management System\backend\Lms.Infrastructure\obj\Debug\net8.0\Lms.Infrastructure.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\ACXSAB\Desktop\Learning Management System\backend\Lms.Infrastructure\obj\Debug\net8.0\Lms.Infrastructure.AssemblyInfoInputs.cache
+C:\Users\ACXSAB\Desktop\Learning Management System\backend\Lms.Infrastructure\obj\Debug\net8.0\Lms.Infrastructure.AssemblyInfo.cs
+C:\Users\ACXSAB\Desktop\Learning Management System\backend\Lms.Infrastructure\obj\Debug\net8.0\Lms.Infrastructure.csproj.CoreCompileInputs.cache
+C:\Users\ACXSAB\Desktop\Learning Management System\backend\Lms.Infrastructure\obj\Debug\net8.0\Lms.Infr.73F54DA1.Up2Date
+C:\Users\ACXSAB\Desktop\Learning Management System\backend\Lms.Infrastructure\obj\Debug\net8.0\Lms.Infrastructure.dll
+C:\Users\ACXSAB\Desktop\Learning Management System\backend\Lms.Infrastructure\obj\Debug\net8.0\refint\Lms.Infrastructure.dll
+C:\Users\ACXSAB\Desktop\Learning Management System\backend\Lms.Infrastructure\obj\Debug\net8.0\Lms.Infrastructure.pdb
+C:\Users\ACXSAB\Desktop\Learning Management System\backend\Lms.Infrastructure\obj\Debug\net8.0\ref\Lms.Infrastructure.dll

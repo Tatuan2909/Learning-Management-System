@@ -1,0 +1,8 @@
+C:\Users\ACXSAB\Desktop\Learning Management System\backend\Lms.Api\obj\Debug\net10.0\Lms.Api.csproj.AssemblyReference.cache
+C:\Users\ACXSAB\Desktop\Learning Management System\backend\Lms.Api\obj\Debug\net10.0\rpswa.dswa.cache.json
+C:\Users\ACXSAB\Desktop\Learning Management System\backend\Lms.Api\obj\Debug\net10.0\Lms.Api.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\ACXSAB\Desktop\Learning Management System\backend\Lms.Api\obj\Debug\net10.0\Lms.Api.AssemblyInfoInputs.cache
+C:\Users\ACXSAB\Desktop\Learning Management System\backend\Lms.Api\obj\Debug\net10.0\Lms.Api.AssemblyInfo.cs
+C:\Users\ACXSAB\Desktop\Learning Management System\backend\Lms.Api\obj\Debug\net10.0\Lms.Api.csproj.CoreCompileInputs.cache
+C:\Users\ACXSAB\Desktop\Learning Management System\backend\Lms.Api\obj\Debug\net10.0\Lms.Api.MvcApplicationPartsAssemblyInfo.cs
+C:\Users\ACXSAB\Desktop\Learning Management System\backend\Lms.Api\obj\Debug\net10.0\Lms.Api.MvcApplicationPartsAssemblyInfo.cache
