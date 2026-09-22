@@ -25,7 +25,7 @@ export const App: React.FC = () => {
   });
 
   const [activeTab, setActiveTab] = useState<'dashboard' | 'my-courses' | 'courses' | 'quiz' | 'profile' | 'study'>('dashboard');
-  const [teacherTab, setTeacherTab] = useState<'overview' | 'courses' | 'grading' | 'gradebook' | 'announcements'>('overview');
+  const [teacherTab, setTeacherTab] = useState<'overview' | 'courses'>('overview');
   const [adminTab, setAdminTab] = useState<'overview' | 'users' | 'courses' | 'logs' | 'settings'>('overview');
   const [studyCourseId, setStudyCourseId] = useState<string>('44444444-4444-4444-4444-444444444444');
   const [selectedDeadline, setSelectedDeadline] = useState<UpcomingDeadline | null>(null);
@@ -105,7 +105,7 @@ export const App: React.FC = () => {
                 <>
                   <button
                     onClick={() => { setActiveTab('dashboard'); setTeacherTab('overview'); }}
-                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
                       activeTab === 'dashboard' && teacherTab === 'overview'
                         ? 'bg-blue-600 text-white shadow-2xs'
                         : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
@@ -116,47 +116,14 @@ export const App: React.FC = () => {
                   </button>
                   <button
                     onClick={() => { setActiveTab('dashboard'); setTeacherTab('courses'); }}
-                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
                       activeTab === 'dashboard' && teacherTab === 'courses'
                         ? 'bg-blue-600 text-white shadow-2xs'
                         : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                     }`}
                   >
                     <BookOpen className="w-4 h-4" />
-                    <span>Quản lý Khóa học (2)</span>
-                  </button>
-                  <button
-                    onClick={() => { setActiveTab('dashboard'); setTeacherTab('grading'); }}
-                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
-                      activeTab === 'dashboard' && teacherTab === 'grading'
-                        ? 'bg-blue-600 text-white shadow-2xs'
-                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                    }`}
-                  >
-                    <Edit3 className="w-4 h-4" />
-                    <span>Chấm bài tập (1 chờ chấm)</span>
-                  </button>
-                  <button
-                    onClick={() => { setActiveTab('dashboard'); setTeacherTab('gradebook'); }}
-                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
-                      activeTab === 'dashboard' && teacherTab === 'gradebook'
-                        ? 'bg-blue-600 text-white shadow-2xs'
-                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                    }`}
-                  >
-                    <Users className="w-4 h-4" />
-                    <span>Sổ điểm & Tiến độ Lớp</span>
-                  </button>
-                  <button
-                    onClick={() => { setActiveTab('dashboard'); setTeacherTab('announcements'); }}
-                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
-                      activeTab === 'dashboard' && teacherTab === 'announcements'
-                        ? 'bg-blue-600 text-white shadow-2xs'
-                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                    }`}
-                  >
-                    <Bell className="w-4 h-4" />
-                    <span>Thông báo Lớp học</span>
+                    <span>Khóa học phụ trách (2)</span>
                   </button>
                 </>
               )}
@@ -296,34 +263,7 @@ export const App: React.FC = () => {
                   }`}
                 >
                   <BookOpen className="w-4 h-4" />
-                  <span>Quản lý Khóa học (2)</span>
-                </button>
-                <button
-                  onClick={() => { setActiveTab('dashboard'); setTeacherTab('grading'); setMobileMenuOpen(false); }}
-                  className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
-                    activeTab === 'dashboard' && teacherTab === 'grading' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
-                  }`}
-                >
-                  <Edit3 className="w-4 h-4" />
-                  <span>Chấm bài tập (1 chờ chấm)</span>
-                </button>
-                <button
-                  onClick={() => { setActiveTab('dashboard'); setTeacherTab('gradebook'); setMobileMenuOpen(false); }}
-                  className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
-                    activeTab === 'dashboard' && teacherTab === 'gradebook' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
-                  }`}
-                >
-                  <Users className="w-4 h-4" />
-                  <span>Sổ điểm & Tiến độ Lớp</span>
-                </button>
-                <button
-                  onClick={() => { setActiveTab('dashboard'); setTeacherTab('announcements'); setMobileMenuOpen(false); }}
-                  className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
-                    activeTab === 'dashboard' && teacherTab === 'announcements' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
-                  }`}
-                >
-                  <Bell className="w-4 h-4" />
-                  <span>Thông báo Lớp học</span>
+                  <span>Khóa học phụ trách (2)</span>
                 </button>
               </>
             )}
