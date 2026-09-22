@@ -6,6 +6,7 @@ import { CoursesPage } from './components/CoursesPage';
 import { LoginPage } from './components/LoginPage';
 import { ProfileDropdown } from './components/ProfileDropdown';
 import { ProfilePage } from './components/ProfilePage';
+import { TeacherDashboard } from './components/TeacherDashboard';
 import { UpcomingDeadline, AuthUser } from './types';
 
 export const App: React.FC = () => {
@@ -67,7 +68,7 @@ export const App: React.FC = () => {
               </div>
             </div>
 
-            {/* Clean Navigation Links */}
+            {/* Navigation Links */}
             <nav className="flex items-center gap-2 overflow-x-auto no-scrollbar">
               <button
                 onClick={() => setActiveTab('dashboard')}
@@ -78,7 +79,7 @@ export const App: React.FC = () => {
                 }`}
               >
                 <LayoutDashboard className="w-4 h-4" />
-                <span>Dashboard</span>
+                <span>{user.role === 'TEACHER' ? 'Cổng Giảng viên' : 'Dashboard'}</span>
               </button>
               <button
                 onClick={() => setActiveTab('my-courses')}
@@ -89,7 +90,7 @@ export const App: React.FC = () => {
                 }`}
               >
                 <BookOpen className="w-4 h-4" />
-                <span>Khóa học của tôi</span>
+                <span>{user.role === 'TEACHER' ? 'Khóa học phụ trách' : 'Khóa học của tôi'}</span>
               </button>
               <button
                 onClick={() => setActiveTab('courses')}
@@ -105,7 +106,7 @@ export const App: React.FC = () => {
             </nav>
           </div>
 
-          {/* Right Section: User Profile Dropdown Menu & Outside Theme Switcher (Right after profile user) */}
+          {/* Right Section: User Profile Dropdown Menu & Outside Theme Switcher */}
           <div className="flex items-center gap-3 flex-shrink-0 pl-4 border-l border-slate-800">
             {/* Profile User Dropdown */}
             <ProfileDropdown
@@ -114,7 +115,7 @@ export const App: React.FC = () => {
               onOpenProfilePage={() => setActiveTab('profile')}
             />
 
-            {/* Outside Dark / Light Theme Switcher Button (Right after profile user) */}
+            {/* Outside Dark / Light Theme Switcher Button */}
             <button
               type="button"
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
@@ -141,93 +142,97 @@ export const App: React.FC = () => {
       {/* Full-width Main Content Area */}
       <main className="flex-1 w-full px-4 sm:px-6 lg:px-10 py-8">
         {activeTab === 'dashboard' && (
-          <div className="space-y-8">
-            {/* Welcome Banner */}
-            <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-purple-800 rounded-3xl p-8 text-white shadow-lg relative overflow-hidden w-full">
-              <div className="relative z-10 max-w-3xl">
-                <span className="bg-white/20 text-white text-xs px-3 py-1 rounded-full font-semibold uppercase tracking-wider">
-                  Học kỳ I • Năm học 2024 - 2025
-                </span>
-                <h2 className="text-3xl font-extrabold mt-3 leading-tight">
-                  Xin chào, {user.fullName}!
-                </h2>
-                <p className="text-blue-100 text-sm mt-2 leading-relaxed">
-                  Theo dõi hạn nộp bài tập và bài kiểm tra trắc nghiệm cần hoàn thành dưới đây, hoặc chọn mục "Khóa học của tôi" để tiếp tục học các bài giảng.
-                </p>
-              </div>
-            </div>
-
-            {/* Full-width Responsive Grid Layout: Deadlines & Overview */}
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 w-full">
-              {/* Left Column (2 Cols): Widget Deadlines */}
-              <div className="xl:col-span-2 space-y-6">
-                <UpcomingDeadlinesWidget
-                  onSelectDeadline={(deadline) => {
-                    setSelectedDeadline(deadline);
-                    setActiveTab('quiz');
-                  }}
-                />
-              </div>
-
-              {/* Right Column (1 Col): Class Announcements & Progress */}
-              <div className="space-y-6">
-                {/* Quick My Courses Banner */}
-                <div className="bg-gradient-to-br from-slate-900 to-indigo-950 p-6 rounded-2xl text-white space-y-3">
-                  <span className="text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2.5 py-0.5 rounded-full uppercase">
-                    Khóa học đang học
+          user.role === 'TEACHER' ? (
+            <TeacherDashboard user={user} />
+          ) : (
+            <div className="space-y-8">
+              {/* Welcome Banner for Student */}
+              <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-purple-800 rounded-3xl p-8 text-white shadow-lg relative overflow-hidden w-full">
+                <div className="relative z-10 max-w-3xl">
+                  <span className="bg-white/20 text-white text-xs px-3 py-1 rounded-full font-semibold uppercase tracking-wider">
+                    Học kỳ I • Năm học 2024 - 2025
                   </span>
-                  <h4 className="font-bold text-base">INT3306 - Lập trình Web C# .NET 8 & ReactJS</h4>
-                  <p className="text-xs text-slate-300">Giảng viên: TS. Nguyễn Văn A • Tiến độ: 50%</p>
-                  <button
-                    onClick={() => setActiveTab('my-courses')}
-                    className="w-full mt-2 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-sm"
-                  >
-                    <BookOpen className="w-3.5 h-3.5" />
-                    <span>Vào Khóa học của tôi</span>
-                  </button>
+                  <h2 className="text-3xl font-extrabold mt-3 leading-tight">
+                    Xin chào, {user.fullName}!
+                  </h2>
+                  <p className="text-blue-100 text-sm mt-2 leading-relaxed">
+                    Theo dõi hạn nộp bài tập và bài kiểm tra trắc nghiệm cần hoàn thành dưới đây, hoặc chọn mục "Khóa học của tôi" để tiếp tục học các bài giảng.
+                  </p>
+                </div>
+              </div>
+
+              {/* Full-width Responsive Grid Layout: Deadlines & Overview */}
+              <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 w-full">
+                {/* Left Column (2 Cols): Widget Deadlines */}
+                <div className="xl:col-span-2 space-y-6">
+                  <UpcomingDeadlinesWidget
+                    onSelectDeadline={(deadline) => {
+                      setSelectedDeadline(deadline);
+                      setActiveTab('quiz');
+                    }}
+                  />
                 </div>
 
-                {/* Announcements Card */}
-                <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-sm">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2 text-slate-900 dark:text-white font-bold">
-                      <Bell className="w-5 h-5 text-blue-600" />
-                      <h3>Thông báo lớp học</h3>
-                    </div>
-                    <span className="bg-blue-100 dark:bg-blue-500/20 text-blue-800 dark:text-blue-300 text-xs px-2 py-0.5 rounded-full font-semibold">Ghim</span>
+                {/* Right Column (1 Col): Class Announcements & Progress */}
+                <div className="space-y-6">
+                  {/* Quick My Courses Banner */}
+                  <div className="bg-gradient-to-br from-slate-900 to-indigo-950 p-6 rounded-2xl text-white space-y-3">
+                    <span className="text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2.5 py-0.5 rounded-full uppercase">
+                      Khóa học đang học
+                    </span>
+                    <h4 className="font-bold text-base">INT3306 - Lập trình Web C# .NET 8 & ReactJS</h4>
+                    <p className="text-xs text-slate-300">Giảng viên: TS. Nguyễn Văn A • Tiến độ: 50%</p>
+                    <button
+                      onClick={() => setActiveTab('my-courses')}
+                      className="w-full mt-2 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-sm"
+                    >
+                      <BookOpen className="w-3.5 h-3.5" />
+                      <span>Vào Khóa học của tôi</span>
+                    </button>
                   </div>
 
-                  <div className="p-4 rounded-xl bg-amber-50/50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-sm space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-amber-900 dark:text-amber-300">📌 Lịch nộp Bài tập lớn</span>
-                      <span className="text-xs text-amber-700 dark:text-amber-400">Hôm nay</span>
+                  {/* Announcements Card */}
+                  <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-sm">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2 text-slate-900 dark:text-white font-bold">
+                        <Bell className="w-5 h-5 text-blue-600" />
+                        <h3>Thông báo lớp học</h3>
+                      </div>
+                      <span className="bg-blue-100 dark:bg-blue-500/20 text-blue-800 dark:text-blue-300 text-xs px-2 py-0.5 rounded-full font-semibold">Ghim</span>
                     </div>
-                    <p className="text-xs text-gray-700 dark:text-slate-300 leading-relaxed">
-                      Các em sinh viên chú ý hoàn thành bài tập theo đúng hạn nộp hiển thị ở Widget.
-                    </p>
+
+                    <div className="p-4 rounded-xl bg-amber-50/50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-sm space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-amber-900 dark:text-amber-300">📌 Lịch nộp Bài tập lớn</span>
+                        <span className="text-xs text-amber-700 dark:text-amber-400">Hôm nay</span>
+                      </div>
+                      <p className="text-xs text-gray-700 dark:text-slate-300 leading-relaxed">
+                        Các em sinh viên chú ý hoàn thành bài tập theo đúng hạn nộp hiển thị ở Widget.
+                      </p>
+                    </div>
                   </div>
-                </div>
 
-                {/* Progress Overview Card */}
-                <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-sm space-y-4">
-                  <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                    <Award className="w-5 h-5 text-indigo-600" />
-                    Tiến độ môn học INT3306
-                  </h3>
+                  {/* Progress Overview Card */}
+                  <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-sm space-y-4">
+                    <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                      <Award className="w-5 h-5 text-indigo-600" />
+                      Tiến độ môn học INT3306
+                    </h3>
 
-                  <div>
-                    <div className="flex justify-between text-xs font-semibold mb-1">
-                      <span className="text-gray-600 dark:text-slate-400">Lập trình Web C# .NET 8</span>
-                      <span className="text-blue-600 dark:text-blue-400 font-bold">50% Hoàn thành</span>
-                    </div>
-                    <div className="w-full bg-gray-200 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden">
-                      <div className="bg-blue-600 h-full w-1/2 rounded-full"></div>
+                    <div>
+                      <div className="flex justify-between text-xs font-semibold mb-1">
+                        <span className="text-gray-600 dark:text-slate-400">Lập trình Web C# .NET 8</span>
+                        <span className="text-blue-600 dark:text-blue-400 font-bold">50% Hoàn thành</span>
+                      </div>
+                      <div className="w-full bg-gray-200 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden">
+                        <div className="bg-blue-600 h-full w-1/2 rounded-full"></div>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
+          )
         )}
 
         {activeTab === 'my-courses' && (
