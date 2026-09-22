@@ -1,3 +1,15 @@
+export interface AuthUser {
+  userId: string;
+  email: string;
+  fullName: string;
+  role: 'ADMIN' | 'TEACHER' | 'STUDENT';
+  token: string;
+  refreshToken: string;
+  studentCode?: string;
+  teacherCode?: string;
+  department?: string;
+}
+
 export interface UpcomingDeadline {
   id: string;
   title: string;

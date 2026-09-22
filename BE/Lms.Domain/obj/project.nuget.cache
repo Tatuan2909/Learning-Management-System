@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "wB3B7ZywhN4=",
+  "dgSpecHash": "GeJ/cnjQjEw=",
   "success": true,
-  "projectFilePath": "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\backend\\Lms.Domain\\Lms.Domain.csproj",
+  "projectFilePath": "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\BE\\Lms.Domain\\Lms.Domain.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\ACXSAB\\.nuget\\packages\\microsoft.netcore.app.ref\\8.0.26\\microsoft.netcore.app.ref.8.0.26.nupkg.sha512",
     "C:\\Users\\ACXSAB\\.nuget\\packages\\microsoft.windowsdesktop.app.ref\\8.0.26\\microsoft.windowsdesktop.app.ref.8.0.26.nupkg.sha512",

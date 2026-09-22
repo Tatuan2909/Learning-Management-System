@@ -1,13 +1,37 @@
-import React, { useState } from 'react';
-import { BookOpen, GraduationCap, LayoutDashboard, Clock, CheckSquare, Award, FileText, Bell, UserCheck } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { BookOpen, GraduationCap, LayoutDashboard, CheckSquare, Award, Bell, LogOut, ShieldCheck, UserCheck } from 'lucide-react';
 import { UpcomingDeadlinesWidget } from './components/UpcomingDeadlinesWidget';
 import { PostLessonQuiz } from './components/PostLessonQuiz';
-import { UpcomingDeadline } from './types';
+import { LoginPage } from './components/LoginPage';
+import { UpcomingDeadline, AuthUser } from './types';
 
 export const App: React.FC = () => {
+  const [user, setUser] = useState<AuthUser | null>(() => {
+    const saved = localStorage.getItem('user_info');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  });
+
   const [activeTab, setActiveTab] = useState<'dashboard' | 'quiz' | 'modules'>('dashboard');
   const [selectedDeadline, setSelectedDeadline] = useState<UpcomingDeadline | null>(null);
   const [activeLesson, setActiveLesson] = useState<number>(1);
+
+  const handleLogout = () => {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('user_info');
+    setUser(null);
+  };
+
+  if (!user) {
+    return <LoginPage onLoginSuccess={(loggedInUser) => setUser(loggedInUser)} />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -15,7 +39,7 @@ export const App: React.FC = () => {
       <header className="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-600 rounded-xl">
+            <div className="p-2 bg-blue-600 rounded-xl shadow-md">
               <GraduationCap className="w-6 h-6 text-white" />
             </div>
             <div>
@@ -33,7 +57,7 @@ export const App: React.FC = () => {
               }`}
             >
               <LayoutDashboard className="w-4 h-4" />
-              <span>Dashboard Sinh viên</span>
+              <span>Dashboard</span>
             </button>
             <button
               onClick={() => setActiveTab('quiz')}
@@ -55,15 +79,39 @@ export const App: React.FC = () => {
             </button>
           </nav>
 
-          {/* User Profile Info */}
-          <div className="flex items-center gap-3 pl-4 border-l border-slate-800">
-            <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-sm">
-              TB
+          {/* User Profile Info & Logout */}
+          <div className="flex items-center gap-4 pl-4 border-l border-slate-800">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-sm shadow-sm">
+                {user.fullName.charAt(0)}
+              </div>
+              <div className="hidden sm:block text-left">
+                <p className="text-sm font-semibold leading-tight text-white">{user.fullName}</p>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+                    user.role === 'ADMIN'
+                      ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                      : user.role === 'TEACHER'
+                      ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
+                      : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                  }`}>
+                    {user.role}
+                  </span>
+                  {(user.studentCode || user.teacherCode) && (
+                    <span className="text-xs text-slate-400">• {user.studentCode || user.teacherCode}</span>
+                  )}
+                </div>
+              </div>
             </div>
-            <div className="hidden sm:block text-left">
-              <p className="text-sm font-semibold leading-tight">Trần Thị B</p>
-              <span className="text-xs text-slate-400">SV2024001 • Sinh viên</span>
-            </div>
+
+            <button
+              onClick={handleLogout}
+              title="Đăng xuất"
+              className="p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-slate-800 transition-colors flex items-center gap-1.5 text-xs font-semibold"
+            >
+              <LogOut className="w-4 h-4" />
+              <span className="hidden md:inline">Đăng xuất</span>
+            </button>
           </div>
         </div>
       </header>
@@ -79,10 +127,10 @@ export const App: React.FC = () => {
                   Học kỳ I • Năm học 2024 - 2025
                 </span>
                 <h2 className="text-3xl font-extrabold mt-3 leading-tight">
-                  Chào mừng trở lại, Trần Thị B!
+                  Xin chào, {user.fullName}!
                 </h2>
                 <p className="text-blue-100 text-sm mt-2 leading-relaxed">
-                  Bạn có bài tập cần nộp và trắc nghiệm chưa làm. Hãy theo dõi các widget deadline dưới đây để không bỏ lỡ hạn nộp bài.
+                  Bạn đang đăng nhập dưới vai trò <strong className="text-white underline">{user.role}</strong>. Hãy theo dõi danh sách hạn nộp bài tập và bài kiểm tra dưới đây.
                 </p>
               </div>
             </div>

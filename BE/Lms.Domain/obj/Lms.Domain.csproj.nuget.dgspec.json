@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\backend\\Lms.Domain\\Lms.Domain.csproj": {}
+    "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\BE\\Lms.Domain\\Lms.Domain.csproj": {}
   },
   "projects": {
-    "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\backend\\Lms.Domain\\Lms.Domain.csproj": {
+    "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\BE\\Lms.Domain\\Lms.Domain.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\backend\\Lms.Domain\\Lms.Domain.csproj",
+        "projectUniqueName": "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\BE\\Lms.Domain\\Lms.Domain.csproj",
         "projectName": "Lms.Domain",
-        "projectPath": "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\backend\\Lms.Domain\\Lms.Domain.csproj",
+        "projectPath": "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\BE\\Lms.Domain\\Lms.Domain.csproj",
         "packagesPath": "C:\\Users\\ACXSAB\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\backend\\Lms.Domain\\obj\\",
+        "outputPath": "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\BE\\Lms.Domain\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

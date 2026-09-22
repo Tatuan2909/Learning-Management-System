@@ -1344,11 +1344,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\backend\\Lms.Infrastructure\\Lms.Infrastructure.csproj",
+      "projectUniqueName": "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\BE\\Lms.Infrastructure\\Lms.Infrastructure.csproj",
       "projectName": "Lms.Infrastructure",
-      "projectPath": "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\backend\\Lms.Infrastructure\\Lms.Infrastructure.csproj",
+      "projectPath": "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\BE\\Lms.Infrastructure\\Lms.Infrastructure.csproj",
       "packagesPath": "C:\\Users\\ACXSAB\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\backend\\Lms.Infrastructure\\obj\\",
+      "outputPath": "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\BE\\Lms.Infrastructure\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -1367,14 +1367,13 @@
       },
       "frameworks": {
         "net8.0": {
-          "framework": "net8.0",
           "targetAlias": "net8.0",
           "projectReferences": {
-            "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\backend\\Lms.Application\\Lms.Application.csproj": {
-              "projectPath": "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\backend\\Lms.Application\\Lms.Application.csproj"
+            "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\BE\\Lms.Application\\Lms.Application.csproj": {
+              "projectPath": "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\BE\\Lms.Application\\Lms.Application.csproj"
             },
-            "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\backend\\Lms.Domain\\Lms.Domain.csproj": {
-              "projectPath": "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\backend\\Lms.Domain\\Lms.Domain.csproj"
+            "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\BE\\Lms.Domain\\Lms.Domain.csproj": {
+              "projectPath": "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\BE\\Lms.Domain\\Lms.Domain.csproj"
             }
           }
         }
@@ -1393,7 +1392,6 @@
     },
     "frameworks": {
       "net8.0": {
-        "framework": "net8.0",
         "targetAlias": "net8.0",
         "dependencies": {
           "Microsoft.EntityFrameworkCore": {

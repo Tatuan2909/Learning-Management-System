@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "wREzNz6EBgw=",
+  "dgSpecHash": "sABJdyNvXbo=",
   "success": true,
-  "projectFilePath": "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\backend\\Lms.Infrastructure\\Lms.Infrastructure.csproj",
+  "projectFilePath": "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\BE\\Lms.Infrastructure\\Lms.Infrastructure.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\ACXSAB\\.nuget\\packages\\fluentvalidation\\11.9.2\\fluentvalidation.11.9.2.nupkg.sha512",
     "C:\\Users\\ACXSAB\\.nuget\\packages\\fluentvalidation.dependencyinjectionextensions\\11.9.2\\fluentvalidation.dependencyinjectionextensions.11.9.2.nupkg.sha512",

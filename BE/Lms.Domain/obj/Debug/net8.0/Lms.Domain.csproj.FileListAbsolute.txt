@@ -9,3 +9,15 @@ C:\Users\ACXSAB\Desktop\Learning Management System\backend\Lms.Domain\obj\Debug\
 C:\Users\ACXSAB\Desktop\Learning Management System\backend\Lms.Domain\obj\Debug\net8.0\refint\Lms.Domain.dll
 C:\Users\ACXSAB\Desktop\Learning Management System\backend\Lms.Domain\obj\Debug\net8.0\Lms.Domain.pdb
 C:\Users\ACXSAB\Desktop\Learning Management System\backend\Lms.Domain\obj\Debug\net8.0\ref\Lms.Domain.dll
+C:\Users\ACXSAB\Desktop\Learning Management System\BE\Lms.Domain\bin\Debug\net8.0\Lms.Domain.deps.json
+C:\Users\ACXSAB\Desktop\Learning Management System\BE\Lms.Domain\bin\Debug\net8.0\Lms.Domain.dll
+C:\Users\ACXSAB\Desktop\Learning Management System\BE\Lms.Domain\bin\Debug\net8.0\Lms.Domain.pdb
+C:\Users\ACXSAB\Desktop\Learning Management System\BE\Lms.Domain\obj\Debug\net8.0\Lms.Domain.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\ACXSAB\Desktop\Learning Management System\BE\Lms.Domain\obj\Debug\net8.0\Lms.Domain.AssemblyInfoInputs.cache
+C:\Users\ACXSAB\Desktop\Learning Management System\BE\Lms.Domain\obj\Debug\net8.0\Lms.Domain.AssemblyInfo.cs
+C:\Users\ACXSAB\Desktop\Learning Management System\BE\Lms.Domain\obj\Debug\net8.0\Lms.Domain.csproj.CoreCompileInputs.cache
+C:\Users\ACXSAB\Desktop\Learning Management System\BE\Lms.Domain\obj\Debug\net8.0\Lms.Domain.sourcelink.json
+C:\Users\ACXSAB\Desktop\Learning Management System\BE\Lms.Domain\obj\Debug\net8.0\Lms.Domain.dll
+C:\Users\ACXSAB\Desktop\Learning Management System\BE\Lms.Domain\obj\Debug\net8.0\refint\Lms.Domain.dll
+C:\Users\ACXSAB\Desktop\Learning Management System\BE\Lms.Domain\obj\Debug\net8.0\Lms.Domain.pdb
+C:\Users\ACXSAB\Desktop\Learning Management System\BE\Lms.Domain\obj\Debug\net8.0\ref\Lms.Domain.dll
