@@ -3,6 +3,7 @@ import { BookOpen, GraduationCap, LayoutDashboard, Award, Bell, Sparkles, Sun, M
 import { UpcomingDeadlinesWidget } from './components/UpcomingDeadlinesWidget';
 import { PostLessonQuiz } from './components/PostLessonQuiz';
 import { CoursesPage } from './components/CoursesPage';
+import { CourseStudyPage } from './components/CourseStudyPage';
 import { LoginPage } from './components/LoginPage';
 import { ProfileDropdown } from './components/ProfileDropdown';
 import { ProfilePage } from './components/ProfilePage';
@@ -22,7 +23,8 @@ export const App: React.FC = () => {
     return null;
   });
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'my-courses' | 'courses' | 'quiz' | 'profile'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'my-courses' | 'courses' | 'quiz' | 'profile' | 'study'>('dashboard');
+  const [studyCourseId, setStudyCourseId] = useState<string>('44444444-4444-4444-4444-444444444444');
   const [selectedDeadline, setSelectedDeadline] = useState<UpcomingDeadline | null>(null);
   const [activeLesson, setActiveLesson] = useState<number>(1);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -45,8 +47,23 @@ export const App: React.FC = () => {
     setUser(null);
   };
 
+  const handleOpenStudyPage = (courseId: string) => {
+    setStudyCourseId(courseId);
+    setActiveTab('study');
+  };
+
   if (!user) {
     return <LoginPage onLoginSuccess={(loggedInUser) => setUser(loggedInUser)} />;
+  }
+
+  // Dedicated full-page Course Player View
+  if (activeTab === 'study') {
+    return (
+      <CourseStudyPage
+        courseId={studyCourseId}
+        onBack={() => setActiveTab('my-courses')}
+      />
+    );
   }
 
   return (
@@ -183,11 +200,11 @@ export const App: React.FC = () => {
                     <h4 className="font-bold text-base">INT3306 - Lập trình Web C# .NET 8 & ReactJS</h4>
                     <p className="text-xs text-slate-300">Giảng viên: TS. Nguyễn Văn A • Tiến độ: 50%</p>
                     <button
-                      onClick={() => setActiveTab('my-courses')}
+                      onClick={() => handleOpenStudyPage('44444444-4444-4444-4444-444444444444')}
                       className="w-full mt-2 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-sm"
                     >
                       <BookOpen className="w-3.5 h-3.5" />
-                      <span>Vào Khóa học của tôi</span>
+                      <span>Vào Trang Học Bài Giảng</span>
                     </button>
                   </div>
 
@@ -238,14 +255,14 @@ export const App: React.FC = () => {
         {activeTab === 'my-courses' && (
           <CoursesPage
             initialFilter="ENROLLED"
-            onSelectLessonForQuiz={() => setActiveTab('quiz')}
+            onSelectLessonForQuiz={(lessonId, quizId) => handleOpenStudyPage('44444444-4444-4444-4444-444444444444')}
           />
         )}
 
         {activeTab === 'courses' && (
           <CoursesPage
             initialFilter="ALL"
-            onSelectLessonForQuiz={() => setActiveTab('quiz')}
+            onSelectLessonForQuiz={(lessonId, quizId) => handleOpenStudyPage('44444444-4444-4444-4444-444444444444')}
           />
         )}
 
