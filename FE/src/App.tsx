@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, GraduationCap, LayoutDashboard, Award, Bell, Sparkles, Menu, X } from 'lucide-react';
+import { BookOpen, GraduationCap, LayoutDashboard, Award, Bell, Sparkles, Menu, X, Edit3, Users, Activity, FileText, Settings } from 'lucide-react';
 import { UpcomingDeadlinesWidget } from './components/UpcomingDeadlinesWidget';
 import { PostLessonQuiz } from './components/PostLessonQuiz';
 import { CoursesPage } from './components/CoursesPage';
@@ -25,6 +25,8 @@ export const App: React.FC = () => {
   });
 
   const [activeTab, setActiveTab] = useState<'dashboard' | 'my-courses' | 'courses' | 'quiz' | 'profile' | 'study'>('dashboard');
+  const [teacherTab, setTeacherTab] = useState<'overview' | 'courses' | 'grading' | 'gradebook' | 'announcements'>('overview');
+  const [adminTab, setAdminTab] = useState<'overview' | 'users' | 'courses' | 'logs' | 'settings'>('overview');
   const [studyCourseId, setStudyCourseId] = useState<string>('44444444-4444-4444-4444-444444444444');
   const [selectedDeadline, setSelectedDeadline] = useState<UpcomingDeadline | null>(null);
   const [activeLesson, setActiveLesson] = useState<number>(1);
@@ -79,7 +81,14 @@ export const App: React.FC = () => {
             </button>
 
             {/* Logo */}
-            <div className="flex items-center gap-2.5 cursor-pointer flex-shrink-0" onClick={() => setActiveTab('dashboard')}>
+            <div
+              className="flex items-center gap-2.5 cursor-pointer flex-shrink-0"
+              onClick={() => {
+                setActiveTab('dashboard');
+                if (user.role === 'TEACHER') setTeacherTab('overview');
+                if (user.role === 'ADMIN') setAdminTab('overview');
+              }}
+            >
               <div className="p-2 bg-blue-600 rounded-xl shadow-xs">
                 <GraduationCap className="w-5 h-5 text-white" />
               </div>
@@ -90,48 +99,167 @@ export const App: React.FC = () => {
             </div>
 
             {/* Desktop Navigation Links */}
-            <nav className="hidden md:flex items-center gap-1.5">
-              <button
-                onClick={() => setActiveTab('dashboard')}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
-                  activeTab === 'dashboard'
-                    ? 'bg-blue-600 text-white shadow-2xs'
-                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                }`}
-              >
-                <LayoutDashboard className="w-4 h-4" />
-                <span>
-                  {user.role === 'ADMIN'
-                    ? 'Cổng Quản trị viên'
-                    : user.role === 'TEACHER'
-                    ? 'Cổng Giảng viên'
-                    : 'Dashboard'}
-                </span>
-              </button>
-              {user.role !== 'ADMIN' && (
-                <button
-                  onClick={() => setActiveTab('my-courses')}
-                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
-                    activeTab === 'my-courses'
-                      ? 'bg-blue-600 text-white shadow-2xs'
-                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                  }`}
-                >
-                  <BookOpen className="w-4 h-4" />
-                  <span>{user.role === 'TEACHER' ? 'Khóa học phụ trách' : 'Khóa học của tôi'}</span>
-                </button>
+            <nav className="hidden md:flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
+              {/* Teacher Navigation Tabs */}
+              {user.role === 'TEACHER' && (
+                <>
+                  <button
+                    onClick={() => { setActiveTab('dashboard'); setTeacherTab('overview'); }}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+                      activeTab === 'dashboard' && teacherTab === 'overview'
+                        ? 'bg-blue-600 text-white shadow-2xs'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <Award className="w-4 h-4" />
+                    <span>Tổng quan giảng dạy</span>
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab('dashboard'); setTeacherTab('courses'); }}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+                      activeTab === 'dashboard' && teacherTab === 'courses'
+                        ? 'bg-blue-600 text-white shadow-2xs'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <BookOpen className="w-4 h-4" />
+                    <span>Quản lý Khóa học (2)</span>
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab('dashboard'); setTeacherTab('grading'); }}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+                      activeTab === 'dashboard' && teacherTab === 'grading'
+                        ? 'bg-blue-600 text-white shadow-2xs'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <Edit3 className="w-4 h-4" />
+                    <span>Chấm bài tập (1 chờ chấm)</span>
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab('dashboard'); setTeacherTab('gradebook'); }}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+                      activeTab === 'dashboard' && teacherTab === 'gradebook'
+                        ? 'bg-blue-600 text-white shadow-2xs'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <Users className="w-4 h-4" />
+                    <span>Sổ điểm & Tiến độ Lớp</span>
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab('dashboard'); setTeacherTab('announcements'); }}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+                      activeTab === 'dashboard' && teacherTab === 'announcements'
+                        ? 'bg-blue-600 text-white shadow-2xs'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <Bell className="w-4 h-4" />
+                    <span>Thông báo Lớp học</span>
+                  </button>
+                </>
               )}
-              <button
-                onClick={() => setActiveTab('courses')}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
-                  activeTab === 'courses'
-                    ? 'bg-blue-600 text-white shadow-2xs'
-                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                }`}
-              >
-                <Sparkles className="w-4 h-4" />
-                <span>Tất cả khóa học</span>
-              </button>
+
+              {/* Admin Navigation Tabs */}
+              {user.role === 'ADMIN' && (
+                <>
+                  <button
+                    onClick={() => { setActiveTab('dashboard'); setAdminTab('overview'); }}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+                      activeTab === 'dashboard' && adminTab === 'overview'
+                        ? 'bg-blue-600 text-white shadow-2xs'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <Activity className="w-4 h-4" />
+                    <span>Tổng quan Hệ thống</span>
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab('dashboard'); setAdminTab('users'); }}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+                      activeTab === 'dashboard' && adminTab === 'users'
+                        ? 'bg-blue-600 text-white shadow-2xs'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <Users className="w-4 h-4" />
+                    <span>Quản lý Người dùng</span>
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab('dashboard'); setAdminTab('courses'); }}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+                      activeTab === 'dashboard' && adminTab === 'courses'
+                        ? 'bg-blue-600 text-white shadow-2xs'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <BookOpen className="w-4 h-4" />
+                    <span>Quản lý Khóa học</span>
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab('dashboard'); setAdminTab('logs'); }}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+                      activeTab === 'dashboard' && adminTab === 'logs'
+                        ? 'bg-blue-600 text-white shadow-2xs'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <FileText className="w-4 h-4" />
+                    <span>Nhật ký An ninh</span>
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab('dashboard'); setAdminTab('settings'); }}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+                      activeTab === 'dashboard' && adminTab === 'settings'
+                        ? 'bg-blue-600 text-white shadow-2xs'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <Settings className="w-4 h-4" />
+                    <span>Cấu hình Hệ thống</span>
+                  </button>
+                </>
+              )}
+
+              {/* Student Navigation Tabs */}
+              {user.role === 'STUDENT' && (
+                <>
+                  <button
+                    onClick={() => setActiveTab('dashboard')}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+                      activeTab === 'dashboard'
+                        ? 'bg-blue-600 text-white shadow-2xs'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <LayoutDashboard className="w-4 h-4" />
+                    <span>Dashboard</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('my-courses')}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+                      activeTab === 'my-courses'
+                        ? 'bg-blue-600 text-white shadow-2xs'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <BookOpen className="w-4 h-4" />
+                    <span>Khóa học của tôi</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('courses')}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+                      activeTab === 'courses'
+                        ? 'bg-blue-600 text-white shadow-2xs'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    <span>Tất cả khóa học</span>
+                  </button>
+                </>
+              )}
             </nav>
           </div>
 
@@ -149,41 +277,140 @@ export const App: React.FC = () => {
         {/* Mobile Navigation Dropdown Menu */}
         {mobileMenuOpen && (
           <div className="md:hidden bg-white border-b border-slate-200 px-4 py-3 space-y-1.5 shadow-md">
-            <button
-              onClick={() => { setActiveTab('dashboard'); setMobileMenuOpen(false); }}
-              className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
-                activeTab === 'dashboard' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
-              }`}
-            >
-              <LayoutDashboard className="w-4 h-4" />
-              <span>
-                {user.role === 'ADMIN'
-                  ? 'Cổng Quản trị viên'
-                  : user.role === 'TEACHER'
-                  ? 'Cổng Giảng viên'
-                  : 'Dashboard'}
-              </span>
-            </button>
-            {user.role !== 'ADMIN' && (
-              <button
-                onClick={() => { setActiveTab('my-courses'); setMobileMenuOpen(false); }}
-                className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
-                  activeTab === 'my-courses' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
-                }`}
-              >
-                <BookOpen className="w-4 h-4" />
-                <span>{user.role === 'TEACHER' ? 'Khóa học phụ trách' : 'Khóa học của tôi'}</span>
-              </button>
+            {/* Teacher Mobile Tabs */}
+            {user.role === 'TEACHER' && (
+              <>
+                <button
+                  onClick={() => { setActiveTab('dashboard'); setTeacherTab('overview'); setMobileMenuOpen(false); }}
+                  className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
+                    activeTab === 'dashboard' && teacherTab === 'overview' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <Award className="w-4 h-4" />
+                  <span>Tổng quan giảng dạy</span>
+                </button>
+                <button
+                  onClick={() => { setActiveTab('dashboard'); setTeacherTab('courses'); setMobileMenuOpen(false); }}
+                  className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
+                    activeTab === 'dashboard' && teacherTab === 'courses' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <BookOpen className="w-4 h-4" />
+                  <span>Quản lý Khóa học (2)</span>
+                </button>
+                <button
+                  onClick={() => { setActiveTab('dashboard'); setTeacherTab('grading'); setMobileMenuOpen(false); }}
+                  className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
+                    activeTab === 'dashboard' && teacherTab === 'grading' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <Edit3 className="w-4 h-4" />
+                  <span>Chấm bài tập (1 chờ chấm)</span>
+                </button>
+                <button
+                  onClick={() => { setActiveTab('dashboard'); setTeacherTab('gradebook'); setMobileMenuOpen(false); }}
+                  className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
+                    activeTab === 'dashboard' && teacherTab === 'gradebook' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <Users className="w-4 h-4" />
+                  <span>Sổ điểm & Tiến độ Lớp</span>
+                </button>
+                <button
+                  onClick={() => { setActiveTab('dashboard'); setTeacherTab('announcements'); setMobileMenuOpen(false); }}
+                  className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
+                    activeTab === 'dashboard' && teacherTab === 'announcements' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <Bell className="w-4 h-4" />
+                  <span>Thông báo Lớp học</span>
+                </button>
+              </>
             )}
-            <button
-              onClick={() => { setActiveTab('courses'); setMobileMenuOpen(false); }}
-              className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
-                activeTab === 'courses' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
-              }`}
-            >
-              <Sparkles className="w-4 h-4" />
-              <span>Tất cả khóa học</span>
-            </button>
+
+            {/* Admin Mobile Tabs */}
+            {user.role === 'ADMIN' && (
+              <>
+                <button
+                  onClick={() => { setActiveTab('dashboard'); setAdminTab('overview'); setMobileMenuOpen(false); }}
+                  className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
+                    activeTab === 'dashboard' && adminTab === 'overview' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <Activity className="w-4 h-4" />
+                  <span>Tổng quan Hệ thống</span>
+                </button>
+                <button
+                  onClick={() => { setActiveTab('dashboard'); setAdminTab('users'); setMobileMenuOpen(false); }}
+                  className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
+                    activeTab === 'dashboard' && adminTab === 'users' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <Users className="w-4 h-4" />
+                  <span>Quản lý Người dùng</span>
+                </button>
+                <button
+                  onClick={() => { setActiveTab('dashboard'); setAdminTab('courses'); setMobileMenuOpen(false); }}
+                  className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
+                    activeTab === 'dashboard' && adminTab === 'courses' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <BookOpen className="w-4 h-4" />
+                  <span>Quản lý Khóa học</span>
+                </button>
+                <button
+                  onClick={() => { setActiveTab('dashboard'); setAdminTab('logs'); setMobileMenuOpen(false); }}
+                  className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
+                    activeTab === 'dashboard' && adminTab === 'logs' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <FileText className="w-4 h-4" />
+                  <span>Nhật ký An ninh</span>
+                </button>
+                <button
+                  onClick={() => { setActiveTab('dashboard'); setAdminTab('settings'); setMobileMenuOpen(false); }}
+                  className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
+                    activeTab === 'dashboard' && adminTab === 'settings' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <Settings className="w-4 h-4" />
+                  <span>Cấu hình Hệ thống</span>
+                </button>
+              </>
+            )}
+
+            {/* Student Mobile Tabs */}
+            {user.role === 'STUDENT' && (
+              <>
+                <button
+                  onClick={() => { setActiveTab('dashboard'); setMobileMenuOpen(false); }}
+                  className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
+                    activeTab === 'dashboard' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <LayoutDashboard className="w-4 h-4" />
+                  <span>Dashboard</span>
+                </button>
+                <button
+                  onClick={() => { setActiveTab('my-courses'); setMobileMenuOpen(false); }}
+                  className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
+                    activeTab === 'my-courses' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <BookOpen className="w-4 h-4" />
+                  <span>Khóa học của tôi</span>
+                </button>
+                <button
+                  onClick={() => { setActiveTab('courses'); setMobileMenuOpen(false); }}
+                  className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
+                    activeTab === 'courses' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <Sparkles className="w-4 h-4" />
+                  <span>Tất cả khóa học</span>
+                </button>
+              </>
+            )}
           </div>
         )}
       </header>
@@ -192,9 +419,9 @@ export const App: React.FC = () => {
       <main className="flex-1 w-full px-3 sm:px-6 lg:px-10 py-6 sm:py-8">
         {activeTab === 'dashboard' && (
           user.role === 'ADMIN' ? (
-            <AdminDashboard user={user} />
+            <AdminDashboard user={user} activeTab={adminTab} onTabChange={setAdminTab} />
           ) : user.role === 'TEACHER' ? (
-            <TeacherDashboard user={user} />
+            <TeacherDashboard user={user} activeTab={teacherTab} onTabChange={setTeacherTab} />
           ) : (
             <div className="space-y-8">
               {/* Softer, Gentle, Eye-friendly Welcome Banner */}

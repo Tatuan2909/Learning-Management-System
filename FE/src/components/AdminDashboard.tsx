@@ -26,6 +26,8 @@ import { AuthUser } from '../types';
 
 interface Props {
   user: AuthUser;
+  activeTab?: 'overview' | 'users' | 'courses' | 'logs' | 'settings';
+  onTabChange?: (tab: 'overview' | 'users' | 'courses' | 'logs' | 'settings') => void;
 }
 
 interface ManagedUser {
@@ -60,8 +62,17 @@ interface AuditLog {
   severity: 'INFO' | 'WARNING' | 'CRITICAL';
 }
 
-export const AdminDashboard: React.FC<Props> = ({ user }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'courses' | 'logs' | 'settings'>('overview');
+export const AdminDashboard: React.FC<Props> = ({ user, activeTab: propActiveTab, onTabChange }) => {
+  const [internalActiveTab, setInternalActiveTab] = useState<'overview' | 'users' | 'courses' | 'logs' | 'settings'>('overview');
+
+  const activeTab = propActiveTab !== undefined ? propActiveTab : internalActiveTab;
+  const setActiveTab = (tab: 'overview' | 'users' | 'courses' | 'logs' | 'settings') => {
+    if (onTabChange) {
+      onTabChange(tab);
+    } else {
+      setInternalActiveTab(tab);
+    }
+  };
 
   // Search & Filter for Users
   const [userSearchTerm, setUserSearchTerm] = useState('');
@@ -348,64 +359,66 @@ export const AdminDashboard: React.FC<Props> = ({ user }) => {
         </div>
       </div>
 
-      {/* Admin Navigation Tabs */}
-      <div className="bg-white p-2 rounded-2xl border border-slate-200 shadow-2xs flex items-center gap-2 overflow-x-auto no-scrollbar">
-        <button
-          onClick={() => setActiveTab('overview')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
-            activeTab === 'overview'
-              ? 'bg-blue-600 text-white shadow-2xs'
-              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-          }`}
-        >
-          <Activity className="w-4 h-4" />
-          <span>Tổng quan Hệ thống</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('users')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
-            activeTab === 'users'
-              ? 'bg-blue-600 text-white shadow-2xs'
-              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-          }`}
-        >
-          <Users className="w-4 h-4" />
-          <span>Quản lý Người dùng ({usersList.length})</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('courses')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
-            activeTab === 'courses'
-              ? 'bg-blue-600 text-white shadow-2xs'
-              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-          }`}
-        >
-          <BookOpen className="w-4 h-4" />
-          <span>Quản lý Khóa học ({coursesList.length})</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('logs')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
-            activeTab === 'logs'
-              ? 'bg-blue-600 text-white shadow-2xs'
-              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-          }`}
-        >
-          <FileText className="w-4 h-4" />
-          <span>Nhật ký An ninh (Audit Logs)</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('settings')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
-            activeTab === 'settings'
-              ? 'bg-blue-600 text-white shadow-2xs'
-              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-          }`}
-        >
-          <Settings className="w-4 h-4" />
-          <span>Cấu hình Học kỳ & Máy chủ</span>
-        </button>
-      </div>
+      {/* Admin Navigation Tabs - Shown only if not controlled by top navbar */}
+      {!propActiveTab && (
+        <div className="bg-white p-2 rounded-2xl border border-slate-200 shadow-2xs flex items-center gap-2 overflow-x-auto no-scrollbar">
+          <button
+            onClick={() => setActiveTab('overview')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+              activeTab === 'overview'
+                ? 'bg-blue-600 text-white shadow-2xs'
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+            }`}
+          >
+            <Activity className="w-4 h-4" />
+            <span>Tổng quan Hệ thống</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('users')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+              activeTab === 'users'
+                ? 'bg-blue-600 text-white shadow-2xs'
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            <span>Quản lý Người dùng ({usersList.length})</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('courses')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+              activeTab === 'courses'
+                ? 'bg-blue-600 text-white shadow-2xs'
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+            }`}
+          >
+            <BookOpen className="w-4 h-4" />
+            <span>Quản lý Khóa học ({coursesList.length})</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('logs')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+              activeTab === 'logs'
+                ? 'bg-blue-600 text-white shadow-2xs'
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+            }`}
+          >
+            <FileText className="w-4 h-4" />
+            <span>Nhật ký An ninh (Audit Logs)</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('settings')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+              activeTab === 'settings'
+                ? 'bg-blue-600 text-white shadow-2xs'
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+            }`}
+          >
+            <Settings className="w-4 h-4" />
+            <span>Cấu hình Học kỳ & Máy chủ</span>
+          </button>
+        </div>
+      )}
 
       {/* Tab 1: Overview Metrics & Health */}
       {activeTab === 'overview' && (

@@ -4,6 +4,8 @@ import { AuthUser } from '../types';
 
 interface Props {
   user: AuthUser;
+  activeTab?: 'overview' | 'courses' | 'grading' | 'gradebook' | 'announcements';
+  onTabChange?: (tab: 'overview' | 'courses' | 'grading' | 'gradebook' | 'announcements') => void;
 }
 
 interface StudentGradeRow {
@@ -43,8 +45,17 @@ interface TeacherCourse {
   weightFinalExam: number;
 }
 
-export const TeacherDashboard: React.FC<Props> = ({ user }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'courses' | 'grading' | 'gradebook' | 'announcements'>('overview');
+export const TeacherDashboard: React.FC<Props> = ({ user, activeTab: propActiveTab, onTabChange }) => {
+  const [internalActiveTab, setInternalActiveTab] = useState<'overview' | 'courses' | 'grading' | 'gradebook' | 'announcements'>('overview');
+
+  const activeTab = propActiveTab !== undefined ? propActiveTab : internalActiveTab;
+  const setActiveTab = (tab: 'overview' | 'courses' | 'grading' | 'gradebook' | 'announcements') => {
+    if (onTabChange) {
+      onTabChange(tab);
+    } else {
+      setInternalActiveTab(tab);
+    }
+  };
 
   // State for Course creation modal
   const [showAddCourseModal, setShowAddCourseModal] = useState(false);
@@ -247,64 +258,66 @@ export const TeacherDashboard: React.FC<Props> = ({ user }) => {
         </div>
       </div>
 
-      {/* Teacher Navigation Tabs - Pure White */}
-      <div className="bg-white p-2 rounded-2xl border border-slate-200 shadow-2xs flex items-center gap-2 overflow-x-auto">
-        <button
-          onClick={() => setActiveTab('overview')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
-            activeTab === 'overview'
-              ? 'bg-blue-600 text-white shadow-xs'
-              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-          }`}
-        >
-          <Award className="w-4 h-4" />
-          <span>Tổng quan giảng dạy</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('courses')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
-            activeTab === 'courses'
-              ? 'bg-blue-600 text-white shadow-xs'
-              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-          }`}
-        >
-          <BookOpen className="w-4 h-4" />
-          <span>Quản lý Khóa học ({courses.length})</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('grading')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
-            activeTab === 'grading'
-              ? 'bg-blue-600 text-white shadow-xs'
-              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-          }`}
-        >
-          <Edit3 className="w-4 h-4" />
-          <span>Chấm bài tập ({submissions.filter((s) => s.status === 'SUBMITTED').length} chờ chấm)</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('gradebook')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
-            activeTab === 'gradebook'
-              ? 'bg-blue-600 text-white shadow-xs'
-              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-          }`}
-        >
-          <Users className="w-4 h-4" />
-          <span>Sổ điểm & Tiến độ Lớp</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('announcements')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
-            activeTab === 'announcements'
-              ? 'bg-blue-600 text-white shadow-xs'
-              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-          }`}
-        >
-          <Bell className="w-4 h-4" />
-          <span>Thông báo Lớp học</span>
-        </button>
-      </div>
+      {/* Teacher Navigation Tabs - Shown only if not controlled by top navbar */}
+      {!propActiveTab && (
+        <div className="bg-white p-2 rounded-2xl border border-slate-200 shadow-2xs flex items-center gap-2 overflow-x-auto">
+          <button
+            onClick={() => setActiveTab('overview')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+              activeTab === 'overview'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+            }`}
+          >
+            <Award className="w-4 h-4" />
+            <span>Tổng quan giảng dạy</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('courses')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+              activeTab === 'courses'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+            }`}
+          >
+            <BookOpen className="w-4 h-4" />
+            <span>Quản lý Khóa học ({courses.length})</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('grading')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+              activeTab === 'grading'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+            }`}
+          >
+            <Edit3 className="w-4 h-4" />
+            <span>Chấm bài tập ({submissions.filter((s) => s.status === 'SUBMITTED').length} chờ chấm)</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('gradebook')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+              activeTab === 'gradebook'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            <span>Sổ điểm & Tiến độ Lớp</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('announcements')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+              activeTab === 'announcements'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+            }`}
+          >
+            <Bell className="w-4 h-4" />
+            <span>Thông báo Lớp học</span>
+          </button>
+        </div>
+      )}
 
       {/* Tab 1: Overview Metric Cards */}
       {activeTab === 'overview' && (
