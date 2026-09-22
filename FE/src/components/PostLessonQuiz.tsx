@@ -143,15 +143,15 @@ export const PostLessonQuiz: React.FC<Props> = ({ quizId, onNextLesson }) => {
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-      {/* Header */}
-      <div className="px-6 py-5 bg-slate-900 text-white flex items-center justify-between">
+      {/* Softer, Gentle Header */}
+      <div className="px-6 py-5 bg-slate-50 border-b border-slate-200 text-slate-800 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-blue-600/20 text-blue-400 rounded-xl border border-blue-500/30">
+          <div className="p-2.5 bg-blue-100 text-blue-700 rounded-xl">
             <HelpCircle className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="font-bold text-lg">{quiz.title}</h3>
-            <p className="text-xs text-gray-400 mt-0.5">
+            <h3 className="font-extrabold text-lg text-slate-900">{quiz.title}</h3>
+            <p className="text-xs text-slate-500 mt-0.5">
               Thời gian làm bài: {quiz.timeLimitMinutes} phút • Điểm đạt: {quiz.passingScore}%
             </p>
           </div>

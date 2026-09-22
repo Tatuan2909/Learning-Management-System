@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { User, Lock, Key, ShieldCheck, Mail, GraduationCap, CheckCircle2, AlertCircle, Save, Eye, EyeOff } from 'lucide-react';
 import { AuthUser } from '../types';
-import api from '../api/axios';
 
 interface Props {
   user: AuthUser;
@@ -52,18 +51,18 @@ export const ProfilePage: React.FC<Props> = ({ user }) => {
   };
 
   return (
-    <div className="space-y-8 w-full max-w-6xl mx-auto">
-      {/* Page Header */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-900 rounded-3xl p-8 text-white shadow-lg relative overflow-hidden w-full">
+    <div className="space-y-8 w-full max-w-6xl mx-auto text-slate-900">
+      {/* Softer, Gentle Page Header */}
+      <div className="bg-gradient-to-r from-blue-50/90 via-indigo-50/40 to-slate-50 rounded-3xl p-8 text-slate-800 shadow-2xs border border-blue-100/80 relative overflow-hidden w-full">
         <div className="relative z-10 max-w-2xl">
-          <span className="bg-blue-500/20 text-blue-300 border border-blue-500/30 text-xs px-3 py-1 rounded-full font-semibold uppercase tracking-wider inline-flex items-center gap-1.5 mb-3">
-            <User className="w-3.5 h-3.5 text-blue-400" />
+          <span className="bg-blue-100/80 text-blue-700 text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider inline-flex items-center gap-1.5 mb-3 border border-blue-200/60">
+            <User className="w-3.5 h-3.5 text-blue-600" />
             Hồ sơ Cá nhân & Bảo mật
           </span>
-          <h2 className="text-3xl font-extrabold leading-tight">
+          <h2 className="text-3xl font-extrabold leading-tight text-slate-900">
             Quản lý Tài khoản của Bạn
           </h2>
-          <p className="text-slate-300 text-sm mt-2 leading-relaxed">
+          <p className="text-slate-600 text-sm mt-2 leading-relaxed">
             Xem thông tin tài khoản cá nhân, mã số sinh viên / giảng viên và đổi mật khẩu bảo mật.
           </p>
         </div>
@@ -71,21 +70,21 @@ export const ProfilePage: React.FC<Props> = ({ user }) => {
 
       {/* Grid Content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column: User Details Card */}
-        <div className="lg:col-span-1 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-gray-200 dark:border-slate-800 shadow-sm space-y-6">
-          <div className="flex flex-col items-center text-center pb-6 border-b border-gray-100 dark:border-slate-800">
-            <div className="w-24 h-24 rounded-full bg-blue-600 text-white font-extrabold text-3xl flex items-center justify-center shadow-lg border-4 border-white dark:border-slate-800 mb-4">
+        {/* Left Column: User Details Card - Pure White */}
+        <div className="lg:col-span-1 bg-white p-6 rounded-3xl border border-slate-200 shadow-2xs space-y-6">
+          <div className="flex flex-col items-center text-center pb-6 border-b border-slate-100">
+            <div className="w-24 h-24 rounded-full bg-blue-600 text-white font-extrabold text-3xl flex items-center justify-center shadow-lg shadow-blue-500/20 border-4 border-slate-100 mb-4">
               {user.fullName.charAt(0)}
             </div>
-            <h3 className="font-extrabold text-gray-900 dark:text-white text-xl">{user.fullName}</h3>
-            <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">{user.email}</p>
+            <h3 className="font-extrabold text-slate-900 text-xl">{user.fullName}</h3>
+            <p className="text-xs text-slate-500 mt-1">{user.email}</p>
             <div className="mt-3">
               <span className={`text-xs font-extrabold px-3 py-1 rounded-full ${
                 user.role === 'ADMIN'
-                  ? 'bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-300'
+                  ? 'bg-purple-100 text-purple-700'
                   : user.role === 'TEACHER'
-                  ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300'
-                  : 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300'
+                  ? 'bg-indigo-100 text-indigo-700'
+                  : 'bg-blue-100 text-blue-700'
               }`}>
                 {user.role === 'STUDENT' ? '🎓 SINH VIÊN' : user.role === 'TEACHER' ? '👨‍🏫 GIẢNG VIÊN' : '🛡️ ADMIN'}
               </span>
@@ -93,34 +92,34 @@ export const ProfilePage: React.FC<Props> = ({ user }) => {
           </div>
 
           <div className="space-y-4 text-xs">
-            <h4 className="font-bold text-gray-900 dark:text-white uppercase tracking-wider text-[11px] text-gray-400">
+            <h4 className="font-bold text-slate-400 uppercase tracking-wider text-[11px]">
               Chi tiết Hồ sơ
             </h4>
 
             {user.studentCode && (
-              <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-800 flex items-center justify-between">
-                <span className="text-gray-500 dark:text-slate-400">Mã số Sinh viên (MSSV):</span>
-                <span className="font-mono font-bold text-blue-600 dark:text-blue-400">{user.studentCode}</span>
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+                <span className="text-slate-500">Mã số Sinh viên (MSSV):</span>
+                <span className="font-mono font-bold text-blue-600">{user.studentCode}</span>
               </div>
             )}
 
             {user.teacherCode && (
-              <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-800 flex items-center justify-between">
-                <span className="text-gray-500 dark:text-slate-400">Mã cán bộ Giảng viên:</span>
-                <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">{user.teacherCode}</span>
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+                <span className="text-slate-500">Mã cán bộ Giảng viên:</span>
+                <span className="font-mono font-bold text-indigo-600">{user.teacherCode}</span>
               </div>
             )}
 
-            <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-800 flex items-center justify-between">
-              <span className="text-gray-500 dark:text-slate-400">Lớp sinh hoạt / Khoa:</span>
-              <span className="font-semibold text-gray-800 dark:text-slate-200">
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+              <span className="text-slate-500">Lớp sinh hoạt / Khoa:</span>
+              <span className="font-semibold text-slate-800">
                 {user.role === 'STUDENT' ? 'CNTT-K65' : user.department || 'Khoa CNTT'}
               </span>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-slate-800 flex items-center justify-between">
-              <span className="text-gray-500 dark:text-slate-400">Trạng thái tài khoản:</span>
-              <span className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+              <span className="text-slate-500">Trạng thái tài khoản:</span>
+              <span className="font-bold text-emerald-600 flex items-center gap-1">
                 <CheckCircle2 className="w-3.5 h-3.5" />
                 Hoạt động (Active)
               </span>
@@ -128,15 +127,15 @@ export const ProfilePage: React.FC<Props> = ({ user }) => {
           </div>
         </div>
 
-        {/* Right Column: Built-in Change Password Form */}
-        <div className="lg:col-span-2 bg-white dark:bg-slate-900 p-8 rounded-3xl border border-gray-200 dark:border-slate-800 shadow-sm space-y-6">
-          <div className="flex items-center gap-3 border-b border-gray-100 dark:border-slate-800 pb-5">
-            <div className="p-3 bg-blue-100 dark:bg-blue-600/20 text-blue-600 dark:text-blue-400 rounded-2xl">
+        {/* Right Column: Built-in Change Password Form - Pure White */}
+        <div className="lg:col-span-2 bg-white p-8 rounded-3xl border border-slate-200 shadow-2xs space-y-6">
+          <div className="flex items-center gap-3 border-b border-slate-100 pb-5">
+            <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl">
               <Key className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="font-extrabold text-gray-900 dark:text-white text-lg">Đổi Mật khẩu Tài khoản</h3>
-              <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+              <h3 className="font-extrabold text-slate-900 text-lg">Đổi Mật khẩu Tài khoản</h3>
+              <p className="text-xs text-slate-500 mt-0.5">
                 Đổi mật khẩu định kỳ để tăng cường độ an toàn cho tài khoản cá nhân
               </p>
             </div>
@@ -145,13 +144,13 @@ export const ProfilePage: React.FC<Props> = ({ user }) => {
           {message && (
             <div className={`p-4 rounded-2xl text-xs font-semibold flex items-start gap-3 border ${
               message.type === 'success'
-                ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 text-emerald-800 dark:text-emerald-300'
-                : 'bg-red-50 dark:bg-red-500/10 border-red-200 text-red-800 dark:text-red-300'
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                : 'bg-rose-50 border-rose-200 text-rose-800'
             }`}>
               {message.type === 'success' ? (
                 <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
               ) : (
-                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+                <AlertCircle className="w-5 h-5 text-rose-600 flex-shrink-0" />
               )}
               <span>{message.text}</span>
             </div>
@@ -160,21 +159,21 @@ export const ProfilePage: React.FC<Props> = ({ user }) => {
           <form onSubmit={handleChangePassword} className="space-y-5 max-w-lg">
             {/* Current Password */}
             <div>
-              <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 uppercase tracking-wider mb-2">
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
                 Mật khẩu Hiện tại
               </label>
-              <div className="relative rounded-xl shadow-xs">
+              <div className="relative rounded-xl shadow-2xs">
                 <input
                   type={showCurrent ? 'text' : 'password'}
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
                   placeholder="Nhập mật khẩu hiện tại"
-                  className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
                 />
                 <button
                   type="button"
                   onClick={() => setShowCurrent(!showCurrent)}
-                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-600"
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600"
                 >
                   {showCurrent ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -183,21 +182,21 @@ export const ProfilePage: React.FC<Props> = ({ user }) => {
 
             {/* New Password */}
             <div>
-              <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 uppercase tracking-wider mb-2">
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
                 Mật khẩu Mới
               </label>
-              <div className="relative rounded-xl shadow-xs">
+              <div className="relative rounded-xl shadow-2xs">
                 <input
                   type={showNew ? 'text' : 'password'}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="Nhập mật khẩu mới (ít nhất 6 ký tự)"
-                  className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
                 />
                 <button
                   type="button"
                   onClick={() => setShowNew(!showNew)}
-                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-600"
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600"
                 >
                   {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -206,7 +205,7 @@ export const ProfilePage: React.FC<Props> = ({ user }) => {
 
             {/* Confirm Password */}
             <div>
-              <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 uppercase tracking-wider mb-2">
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
                 Xác nhận Mật khẩu Mới
               </label>
               <input
@@ -214,14 +213,14 @@ export const ProfilePage: React.FC<Props> = ({ user }) => {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Nhập lại mật khẩu mới"
-                className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
               />
             </div>
 
             <button
               type="submit"
               disabled={submitting}
-              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded-xl transition-all shadow-md flex items-center gap-2 disabled:opacity-50"
+              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl transition-all shadow-md shadow-blue-500/20 flex items-center gap-2 disabled:opacity-50"
             >
               {submitting ? (
                 <>

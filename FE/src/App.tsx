@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, GraduationCap, LayoutDashboard, Award, Bell, Sparkles, Sun, Moon, Menu, X } from 'lucide-react';
+import { BookOpen, GraduationCap, LayoutDashboard, Award, Bell, Sparkles, Menu, X } from 'lucide-react';
 import { UpcomingDeadlinesWidget } from './components/UpcomingDeadlinesWidget';
 import { PostLessonQuiz } from './components/PostLessonQuiz';
 import { CoursesPage } from './components/CoursesPage';
@@ -28,19 +28,12 @@ export const App: React.FC = () => {
   const [selectedDeadline, setSelectedDeadline] = useState<UpcomingDeadline | null>(null);
   const [activeLesson, setActiveLesson] = useState<number>(1);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    return (localStorage.getItem('theme') as 'light' | 'dark') || 'light';
-  });
 
+  // Force permanent clean Light Mode
   useEffect(() => {
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-    localStorage.setItem('theme', theme);
-  }, [theme]);
+    document.documentElement.classList.remove('dark');
+    localStorage.setItem('theme', 'light');
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('access_token');
@@ -69,9 +62,9 @@ export const App: React.FC = () => {
   }
 
   return (
-    <div className={`min-h-screen ${theme === 'dark' ? 'dark bg-slate-950 text-white' : 'bg-slate-50 text-slate-900'} flex flex-col w-full transition-colors duration-200`}>
-      {/* Full-width Header / Navbar */}
-      <header className="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-50 shadow-md w-full">
+    <div className="min-h-screen bg-[#f8fafc] text-slate-800 flex flex-col w-full font-sans antialiased">
+      {/* Calm White Header / Navbar */}
+      <header className="bg-white text-slate-800 border-b border-slate-200/90 sticky top-0 z-50 shadow-2xs w-full">
         <div className="w-full px-4 sm:px-6 lg:px-10 h-16 flex items-center justify-between gap-4">
           
           {/* Left Section: Logo & Mobile Toggle */}
@@ -79,30 +72,30 @@ export const App: React.FC = () => {
             {/* Mobile Nav Hamburger */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white"
+              className="md:hidden p-2 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
 
             {/* Logo */}
             <div className="flex items-center gap-2.5 cursor-pointer flex-shrink-0" onClick={() => setActiveTab('dashboard')}>
-              <div className="p-2 bg-blue-600 rounded-xl shadow-md">
+              <div className="p-2 bg-blue-600 rounded-xl shadow-xs">
                 <GraduationCap className="w-5 h-5 text-white" />
               </div>
               <div className="hidden sm:block">
-                <h1 className="font-extrabold text-base leading-none tracking-tight">Hệ thống LMS</h1>
-                <span className="text-[10px] text-blue-400 font-mono mt-0.5 inline-block">Client - Server</span>
+                <h1 className="font-extrabold text-base leading-none tracking-tight text-slate-900">Hệ thống LMS</h1>
+                <span className="text-[10px] text-blue-600 font-mono font-medium mt-0.5 inline-block">Client - Server</span>
               </div>
             </div>
 
             {/* Desktop Navigation Links */}
-            <nav className="hidden md:flex items-center gap-2">
+            <nav className="hidden md:flex items-center gap-1.5">
               <button
                 onClick={() => setActiveTab('dashboard')}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
                   activeTab === 'dashboard'
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                    ? 'bg-blue-600 text-white shadow-2xs'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                 }`}
               >
                 <LayoutDashboard className="w-4 h-4" />
@@ -110,10 +103,10 @@ export const App: React.FC = () => {
               </button>
               <button
                 onClick={() => setActiveTab('my-courses')}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
                   activeTab === 'my-courses'
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                    ? 'bg-blue-600 text-white shadow-2xs'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                 }`}
               >
                 <BookOpen className="w-4 h-4" />
@@ -121,10 +114,10 @@ export const App: React.FC = () => {
               </button>
               <button
                 onClick={() => setActiveTab('courses')}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
                   activeTab === 'courses'
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                    ? 'bg-blue-600 text-white shadow-2xs'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                 }`}
               >
                 <Sparkles className="w-4 h-4" />
@@ -133,45 +126,24 @@ export const App: React.FC = () => {
             </nav>
           </div>
 
-          {/* Right Section: User Profile Dropdown Menu & Outside Theme Switcher */}
-          <div className="flex items-center gap-2.5 sm:gap-3 flex-shrink-0 pl-2 sm:pl-4 border-l border-slate-800">
-            {/* Profile User Dropdown */}
+          {/* Right Section: User Profile Dropdown Menu */}
+          <div className="flex items-center gap-3 flex-shrink-0 pl-3 border-l border-slate-200">
             <ProfileDropdown
               user={user}
               onLogout={handleLogout}
               onOpenProfilePage={() => setActiveTab('profile')}
             />
-
-            {/* Outside Dark / Light Theme Switcher Button */}
-            <button
-              type="button"
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white transition-all shadow-2xs flex items-center gap-1.5 text-xs font-semibold cursor-pointer"
-              title={theme === 'dark' ? 'Chuyển sang Giao diện Sáng (Light Mode)' : 'Chuyển sang Giao diện Tối (Dark Mode)'}
-            >
-              {theme === 'dark' ? (
-                <>
-                  <Sun className="w-4 h-4 text-amber-400" />
-                  <span className="hidden xl:inline text-amber-300">Sáng</span>
-                </>
-              ) : (
-                <>
-                  <Moon className="w-4 h-4 text-indigo-300" />
-                  <span className="hidden xl:inline text-slate-200">Tối</span>
-                </>
-              )}
-            </button>
           </div>
 
         </div>
 
         {/* Mobile Navigation Dropdown Menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden bg-slate-900 border-b border-slate-800 px-4 py-3 space-y-2">
+          <div className="md:hidden bg-white border-b border-slate-200 px-4 py-3 space-y-1.5 shadow-md">
             <button
               onClick={() => { setActiveTab('dashboard'); setMobileMenuOpen(false); }}
               className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
-                activeTab === 'dashboard' ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-800'
+                activeTab === 'dashboard' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
               }`}
             >
               <LayoutDashboard className="w-4 h-4" />
@@ -180,7 +152,7 @@ export const App: React.FC = () => {
             <button
               onClick={() => { setActiveTab('my-courses'); setMobileMenuOpen(false); }}
               className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
-                activeTab === 'my-courses' ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-800'
+                activeTab === 'my-courses' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
               }`}
             >
               <BookOpen className="w-4 h-4" />
@@ -189,7 +161,7 @@ export const App: React.FC = () => {
             <button
               onClick={() => { setActiveTab('courses'); setMobileMenuOpen(false); }}
               className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
-                activeTab === 'courses' ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-800'
+                activeTab === 'courses' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
               }`}
             >
               <Sparkles className="w-4 h-4" />
@@ -206,16 +178,16 @@ export const App: React.FC = () => {
             <TeacherDashboard user={user} />
           ) : (
             <div className="space-y-8">
-              {/* Welcome Banner for Student */}
-              <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-purple-800 rounded-3xl p-6 sm:p-8 text-white shadow-lg relative overflow-hidden w-full">
+              {/* Softer, Gentle, Eye-friendly Welcome Banner */}
+              <div className="bg-gradient-to-r from-blue-50/90 via-indigo-50/40 to-slate-50 rounded-3xl p-6 sm:p-8 text-slate-800 shadow-2xs border border-blue-100/80 relative overflow-hidden w-full">
                 <div className="relative z-10 max-w-3xl">
-                  <span className="bg-white/20 text-white text-[11px] sm:text-xs px-3 py-1 rounded-full font-semibold uppercase tracking-wider">
+                  <span className="bg-blue-100/80 text-blue-700 text-[11px] sm:text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider inline-block border border-blue-200/60">
                     Học kỳ I • Năm học 2024 - 2025
                   </span>
-                  <h2 className="text-2xl sm:text-3xl font-extrabold mt-3 leading-tight">
+                  <h2 className="text-2xl sm:text-3xl font-extrabold mt-3 leading-tight text-slate-900">
                     Xin chào, {user.fullName}!
                   </h2>
-                  <p className="text-blue-100 text-xs sm:text-sm mt-2 leading-relaxed">
+                  <p className="text-slate-600 text-xs sm:text-sm mt-2 leading-relaxed">
                     Theo dõi hạn nộp bài tập và bài kiểm tra trắc nghiệm cần hoàn thành dưới đây, hoặc chọn mục "Khóa học của tôi" để tiếp tục học các bài giảng.
                   </p>
                 </div>
@@ -235,16 +207,16 @@ export const App: React.FC = () => {
 
                 {/* Right Column (1 Col): Class Announcements & Progress */}
                 <div className="space-y-6">
-                  {/* Quick My Courses Banner */}
-                  <div className="bg-gradient-to-br from-slate-900 to-indigo-950 p-6 rounded-2xl text-white space-y-3 shadow-md border border-slate-800">
-                    <span className="text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2.5 py-0.5 rounded-full uppercase">
+                  {/* Quick My Courses Card - Calmer Subtle Blue */}
+                  <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
+                    <span className="text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-100 px-2.5 py-0.5 rounded-full uppercase">
                       Khóa học đang học
                     </span>
-                    <h4 className="font-bold text-base">INT3306 - Lập trình Web C# .NET 8 & ReactJS</h4>
-                    <p className="text-xs text-slate-300">Giảng viên: TS. Nguyễn Văn A • Tiến độ: 50%</p>
+                    <h4 className="font-extrabold text-base text-slate-900">INT3306 - Lập trình Web C# .NET 8 & ReactJS</h4>
+                    <p className="text-xs text-slate-500">Giảng viên: TS. Nguyễn Văn A • Tiến độ: 50%</p>
                     <button
                       onClick={() => handleOpenStudyPage('44444444-4444-4444-4444-444444444444')}
-                      className="w-full mt-2 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-xs"
+                      className="w-full mt-2 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-2xs"
                     >
                       <BookOpen className="w-3.5 h-3.5" />
                       <span>Vào Trang Học Bài Giảng</span>
@@ -252,39 +224,39 @@ export const App: React.FC = () => {
                   </div>
 
                   {/* Announcements Card */}
-                  <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs">
+                  <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs">
                     <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-2 text-slate-900 dark:text-white font-bold">
+                      <div className="flex items-center gap-2 text-slate-900 font-bold">
                         <Bell className="w-5 h-5 text-blue-600" />
                         <h3>Thông báo lớp học</h3>
                       </div>
-                      <span className="bg-blue-100 dark:bg-blue-500/20 text-blue-800 dark:text-blue-300 text-xs px-2 py-0.5 rounded-full font-semibold">Ghim</span>
+                      <span className="bg-blue-50 text-blue-700 text-xs px-2.5 py-0.5 rounded-full font-bold border border-blue-100">Ghim</span>
                     </div>
 
-                    <div className="p-4 rounded-xl bg-amber-50/60 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-sm space-y-2">
+                    <div className="p-4 rounded-xl bg-amber-50/60 border border-amber-200/80 text-sm space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="font-bold text-amber-900 dark:text-amber-300">📌 Lịch nộp Bài tập lớn</span>
-                        <span className="text-xs text-amber-700 dark:text-amber-400">Hôm nay</span>
+                        <span className="font-bold text-amber-900">📌 Lịch nộp Bài tập lớn</span>
+                        <span className="text-xs text-amber-700 font-semibold">Hôm nay</span>
                       </div>
-                      <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+                      <p className="text-xs text-slate-700 leading-relaxed">
                         Các em sinh viên chú ý hoàn thành bài tập theo đúng hạn nộp hiển thị ở Widget.
                       </p>
                     </div>
                   </div>
 
                   {/* Progress Overview Card */}
-                  <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
-                    <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
+                    <h3 className="font-bold text-slate-900 flex items-center gap-2">
                       <Award className="w-5 h-5 text-indigo-600" />
                       Tiến độ môn học INT3306
                     </h3>
 
                     <div>
                       <div className="flex justify-between text-xs font-semibold mb-1">
-                        <span className="text-slate-600 dark:text-slate-400">Lập trình Web C# .NET 8</span>
-                        <span className="text-blue-600 dark:text-blue-400 font-bold">50% Hoàn thành</span>
+                        <span className="text-slate-600">Lập trình Web C# .NET 8</span>
+                        <span className="text-blue-600 font-bold">50% Hoàn thành</span>
                       </div>
-                      <div className="w-full bg-slate-200 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden">
+                      <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden border border-slate-200">
                         <div className="bg-blue-600 h-full w-1/2 rounded-full"></div>
                       </div>
                     </div>
@@ -311,18 +283,18 @@ export const App: React.FC = () => {
 
         {activeTab === 'quiz' && (
           <div className="w-full max-w-5xl mx-auto space-y-6">
-            <div className="flex items-center justify-between bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs">
+            <div className="flex items-center justify-between bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
               <div>
-                <h2 className="font-bold text-slate-900 dark:text-white text-base sm:text-lg">Bài 1: Giới thiệu Clean Architecture & RESTful API</h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Khóa học INT3306 • Môn Lập trình Web C# .NET 8</p>
+                <h2 className="font-bold text-slate-900 text-base sm:text-lg">Bài 1: Giới thiệu Clean Architecture & RESTful API</h2>
+                <p className="text-xs text-slate-500 mt-0.5">Khóa học INT3306 • Môn Lập trình Web C# .NET 8</p>
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-500 dark:text-slate-400 font-medium hidden sm:inline">Bài học:</span>
+                <span className="text-xs text-slate-500 font-medium hidden sm:inline">Bài học:</span>
                 <button
                   onClick={() => setActiveLesson(1)}
                   className={`w-8 h-8 rounded-lg font-bold text-xs ${
-                    activeLesson === 1 ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+                    activeLesson === 1 ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                   }`}
                 >
                   1
@@ -330,7 +302,7 @@ export const App: React.FC = () => {
                 <button
                   onClick={() => setActiveLesson(2)}
                   className={`w-8 h-8 rounded-lg font-bold text-xs ${
-                    activeLesson === 2 ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+                    activeLesson === 2 ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                   }`}
                 >
                   2
@@ -353,7 +325,7 @@ export const App: React.FC = () => {
       </main>
 
       {/* Footer */}
-      <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 py-6 text-center text-xs text-slate-500 dark:text-slate-400 w-full mt-auto">
+      <footer className="bg-white border-t border-slate-200 py-6 text-center text-xs text-slate-500 w-full mt-auto">
         <div className="w-full px-4">
           <p>© 2026 LMS Web Application. Architecture: C# .NET 8 Web API + ReactJS Vite TypeScript + Tailwind CSS.</p>
         </div>

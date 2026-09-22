@@ -231,30 +231,30 @@ export const TeacherDashboard: React.FC<Props> = ({ user }) => {
   };
 
   return (
-    <div className="space-y-8 w-full">
-      {/* Teacher Portal Welcome Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-purple-900 rounded-3xl p-8 text-white shadow-lg relative overflow-hidden w-full">
+    <div className="space-y-8 w-full text-slate-900">
+      {/* Softer, Gentle Teacher Portal Welcome Banner */}
+      <div className="bg-gradient-to-r from-indigo-50/90 via-blue-50/50 to-slate-50 rounded-3xl p-8 text-slate-800 shadow-2xs border border-indigo-100/80 relative overflow-hidden w-full">
         <div className="relative z-10 max-w-3xl">
-          <span className="bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-xs px-3 py-1 rounded-full font-semibold uppercase tracking-wider inline-flex items-center gap-1.5 mb-3">
+          <span className="bg-indigo-100/80 text-indigo-700 text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider inline-flex items-center gap-1.5 mb-3 border border-indigo-200/60">
             👨‍🏫 Cổng Thông tin Giảng viên (Teacher Portal)
           </span>
-          <h2 className="text-3xl font-extrabold leading-tight">
+          <h2 className="text-3xl font-extrabold leading-tight text-slate-900">
             Xin chào, {user.fullName}!
           </h2>
-          <p className="text-slate-300 text-sm mt-2 leading-relaxed">
+          <p className="text-slate-600 text-sm mt-2 leading-relaxed">
             {user.teacherCode ? `Mã cán bộ: ${user.teacherCode} • ` : ''} Quản lý bài giảng, chấm điểm bài tập về nhà, cập nhật sổ điểm và đăng thông báo cho lớp học.
           </p>
         </div>
       </div>
 
-      {/* Teacher Navigation Tabs */}
-      <div className="bg-white dark:bg-slate-900 p-2 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-sm flex items-center gap-2 overflow-x-auto">
+      {/* Teacher Navigation Tabs - Pure White */}
+      <div className="bg-white p-2 rounded-2xl border border-slate-200 shadow-2xs flex items-center gap-2 overflow-x-auto">
         <button
           onClick={() => setActiveTab('overview')}
           className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
             activeTab === 'overview'
               ? 'bg-blue-600 text-white shadow-xs'
-              : 'text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800'
+              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
           }`}
         >
           <Award className="w-4 h-4" />
@@ -265,7 +265,7 @@ export const TeacherDashboard: React.FC<Props> = ({ user }) => {
           className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
             activeTab === 'courses'
               ? 'bg-blue-600 text-white shadow-xs'
-              : 'text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800'
+              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
           }`}
         >
           <BookOpen className="w-4 h-4" />
@@ -276,7 +276,7 @@ export const TeacherDashboard: React.FC<Props> = ({ user }) => {
           className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
             activeTab === 'grading'
               ? 'bg-blue-600 text-white shadow-xs'
-              : 'text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800'
+              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
           }`}
         >
           <Edit3 className="w-4 h-4" />
@@ -287,7 +287,7 @@ export const TeacherDashboard: React.FC<Props> = ({ user }) => {
           className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
             activeTab === 'gradebook'
               ? 'bg-blue-600 text-white shadow-xs'
-              : 'text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800'
+              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
           }`}
         >
           <Users className="w-4 h-4" />
@@ -298,7 +298,7 @@ export const TeacherDashboard: React.FC<Props> = ({ user }) => {
           className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
             activeTab === 'announcements'
               ? 'bg-blue-600 text-white shadow-xs'
-              : 'text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800'
+              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
           }`}
         >
           <Bell className="w-4 h-4" />
@@ -310,45 +310,45 @@ export const TeacherDashboard: React.FC<Props> = ({ user }) => {
       {activeTab === 'overview' && (
         <div className="space-y-8 w-full">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 w-full">
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-sm flex items-center gap-4">
-              <div className="p-3 bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-xl">
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs flex items-center gap-4">
+              <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
                 <BookOpen className="w-6 h-6" />
               </div>
               <div>
-                <span className="text-xs text-gray-500 dark:text-slate-400 font-medium">Khóa học phụ trách</span>
-                <h3 className="font-extrabold text-2xl text-gray-900 dark:text-white mt-0.5">{courses.length} môn</h3>
+                <span className="text-xs text-slate-500 font-medium">Khóa học phụ trách</span>
+                <h3 className="font-extrabold text-2xl text-slate-900 mt-0.5">{courses.length} môn</h3>
               </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-sm flex items-center gap-4">
-              <div className="p-3 bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-xl">
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs flex items-center gap-4">
+              <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl">
                 <Users className="w-6 h-6" />
               </div>
               <div>
-                <span className="text-xs text-gray-500 dark:text-slate-400 font-medium">Tổng số Sinh viên</span>
-                <h3 className="font-extrabold text-2xl text-gray-900 dark:text-white mt-0.5">83 học viên</h3>
+                <span className="text-xs text-slate-500 font-medium">Tổng số Sinh viên</span>
+                <h3 className="font-extrabold text-2xl text-slate-900 mt-0.5">83 học viên</h3>
               </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-sm flex items-center gap-4">
-              <div className="p-3 bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-xl">
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs flex items-center gap-4">
+              <div className="p-3 bg-amber-50 text-amber-600 rounded-xl">
                 <Edit3 className="w-6 h-6" />
               </div>
               <div>
-                <span className="text-xs text-gray-500 dark:text-slate-400 font-medium">Bài tập chờ chấm</span>
-                <h3 className="font-extrabold text-2xl text-amber-600 dark:text-amber-400 mt-0.5">
+                <span className="text-xs text-slate-500 font-medium">Bài tập chờ chấm</span>
+                <h3 className="font-extrabold text-2xl text-amber-600 mt-0.5">
                   {submissions.filter((s) => s.status === 'SUBMITTED').length} bài
                 </h3>
               </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-sm flex items-center gap-4">
-              <div className="p-3 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-xl">
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs flex items-center gap-4">
+              <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
                 <CheckCircle2 className="w-6 h-6" />
               </div>
               <div>
-                <span className="text-xs text-gray-500 dark:text-slate-400 font-medium">Tiến độ lớp trung bình</span>
-                <h3 className="font-extrabold text-2xl text-emerald-600 dark:text-emerald-400 mt-0.5">68%</h3>
+                <span className="text-xs text-slate-500 font-medium">Tiến độ lớp trung bình</span>
+                <h3 className="font-extrabold text-2xl text-emerald-600 mt-0.5">68%</h3>
               </div>
             </div>
           </div>
@@ -356,15 +356,15 @@ export const TeacherDashboard: React.FC<Props> = ({ user }) => {
           {/* Quick Tasks Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full">
             {/* Left: Pending Submissions Preview */}
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-sm space-y-4">
-              <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-800 pb-3">
-                <h3 className="font-bold text-gray-900 dark:text-white text-base flex items-center gap-2">
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
                   <Edit3 className="w-5 h-5 text-blue-600" />
                   Bài nộp cần chấm điểm mới nhất
                 </h3>
                 <button
                   onClick={() => setActiveTab('grading')}
-                  className="text-xs text-blue-600 dark:text-blue-400 font-bold hover:underline"
+                  className="text-xs text-blue-600 font-bold hover:underline"
                 >
                   Xem tất cả ({submissions.length})
                 </button>
@@ -374,19 +374,19 @@ export const TeacherDashboard: React.FC<Props> = ({ user }) => {
                 {submissions.map((sub) => (
                   <div
                     key={sub.id}
-                    className="p-4 rounded-xl border border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-800/40 flex items-center justify-between gap-4"
+                    className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 flex items-center justify-between gap-4"
                   >
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-bold text-gray-900 dark:text-white">{sub.studentName}</span>
-                        <span className="text-xs text-gray-400">({sub.studentCode})</span>
+                        <span className="text-xs font-bold text-slate-900">{sub.studentName}</span>
+                        <span className="text-xs text-slate-500">({sub.studentCode})</span>
                       </div>
-                      <p className="text-xs text-blue-600 dark:text-blue-400 font-semibold">{sub.assignmentTitle}</p>
+                      <p className="text-xs text-blue-600 font-semibold">{sub.assignmentTitle}</p>
                     </div>
 
                     <div>
                       {sub.status === 'GRADED' ? (
-                        <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-500/20 px-2.5 py-1 rounded-full">
+                        <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-full">
                           Đã chấm: {sub.grade}đ
                         </span>
                       ) : (
@@ -404,9 +404,9 @@ export const TeacherDashboard: React.FC<Props> = ({ user }) => {
             </div>
 
             {/* Right: Active Courses Overview */}
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-sm space-y-4">
-              <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-800 pb-3">
-                <h3 className="font-bold text-gray-900 dark:text-white text-base flex items-center gap-2">
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
                   <BookOpen className="w-5 h-5 text-indigo-600" />
                   Danh sách Khóa học đang giảng dạy
                 </h3>
@@ -423,19 +423,19 @@ export const TeacherDashboard: React.FC<Props> = ({ user }) => {
                 {courses.map((c) => (
                   <div
                     key={c.id}
-                    className="p-4 rounded-xl border border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-800/40 flex items-center justify-between"
+                    className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 flex items-center justify-between"
                   >
                     <div>
-                      <span className="text-xs font-extrabold text-blue-600 dark:text-blue-400 uppercase tracking-wider">{c.courseCode}</span>
-                      <h4 className="font-bold text-gray-900 dark:text-white text-sm">{c.title}</h4>
-                      <span className="text-xs text-gray-500 dark:text-slate-400 mt-1 block">
+                      <span className="text-xs font-extrabold text-blue-600 uppercase tracking-wider">{c.courseCode}</span>
+                      <h4 className="font-bold text-slate-900 text-sm">{c.title}</h4>
+                      <span className="text-xs text-slate-500 mt-1 block">
                         {c.enrolledStudents} sinh viên • {c.lessonsCount} bài giảng
                       </span>
                     </div>
 
                     <button
                       onClick={() => setActiveTab('courses')}
-                      className="px-3 py-1.5 bg-slate-800 text-white hover:bg-slate-700 font-semibold text-xs rounded-xl transition-all"
+                      className="px-3 py-1.5 bg-slate-100 text-slate-800 hover:bg-slate-200 font-semibold text-xs rounded-xl transition-all border border-slate-200"
                     >
                       Quản lý
                     </button>
@@ -450,10 +450,10 @@ export const TeacherDashboard: React.FC<Props> = ({ user }) => {
       {/* Tab 2: Manage Courses & Create Course */}
       {activeTab === 'courses' && (
         <div className="space-y-6 w-full">
-          <div className="flex items-center justify-between bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-200 dark:border-slate-800">
+          <div className="flex items-center justify-between bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs">
             <div>
-              <h3 className="font-extrabold text-gray-900 dark:text-white text-lg">Quản lý Khóa học & Bài giảng</h3>
-              <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">Tạo lớp học phần mới, cấu trúc bài giảng và bộ câu hỏi trắc nghiệm</p>
+              <h3 className="font-extrabold text-slate-900 text-lg">Quản lý Khóa học & Bài giảng</h3>
+              <p className="text-xs text-slate-500 mt-0.5">Tạo lớp học phần mới, cấu trúc bài giảng và bộ câu hỏi trắc nghiệm</p>
             </div>
             <button
               onClick={() => setShowAddCourseModal(true)}
@@ -466,31 +466,31 @@ export const TeacherDashboard: React.FC<Props> = ({ user }) => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
             {courses.map((c) => (
-              <div key={c.id} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-sm space-y-4">
+              <div key={c.id} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
                 <div className="flex items-start justify-between">
                   <div>
-                    <span className="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/20 px-2.5 py-1 rounded-lg border border-blue-200 dark:border-blue-500/30 uppercase">
+                    <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200 uppercase">
                       {c.courseCode}
                     </span>
-                    <h4 className="font-extrabold text-gray-900 dark:text-white text-lg mt-2">{c.title}</h4>
+                    <h4 className="font-extrabold text-slate-900 text-lg mt-2">{c.title}</h4>
                   </div>
-                  <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-500/20 px-2.5 py-1 rounded-full">
+                  <span className="text-xs text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">
                     Đang mở
                   </span>
                 </div>
 
-                <div className="p-3 rounded-xl bg-gray-50 dark:bg-slate-800/60 text-xs space-y-1 text-gray-600 dark:text-slate-300">
+                <div className="p-3 rounded-xl bg-slate-50 text-xs space-y-1 text-slate-600 border border-slate-200">
                   <div className="flex justify-between">
                     <span>Trọng số Chuyên cần:</span>
-                    <strong className="text-gray-900 dark:text-white">{c.weightAttendance}%</strong>
+                    <strong className="text-slate-900">{c.weightAttendance}%</strong>
                   </div>
                   <div className="flex justify-between">
                     <span>Trọng số Bài tập về nhà:</span>
-                    <strong className="text-gray-900 dark:text-white">{c.weightAssignments}%</strong>
+                    <strong className="text-slate-900">{c.weightAssignments}%</strong>
                   </div>
                   <div className="flex justify-between">
                     <span>Trọng số Thi cuối kỳ:</span>
-                    <strong className="text-gray-900 dark:text-white">{c.weightFinalExam}%</strong>
+                    <strong className="text-slate-900">{c.weightFinalExam}%</strong>
                   </div>
                 </div>
 
@@ -504,7 +504,7 @@ export const TeacherDashboard: React.FC<Props> = ({ user }) => {
                   </button>
                   <button
                     onClick={() => setActiveTab('gradebook')}
-                    className="py-2 px-3 bg-slate-800 text-white hover:bg-slate-700 font-semibold text-xs rounded-xl transition-all"
+                    className="py-2 px-3 bg-slate-100 text-slate-800 hover:bg-slate-200 font-semibold text-xs rounded-xl transition-all border border-slate-200"
                   >
                     Xem sổ điểm
                   </button>
@@ -518,44 +518,44 @@ export const TeacherDashboard: React.FC<Props> = ({ user }) => {
       {/* Tab 3: Homework Submissions & Grading Form */}
       {activeTab === 'grading' && (
         <div className="space-y-6 w-full">
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-200 dark:border-slate-800">
-            <h3 className="font-extrabold text-gray-900 dark:text-white text-lg">Chấm điểm Bài tập về nhà</h3>
-            <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">Xem file bài nộp của sinh viên, chấm điểm và để lại lời nhận xét</p>
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs">
+            <h3 className="font-extrabold text-slate-900 text-lg">Chấm điểm Bài tập về nhà</h3>
+            <p className="text-xs text-slate-500 mt-0.5">Xem file bài nộp của sinh viên, chấm điểm và để lại lời nhận xét</p>
           </div>
 
           <div className="space-y-4 w-full">
             {submissions.map((sub) => (
               <div
                 key={sub.id}
-                className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-sm space-y-4"
+                className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs space-y-4"
               >
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-gray-100 dark:border-slate-800 pb-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
                   <div>
-                    <span className="text-xs text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wider">{sub.assignmentTitle}</span>
-                    <h4 className="font-extrabold text-gray-900 dark:text-white text-base mt-1">
-                      Sinh viên: {sub.studentName} <span className="text-gray-400 font-mono">({sub.studentCode})</span>
+                    <span className="text-xs text-blue-600 font-bold uppercase tracking-wider">{sub.assignmentTitle}</span>
+                    <h4 className="font-extrabold text-slate-900 text-base mt-1">
+                      Sinh viên: {sub.studentName} <span className="text-slate-400 font-mono">({sub.studentCode})</span>
                     </h4>
-                    <span className="text-xs text-gray-500 dark:text-slate-400 block mt-0.5">Nộp lúc: {sub.submittedAt}</span>
+                    <span className="text-xs text-slate-500 block mt-0.5">Nộp lúc: {sub.submittedAt}</span>
                   </div>
 
                   <span className={`px-3 py-1 rounded-full text-xs font-bold ${
                     sub.status === 'GRADED'
-                      ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300'
-                      : 'bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300'
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : 'bg-amber-100 text-amber-800'
                   }`}>
                     {sub.status === 'GRADED' ? `Đã chấm: ${sub.grade} / 10 điểm` : 'Chưa chấm điểm'}
                   </span>
                 </div>
 
-                <div className="p-4 rounded-xl bg-gray-50 dark:bg-slate-800/50 text-xs space-y-2">
-                  <span className="font-bold text-gray-700 dark:text-slate-300">Nội dung bài nộp / Ghi chú của Sinh viên:</span>
-                  <p className="text-gray-600 dark:text-slate-300 leading-relaxed italic">"{sub.submissionText}"</p>
+                <div className="p-4 rounded-xl bg-slate-50 text-xs space-y-2 border border-slate-200">
+                  <span className="font-bold text-slate-700">Nội dung bài nộp / Ghi chú của Sinh viên:</span>
+                  <p className="text-slate-600 leading-relaxed italic">"{sub.submissionText}"</p>
                   {sub.fileUrl && (
                     <a
                       href={sub.fileUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center gap-1.5 text-blue-600 dark:text-blue-400 font-bold hover:underline pt-1"
+                      className="inline-flex items-center gap-1.5 text-blue-600 font-bold hover:underline pt-1"
                     >
                       <FileText className="w-4 h-4" />
                       <span>Tải file bài nộp: {sub.fileUrl}</span>
@@ -565,11 +565,11 @@ export const TeacherDashboard: React.FC<Props> = ({ user }) => {
 
                 {/* Grading Form / View */}
                 {editingSubId === sub.id ? (
-                  <div className="p-4 rounded-xl bg-blue-50/50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 space-y-3">
-                    <h5 className="font-bold text-xs text-blue-900 dark:text-blue-300">Nhập Điểm & Lời nhận xét:</h5>
+                  <div className="p-4 rounded-xl bg-blue-50/60 border border-blue-200 space-y-3">
+                    <h5 className="font-bold text-xs text-blue-900">Nhập Điểm & Lời nhận xét:</h5>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                       <div>
-                        <label className="block text-[11px] font-bold text-gray-700 dark:text-slate-300 mb-1">
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1">
                           Điểm số (Thang 10):
                         </label>
                         <input
@@ -579,12 +579,12 @@ export const TeacherDashboard: React.FC<Props> = ({ user }) => {
                           min="0"
                           value={tempGrade}
                           onChange={(e) => setTempGrade(parseFloat(e.target.value) || 0)}
-                          className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-xl text-xs font-bold text-gray-900 dark:text-white"
+                          className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900"
                         />
                       </div>
 
                       <div className="md:col-span-3">
-                        <label className="block text-[11px] font-bold text-gray-700 dark:text-slate-300 mb-1">
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1">
                           Lời nhận xét / Lời phê:
                         </label>
                         <input
@@ -592,7 +592,7 @@ export const TeacherDashboard: React.FC<Props> = ({ user }) => {
                           value={tempFeedback}
                           onChange={(e) => setTempFeedback(e.target.value)}
                           placeholder="Ví dụ: Bài làm tốt, thuật toán tối ưu!"
-                          className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-xl text-xs text-gray-900 dark:text-white"
+                          className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-900"
                         />
                       </div>
                     </div>
@@ -600,7 +600,7 @@ export const TeacherDashboard: React.FC<Props> = ({ user }) => {
                     <div className="flex justify-end gap-2 pt-2">
                       <button
                         onClick={() => setEditingSubId(null)}
-                        className="px-4 py-2 bg-gray-200 text-gray-800 font-semibold text-xs rounded-xl"
+                        className="px-4 py-2 bg-slate-200 text-slate-800 font-semibold text-xs rounded-xl"
                       >
                         Hủy
                       </button>
@@ -616,8 +616,8 @@ export const TeacherDashboard: React.FC<Props> = ({ user }) => {
                 ) : (
                   <div className="flex items-center justify-between text-xs pt-2">
                     {sub.feedback && (
-                      <span className="text-gray-600 dark:text-slate-400">
-                        Lời phê: <strong className="text-gray-800 dark:text-slate-200 italic">"{sub.feedback}"</strong>
+                      <span className="text-slate-600">
+                        Lời phê: <strong className="text-slate-800 italic">"{sub.feedback}"</strong>
                       </span>
                     )}
 
@@ -643,10 +643,10 @@ export const TeacherDashboard: React.FC<Props> = ({ user }) => {
       {/* Tab 4: Gradebook & Export Excel */}
       {activeTab === 'gradebook' && (
         <div className="space-y-6 w-full">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-200 dark:border-slate-800">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs">
             <div>
-              <h3 className="font-extrabold text-gray-900 dark:text-white text-lg">Sổ điểm Lớp học & Điểm Tổng kết</h3>
-              <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">Công thức: Total = (Chuyên cần 10%) + (Bài tập 30%) + (Thi 60%)</p>
+              <h3 className="font-extrabold text-slate-900 text-lg">Sổ điểm Lớp học & Điểm Tổng kết</h3>
+              <p className="text-xs text-slate-500 mt-0.5">Công thức: Total = (Chuyên cần 10%) + (Bài tập 30%) + (Thi 60%)</p>
             </div>
 
             <button
@@ -658,11 +658,11 @@ export const TeacherDashboard: React.FC<Props> = ({ user }) => {
             </button>
           </div>
 
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 overflow-hidden shadow-sm">
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-2xs">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-slate-900 text-white text-xs uppercase tracking-wider">
+                  <tr className="bg-slate-100 text-slate-800 text-xs uppercase tracking-wider border-b border-slate-200 font-extrabold">
                     <th className="p-4">MSSV</th>
                     <th className="p-4">Họ và tên Sinh viên</th>
                     <th className="p-4">Lớp</th>
@@ -673,21 +673,21 @@ export const TeacherDashboard: React.FC<Props> = ({ user }) => {
                     <th className="p-4 text-center">Xếp loại</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100 dark:divide-slate-800 text-xs">
+                <tbody className="divide-y divide-slate-100 text-xs">
                   {gradebookRows.map((row) => (
-                    <tr key={row.studentId} className="hover:bg-gray-50 dark:hover:bg-slate-800/40">
-                      <td className="p-4 font-mono font-bold text-blue-600 dark:text-blue-400">{row.studentCode}</td>
-                      <td className="p-4 font-semibold text-gray-900 dark:text-white">{row.fullName}</td>
-                      <td className="p-4 text-gray-500 dark:text-slate-400">{row.className}</td>
+                    <tr key={row.studentId} className="hover:bg-slate-50/80">
+                      <td className="p-4 font-mono font-bold text-blue-600">{row.studentCode}</td>
+                      <td className="p-4 font-semibold text-slate-900">{row.fullName}</td>
+                      <td className="p-4 text-slate-500">{row.className}</td>
                       <td className="p-4 text-center font-semibold">{row.attendanceScore}</td>
                       <td className="p-4 text-center font-semibold">{row.assignmentScore}</td>
                       <td className="p-4 text-center font-semibold">{row.examScore}</td>
-                      <td className="p-4 text-center font-extrabold text-blue-600 dark:text-blue-400">{row.totalScore}</td>
+                      <td className="p-4 text-center font-extrabold text-blue-600">{row.totalScore}</td>
                       <td className="p-4 text-center">
                         <span className={`px-2.5 py-1 rounded-full text-xs font-black ${
                           row.letterGrade === 'A'
-                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300'
-                            : 'bg-blue-100 text-blue-800 dark:bg-blue-500/20 dark:text-blue-300'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : 'bg-blue-100 text-blue-800'
                         }`}>
                           Điểm {row.letterGrade}
                         </span>
@@ -705,15 +705,15 @@ export const TeacherDashboard: React.FC<Props> = ({ user }) => {
       {activeTab === 'announcements' && (
         <div className="space-y-6 w-full">
           {/* Post Announcement Form */}
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-sm space-y-4">
-            <h3 className="font-extrabold text-gray-900 dark:text-white text-lg flex items-center gap-2">
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
+            <h3 className="font-extrabold text-slate-900 text-lg flex items-center gap-2">
               <Bell className="w-5 h-5 text-blue-600" />
               Đăng Thông báo mới cho Lớp học
             </h3>
 
             <form onSubmit={handleCreateAnnouncement} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-slate-700 mb-1">
                   Tiêu đề thông báo:
                 </label>
                 <input
@@ -721,12 +721,12 @@ export const TeacherDashboard: React.FC<Props> = ({ user }) => {
                   value={annTitle}
                   onChange={(e) => setAnnTitle(e.target.value)}
                   placeholder="Ví dụ: Lịch nộp Bài tập lớn hoặc Thông báo họp lớp..."
-                  className="w-full px-4 py-2.5 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-xs text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-slate-700 mb-1">
                   Nội dung chi tiết:
                 </label>
                 <textarea
@@ -734,12 +734,12 @@ export const TeacherDashboard: React.FC<Props> = ({ user }) => {
                   value={annContent}
                   onChange={(e) => setAnnContent(e.target.value)}
                   placeholder="Nhập chi tiết nội dung thông báo cho sinh viên..."
-                  className="w-full px-4 py-2.5 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-xs text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 ></textarea>
               </div>
 
               <div className="flex items-center justify-between pt-2">
-                <label className="flex items-center gap-2 text-xs font-bold text-amber-600 dark:text-amber-400 cursor-pointer">
+                <label className="flex items-center gap-2 text-xs font-bold text-amber-600 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={annPinned}
@@ -762,21 +762,21 @@ export const TeacherDashboard: React.FC<Props> = ({ user }) => {
 
           {/* Announcements Posted List */}
           <div className="space-y-4 w-full">
-            <h4 className="font-bold text-gray-900 dark:text-white text-sm">Danh sách thông báo đã đăng:</h4>
+            <h4 className="font-bold text-slate-900 text-sm">Danh sách thông báo đã đăng:</h4>
             {announcementsList.map((ann) => (
               <div
                 key={ann.id}
-                className={`p-5 rounded-2xl border shadow-xs space-y-2 ${
+                className={`p-5 rounded-2xl border shadow-2xs space-y-2 ${
                   ann.isPinned
-                    ? 'bg-amber-50/60 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/30'
-                    : 'bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-800'
+                    ? 'bg-amber-50/80 border-amber-200'
+                    : 'bg-white border-slate-200'
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <h4 className="font-bold text-gray-900 dark:text-white text-base">{ann.title}</h4>
-                  <span className="text-xs text-gray-400">{ann.createdAt}</span>
+                  <h4 className="font-bold text-slate-900 text-base">{ann.title}</h4>
+                  <span className="text-xs text-slate-400">{ann.createdAt}</span>
                 </div>
-                <p className="text-xs text-gray-700 dark:text-slate-300 leading-relaxed">{ann.content}</p>
+                <p className="text-xs text-slate-700 leading-relaxed">{ann.content}</p>
               </div>
             ))}
           </div>
@@ -785,8 +785,8 @@ export const TeacherDashboard: React.FC<Props> = ({ user }) => {
 
       {/* Modal Add Course */}
       {showAddCourseModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 w-full max-w-md rounded-3xl shadow-2xl p-6 text-gray-900 dark:text-white space-y-5">
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 w-full max-w-md rounded-3xl shadow-2xl p-6 text-slate-900 space-y-5">
             <h3 className="font-extrabold text-lg flex items-center gap-2">
               <PlusCircle className="w-5 h-5 text-blue-600" />
               Tạo Khóa học mới
@@ -794,35 +794,35 @@ export const TeacherDashboard: React.FC<Props> = ({ user }) => {
 
             <form onSubmit={handleCreateCourse} className="space-y-4 text-xs">
               <div>
-                <label className="block font-bold text-gray-700 dark:text-slate-300 mb-1">Mã khóa học (Course Code):</label>
+                <label className="block font-bold text-slate-700 mb-1">Mã khóa học (Course Code):</label>
                 <input
                   type="text"
                   placeholder="Ví dụ: CS101, INT3306"
                   value={newCourseCode}
                   onChange={(e) => setNewCourseCode(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-xs"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-gray-700 dark:text-slate-300 mb-1">Tên khóa học:</label>
+                <label className="block font-bold text-slate-700 mb-1">Tên khóa học:</label>
                 <input
                   type="text"
                   placeholder="Nhập tên đầy đủ của môn học"
                   value={newCourseTitle}
                   onChange={(e) => setNewCourseTitle(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-xs"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-gray-700 dark:text-slate-300 mb-1">Mô tả ngắn:</label>
+                <label className="block font-bold text-slate-700 mb-1">Mô tả ngắn:</label>
                 <textarea
                   rows={2}
                   placeholder="Nội dung tổng quan môn học"
                   value={newCourseDesc}
                   onChange={(e) => setNewCourseDesc(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl text-xs"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs"
                 ></textarea>
               </div>
 
@@ -830,7 +830,7 @@ export const TeacherDashboard: React.FC<Props> = ({ user }) => {
                 <button
                   type="button"
                   onClick={() => setShowAddCourseModal(false)}
-                  className="px-4 py-2 bg-gray-200 text-gray-800 font-semibold rounded-xl"
+                  className="px-4 py-2 bg-slate-200 text-slate-800 font-semibold rounded-xl"
                 >
                   Hủy
                 </button>

@@ -108,14 +108,14 @@ export const UpcomingDeadlinesWidget: React.FC<Props> = ({ onSelectDeadline }) =
     switch (urgency) {
       case 'RED':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700 animate-pulse border border-red-200">
-            <span className="w-2 h-2 rounded-full bg-red-600 animate-ping"></span>
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
+            <span className="w-2 h-2 rounded-full bg-rose-500"></span>
             Còn dưới 24h
           </span>
         );
       case 'YELLOW':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
             <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
             Còn 1 - 3 ngày
           </span>
@@ -123,7 +123,7 @@ export const UpcomingDeadlinesWidget: React.FC<Props> = ({ onSelectDeadline }) =
       case 'GREEN':
       default:
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
             Còn trên 3 ngày
           </span>
@@ -132,79 +132,81 @@ export const UpcomingDeadlinesWidget: React.FC<Props> = ({ onSelectDeadline }) =
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-      {/* Header */}
-      <div className="px-6 py-4 bg-gradient-to-r from-blue-600 to-indigo-700 text-white flex items-center justify-between">
+    <div className="bg-white rounded-2xl shadow-2xs border border-slate-200 overflow-hidden">
+      {/* Soothing, Calm Header (Non-glaring) */}
+      <div className="px-6 py-4 bg-slate-50/90 border-b border-slate-200 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-white/10 rounded-lg backdrop-blur-md">
-            <Clock className="w-5 h-5 text-white" />
+          <div className="p-2 bg-blue-100/70 text-blue-700 rounded-xl">
+            <Clock className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="font-bold text-lg leading-tight">Hạn nộp bài tập sắp tới</h3>
-            <p className="text-xs text-blue-100 mt-0.5">Các bài tập & bài kiểm tra chưa nộp cần hoàn thành</p>
+            <h3 className="font-extrabold text-base leading-tight text-slate-900">Hạn nộp bài tập sắp tới</h3>
+            <p className="text-xs text-slate-500 mt-0.5">Các bài tập & bài kiểm tra chưa nộp cần hoàn thành</p>
           </div>
         </div>
-        <span className="bg-white/20 text-white text-xs px-2.5 py-1 rounded-full font-medium">
+        <span className="bg-slate-200/80 text-slate-700 text-xs px-3 py-1 rounded-full font-bold">
           {deadlines.length} bài nộp
         </span>
       </div>
 
       {/* Content */}
-      <div className="p-6">
+      <div className="p-6 bg-white">
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-8 text-gray-500">
+          <div className="flex flex-col items-center justify-center py-8 text-slate-500">
             <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-            <p className="mt-3 text-sm">Đang tải danh sách hạn nộp...</p>
+            <p className="mt-3 text-xs font-semibold">Đang tải danh sách hạn nộp...</p>
           </div>
         ) : deadlines.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
+          <div className="text-center py-8 text-slate-500">
             <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto mb-2" />
-            <p className="font-medium text-gray-700">Tuyệt vời! Bạn không có bài tập nào sắp hết hạn.</p>
+            <p className="font-bold text-slate-700 text-sm">Tuyệt vời! Bạn không có bài tập nào sắp hết hạn.</p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3.5">
             {deadlines.map((item) => (
               <div
                 key={item.id}
                 onClick={() => onSelectDeadline && onSelectDeadline(item)}
-                className={`group cursor-pointer p-4 rounded-xl border transition-all duration-200 hover:shadow-md ${
+                className={`group cursor-pointer p-4 rounded-xl border transition-all duration-150 hover:shadow-xs ${
                   item.urgency === 'RED'
-                    ? 'border-red-200 bg-red-50/30 hover:border-red-400'
+                    ? 'border-rose-200/80 bg-rose-50/30 hover:bg-rose-50/60'
                     : item.urgency === 'YELLOW'
-                    ? 'border-amber-200 bg-amber-50/20 hover:border-amber-400'
-                    : 'border-gray-200 hover:border-blue-400 hover:bg-blue-50/20'
+                    ? 'border-amber-200/80 bg-amber-50/30 hover:bg-amber-50/60'
+                    : 'border-slate-200 bg-slate-50/50 hover:bg-blue-50/40 hover:border-blue-200'
                 }`}
               >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-start gap-3">
-                    <div className="p-2.5 rounded-lg bg-gray-100 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <div className="p-2.5 rounded-xl bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors flex-shrink-0">
                       {item.type === 'QUIZ' ? <BookOpen className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
                     </div>
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">{item.courseCode}</span>
-                        <span className="text-gray-300">•</span>
-                        <span className="text-xs text-gray-500">{item.courseTitle}</span>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 mb-1 truncate">
+                        <span className="text-[11px] font-extrabold text-blue-700 uppercase tracking-wider">{item.courseCode}</span>
+                        <span className="text-slate-300">•</span>
+                        <span className="text-xs text-slate-500 truncate">{item.courseTitle}</span>
                       </div>
-                      <h4 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                      <h4 className="font-bold text-sm text-slate-800 group-hover:text-blue-600 transition-colors leading-snug">
                         {item.title}
                       </h4>
                     </div>
                   </div>
 
-                  {getUrgencyBadge(item.urgency)}
+                  <div className="flex-shrink-0 self-start sm:self-center">
+                    {getUrgencyBadge(item.urgency)}
+                  </div>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-600">
+                <div className="mt-4 pt-3 border-t border-slate-200/60 flex items-center justify-between text-xs text-slate-600">
                   <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-gray-400" />
+                    <Clock className="w-4 h-4 text-slate-400" />
                     <span>Thời gian còn lại: </span>
-                    <strong className={`font-semibold ${item.urgency === 'RED' ? 'text-red-600 font-bold' : 'text-gray-900'}`}>
+                    <strong className={`font-bold ${item.urgency === 'RED' ? 'text-rose-600' : 'text-slate-800'}`}>
                       {formatRemainingTime(item.remainingSeconds)}
                     </strong>
                   </div>
 
-                  <div className="flex items-center gap-1 font-semibold text-blue-600 group-hover:translate-x-1 transition-transform">
+                  <div className="flex items-center gap-1 font-bold text-blue-600 group-hover:translate-x-1 transition-transform">
                     <span>Nộp bài ngay</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </div>
