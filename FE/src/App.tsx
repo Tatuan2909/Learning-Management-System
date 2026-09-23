@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BookOpen, GraduationCap, LayoutDashboard, Award, Bell, Sparkles, Menu, X, Edit3, Users, Activity, FileText, Settings } from 'lucide-react';
 import { UpcomingDeadlinesWidget } from './components/UpcomingDeadlinesWidget';
-import { PostLessonQuiz } from './components/PostLessonQuiz';
 import { CoursesPage } from './components/CoursesPage';
 import { CourseStudyPage } from './components/CourseStudyPage';
 import { LoginPage } from './components/LoginPage';
@@ -24,10 +23,11 @@ export const App: React.FC = () => {
     return null;
   });
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'my-courses' | 'courses' | 'quiz' | 'profile' | 'study'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'my-courses' | 'courses' | 'profile' | 'study'>('dashboard');
   const [teacherTab, setTeacherTab] = useState<'overview' | 'courses'>('overview');
   const [adminTab, setAdminTab] = useState<'overview' | 'users' | 'courses' | 'logs' | 'settings'>('overview');
   const [studyCourseId, setStudyCourseId] = useState<string>('44444444-4444-4444-4444-444444444444');
+  const [selectedActivityId, setSelectedActivityId] = useState<string | undefined>(undefined);
   const [selectedDeadline, setSelectedDeadline] = useState<UpcomingDeadline | null>(null);
   const [activeLesson, setActiveLesson] = useState<number>(1);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -45,8 +45,9 @@ export const App: React.FC = () => {
     setUser(null);
   };
 
-  const handleOpenStudyPage = (courseId: string) => {
+  const handleOpenStudyPage = (courseId: string, activityId?: string) => {
     setStudyCourseId(courseId);
+    setSelectedActivityId(activityId);
     setActiveTab('study');
   };
 
@@ -59,7 +60,11 @@ export const App: React.FC = () => {
     return (
       <CourseStudyPage
         courseId={studyCourseId}
-        onBack={() => setActiveTab('my-courses')}
+        initialActivityId={selectedActivityId}
+        onBack={() => {
+          setSelectedActivityId(undefined);
+          setActiveTab('my-courses');
+        }}
       />
     );
   }
@@ -386,7 +391,7 @@ export const App: React.FC = () => {
                   <UpcomingDeadlinesWidget
                     onSelectDeadline={(deadline) => {
                       setSelectedDeadline(deadline);
-                      setActiveTab('quiz');
+                      handleOpenStudyPage('44444444-4444-4444-4444-444444444444', 'item-week1-quiz');
                     }}
                   />
                 </div>
@@ -465,44 +470,6 @@ export const App: React.FC = () => {
             initialFilter="ALL"
             onSelectLessonForQuiz={(lessonId, quizId) => handleOpenStudyPage('44444444-4444-4444-4444-444444444444')}
           />
-        )}
-
-        {activeTab === 'quiz' && (
-          <div className="w-full max-w-5xl mx-auto space-y-6">
-            <div className="flex items-center justify-between bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
-              <div>
-                <h2 className="font-bold text-slate-900 text-base sm:text-lg">Bài 1: Giới thiệu Clean Architecture & RESTful API</h2>
-                <p className="text-xs text-slate-500 mt-0.5">Khóa học INT3306 • Môn Lập trình Web C# .NET 8</p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-500 font-medium hidden sm:inline">Bài học:</span>
-                <button
-                  onClick={() => setActiveLesson(1)}
-                  className={`w-8 h-8 rounded-lg font-bold text-xs ${
-                    activeLesson === 1 ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                  }`}
-                >
-                  1
-                </button>
-                <button
-                  onClick={() => setActiveLesson(2)}
-                  className={`w-8 h-8 rounded-lg font-bold text-xs ${
-                    activeLesson === 2 ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                  }`}
-                >
-                  2
-                </button>
-              </div>
-            </div>
-
-            <PostLessonQuiz
-              onNextLesson={() => {
-                setActiveLesson(2);
-                alert('Chúc mừng! Bạn đã mở khóa Bài học tiếp theo (Sequential Lock Unlocked).');
-              }}
-            />
-          </div>
         )}
 
         {activeTab === 'profile' && (

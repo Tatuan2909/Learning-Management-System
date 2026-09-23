@@ -321,7 +321,16 @@ export const CoursesPage: React.FC<Props> = ({ initialFilter = 'ALL', onSelectLe
                   selectedCourse.lessons.map((lesson) => (
                     <div
                       key={lesson.id}
-                      className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs"
+                      onClick={() => {
+                        if (!lesson.isLocked && selectedCourse.isEnrolled && onSelectLessonForQuiz) {
+                          const cid = selectedCourse.id;
+                          setSelectedCourse(null);
+                          onSelectLessonForQuiz(cid, lesson.id);
+                        }
+                      }}
+                      className={`p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs transition-colors ${
+                        !lesson.isLocked && selectedCourse.isEnrolled ? 'cursor-pointer hover:bg-blue-50/70 hover:border-blue-300' : ''
+                      }`}
                     >
                       <div className="flex items-center gap-3">
                         {lesson.contentType === 'VIDEO' && <PlayCircle className="w-4 h-4 text-blue-600" />}
@@ -351,13 +360,29 @@ export const CoursesPage: React.FC<Props> = ({ initialFilter = 'ALL', onSelectLe
               </div>
             </div>
 
-            <div className="pt-4 border-t border-slate-100 flex justify-end">
+            <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
               <button
                 onClick={() => setSelectedCourse(null)}
-                className="px-5 py-2.5 bg-slate-900 text-white font-bold text-xs rounded-xl shadow-xs hover:bg-slate-800"
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all"
               >
                 Đóng cửa sổ
               </button>
+
+              {selectedCourse.isEnrolled && (
+                <button
+                  onClick={() => {
+                    const cid = selectedCourse.id;
+                    setSelectedCourse(null);
+                    if (onSelectLessonForQuiz) {
+                      onSelectLessonForQuiz(cid, '66666666-6666-6666-6666-666666666666');
+                    }
+                  }}
+                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition-all"
+                >
+                  <BookOpen className="w-3.5 h-3.5" />
+                  <span>Vào học khóa học này</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
