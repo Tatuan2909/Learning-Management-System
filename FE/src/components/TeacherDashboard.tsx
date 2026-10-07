@@ -12,7 +12,6 @@ import {
   Clock,
   Save,
   Trash2,
-  ArrowLeft,
   ChevronRight,
   UserPlus,
   Search,
@@ -31,6 +30,12 @@ import {
 import { AuthUser } from '../types';
 import api from '../api/axios';
 import { parseVideoUrl } from '../utils/videoHelper';
+
+const API_ORIGIN = (api.defaults.baseURL || 'http://localhost:5000/api').replace(/\/api\/?$/, '');
+const getSubmissionFileDownloadUrl = (file: TeacherSubmissionFile) =>
+  file.fileUrl.startsWith('http') ? file.fileUrl : `${API_ORIGIN}/api/teacher/submission-files/${file.id}/download`;
+const getUploadedFileUrl = (fileUrl: string) =>
+  fileUrl.startsWith('http') ? fileUrl : `${API_ORIGIN}${fileUrl.startsWith('/') ? '' : '/'}${fileUrl}`;
 
 interface Props {
   user: AuthUser;
@@ -356,10 +361,6 @@ export const TeacherDashboard: React.FC<Props> = ({
     setSelectedCourseId(courseId);
     setCourseTab(initialTab);
     setMainTab('courses');
-  };
-
-  const handleBackToCoursesList = () => {
-    setSelectedCourseId(null);
   };
 
   const openCoursePasswordModal = (course: TeacherCourse) => {
@@ -985,15 +986,6 @@ export const TeacherDashboard: React.FC<Props> = ({
               <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
                   <div className="flex items-center gap-3">
-                    <button
-                      onClick={handleBackToCoursesList}
-                      className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1 transition-all"
-                      title="Quay lại danh sách khóa học"
-                    >
-                      <ArrowLeft className="w-4 h-4" />
-                      <span className="hidden sm:inline">Tất cả khóa học</span>
-                    </button>
-
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="px-2 py-0.5 rounded-md bg-blue-100 text-blue-700 text-xs font-extrabold uppercase">
@@ -1610,15 +1602,13 @@ export const TeacherDashboard: React.FC<Props> = ({
                                 <span className="font-bold text-slate-700 block">Danh sách tệp tin đính kèm ({sub.files.length} tệp):</span>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                   {sub.files.map((file) => {
-                                    const fullUrl = file.fileUrl.startsWith('http') ? file.fileUrl : `http://localhost:5000${file.fileUrl}`;
+                                    const downloadUrl = getSubmissionFileDownloadUrl(file);
                                     return (
                                       <a
                                         key={file.id}
-                                        href={fullUrl}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        download
+                                        href={downloadUrl}
                                         className="p-3 rounded-xl bg-white border border-slate-200 hover:border-blue-300 hover:bg-blue-50/40 flex items-center justify-between gap-3 transition-all group shadow-2xs"
+                                        aria-label={`Tải file ${file.fileName}`}
                                       >
                                         <div className="flex items-center gap-2.5 min-w-0">
                                           <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
@@ -1643,7 +1633,7 @@ export const TeacherDashboard: React.FC<Props> = ({
                             ) : sub.fileUrl ? (
                               <div className="pt-1">
                                 <a
-                                  href={sub.fileUrl.startsWith('http') ? sub.fileUrl : `http://localhost:5000${sub.fileUrl}`}
+                                  href={getUploadedFileUrl(sub.fileUrl)}
                                   target="_blank"
                                   rel="noreferrer"
                                   download
@@ -2436,14 +2426,15 @@ export const TeacherDashboard: React.FC<Props> = ({
       {/* ========================================================================= */}
       {previewVideoLesson && (() => {
         const videoInfo = parseVideoUrl(previewVideoLesson.resourceUrl);
+        const previewActivityMeta = getActivityMeta(mapToActivityCategory(previewVideoLesson.activityType));
         return (
           <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
             <div className="bg-white border border-slate-200 w-full max-w-3xl rounded-3xl shadow-2xl overflow-hidden text-slate-900 space-y-4">
               <div className="p-5 border-b border-slate-100 flex items-center justify-between">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase bg-blue-100 text-blue-800">
-                      Bài giảng Video
+                    <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase border ${previewActivityMeta.color}`}>
+                      {previewActivityMeta.label}
                     </span>
                     <span className="text-xs font-bold text-slate-500">Tuần {previewVideoLesson.weekNumber}</span>
                   </div>
@@ -2479,7 +2470,7 @@ export const TeacherDashboard: React.FC<Props> = ({
                   ) : (
                     <div className="text-center p-8 text-slate-400 space-y-2">
                       <PlayCircle className="w-12 h-12 mx-auto text-slate-600" />
-                      <p className="text-xs">Không tìm thấy nguồn video hợp lệ từ URL: {previewVideoLesson.resourceUrl || '(Trống)'}</p>
+                      <p className="text-xs">Không tìm thấy nguồn tài nguyên hợp lệ từ URL: {previewVideoLesson.resourceUrl || '(Trống)'}</p>
                     </div>
                   )}
                 </div>

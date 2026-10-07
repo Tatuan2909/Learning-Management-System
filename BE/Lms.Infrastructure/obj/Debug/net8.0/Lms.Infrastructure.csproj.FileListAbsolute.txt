@@ -33,3 +33,6 @@ C:\Users\ACXSAB\Desktop\Learning Management System\BE\Lms.Infrastructure\obj\Deb
 C:\Users\ACXSAB\Desktop\Learning Management System\BE\Lms.Infrastructure\obj\Debug\net8.0\refint\Lms.Infrastructure.dll
 C:\Users\ACXSAB\Desktop\Learning Management System\BE\Lms.Infrastructure\obj\Debug\net8.0\Lms.Infrastructure.pdb
 C:\Users\ACXSAB\Desktop\Learning Management System\BE\Lms.Infrastructure\obj\Debug\net8.0\ref\Lms.Infrastructure.dll
+C:\Users\ACXSAB\AppData\Local\Temp\lms-api-build-check\Lms.Infrastructure.deps.json
+C:\Users\ACXSAB\AppData\Local\Temp\lms-api-build-check\Lms.Infrastructure.dll
+C:\Users\ACXSAB\AppData\Local\Temp\lms-api-build-check\Lms.Infrastructure.pdb

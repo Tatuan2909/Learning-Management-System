@@ -62,11 +62,28 @@ export const App: React.FC = () => {
     localStorage.setItem('theme', 'light');
   }, []);
 
+  const resetNavigationState = () => {
+    setActiveTab('dashboard');
+    setTeacherTab('overview');
+    setAdminTab('overview');
+    setCurrentCourse(null);
+    setCourseAnnouncements([]);
+    setSelectedActivityId(undefined);
+    setSelectedDeadline(null);
+    setMobileMenuOpen(false);
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('user_info');
+    resetNavigationState();
     setUser(null);
+  };
+
+  const handleLoginSuccess = (loggedInUser: AuthUser) => {
+    resetNavigationState();
+    setUser(loggedInUser);
   };
 
   const handleOpenStudyPage = (courseId: string, activityId?: string) => {
@@ -76,11 +93,13 @@ export const App: React.FC = () => {
   };
 
   if (!user) {
-    return <LoginPage onLoginSuccess={(loggedInUser) => setUser(loggedInUser)} />;
+    return <LoginPage onLoginSuccess={handleLoginSuccess} />;
   }
 
+  const isRoleDashboardActive = activeTab === 'dashboard' || (user.role !== 'STUDENT' && activeTab !== 'profile');
+
   // Dedicated full-page Course Player View
-  if (activeTab === 'study') {
+  if (activeTab === 'study' && user.role === 'STUDENT') {
     return (
       <CourseStudyPage
         courseId={studyCourseId}
@@ -135,7 +154,7 @@ export const App: React.FC = () => {
                   <button
                     onClick={() => { setActiveTab('dashboard'); setTeacherTab('overview'); }}
                     className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
-                      activeTab === 'dashboard' && teacherTab === 'overview'
+                      isRoleDashboardActive && teacherTab === 'overview'
                         ? 'bg-blue-600 text-white shadow-2xs'
                         : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                     }`}
@@ -146,7 +165,7 @@ export const App: React.FC = () => {
                   <button
                     onClick={() => { setActiveTab('dashboard'); setTeacherTab('courses'); }}
                     className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
-                      activeTab === 'dashboard' && teacherTab === 'courses'
+                      isRoleDashboardActive && teacherTab === 'courses'
                         ? 'bg-blue-600 text-white shadow-2xs'
                         : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                     }`}
@@ -163,7 +182,7 @@ export const App: React.FC = () => {
                   <button
                     onClick={() => { setActiveTab('dashboard'); setAdminTab('overview'); }}
                     className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
-                      activeTab === 'dashboard' && adminTab === 'overview'
+                      isRoleDashboardActive && adminTab === 'overview'
                         ? 'bg-blue-600 text-white shadow-2xs'
                         : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                     }`}
@@ -174,7 +193,7 @@ export const App: React.FC = () => {
                   <button
                     onClick={() => { setActiveTab('dashboard'); setAdminTab('users'); }}
                     className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
-                      activeTab === 'dashboard' && adminTab === 'users'
+                      isRoleDashboardActive && adminTab === 'users'
                         ? 'bg-blue-600 text-white shadow-2xs'
                         : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                     }`}
@@ -185,7 +204,7 @@ export const App: React.FC = () => {
                   <button
                     onClick={() => { setActiveTab('dashboard'); setAdminTab('courses'); }}
                     className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
-                      activeTab === 'dashboard' && adminTab === 'courses'
+                      isRoleDashboardActive && adminTab === 'courses'
                         ? 'bg-blue-600 text-white shadow-2xs'
                         : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                     }`}
@@ -196,7 +215,7 @@ export const App: React.FC = () => {
                   <button
                     onClick={() => { setActiveTab('dashboard'); setAdminTab('logs'); }}
                     className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
-                      activeTab === 'dashboard' && adminTab === 'logs'
+                      isRoleDashboardActive && adminTab === 'logs'
                         ? 'bg-blue-600 text-white shadow-2xs'
                         : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                     }`}
@@ -207,7 +226,7 @@ export const App: React.FC = () => {
                   <button
                     onClick={() => { setActiveTab('dashboard'); setAdminTab('settings'); }}
                     className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
-                      activeTab === 'dashboard' && adminTab === 'settings'
+                      isRoleDashboardActive && adminTab === 'settings'
                         ? 'bg-blue-600 text-white shadow-2xs'
                         : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                     }`}
@@ -279,7 +298,7 @@ export const App: React.FC = () => {
                 <button
                   onClick={() => { setActiveTab('dashboard'); setTeacherTab('overview'); setMobileMenuOpen(false); }}
                   className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
-                    activeTab === 'dashboard' && teacherTab === 'overview' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
+                    isRoleDashboardActive && teacherTab === 'overview' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
                   }`}
                 >
                   <Award className="w-4 h-4" />
@@ -288,7 +307,7 @@ export const App: React.FC = () => {
                 <button
                   onClick={() => { setActiveTab('dashboard'); setTeacherTab('courses'); setMobileMenuOpen(false); }}
                   className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
-                    activeTab === 'dashboard' && teacherTab === 'courses' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
+                    isRoleDashboardActive && teacherTab === 'courses' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
                   }`}
                 >
                   <BookOpen className="w-4 h-4" />
@@ -303,7 +322,7 @@ export const App: React.FC = () => {
                 <button
                   onClick={() => { setActiveTab('dashboard'); setAdminTab('overview'); setMobileMenuOpen(false); }}
                   className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
-                    activeTab === 'dashboard' && adminTab === 'overview' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
+                    isRoleDashboardActive && adminTab === 'overview' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
                   }`}
                 >
                   <Activity className="w-4 h-4" />
@@ -312,7 +331,7 @@ export const App: React.FC = () => {
                 <button
                   onClick={() => { setActiveTab('dashboard'); setAdminTab('users'); setMobileMenuOpen(false); }}
                   className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
-                    activeTab === 'dashboard' && adminTab === 'users' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
+                    isRoleDashboardActive && adminTab === 'users' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
                   }`}
                 >
                   <Users className="w-4 h-4" />
@@ -321,7 +340,7 @@ export const App: React.FC = () => {
                 <button
                   onClick={() => { setActiveTab('dashboard'); setAdminTab('courses'); setMobileMenuOpen(false); }}
                   className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
-                    activeTab === 'dashboard' && adminTab === 'courses' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
+                    isRoleDashboardActive && adminTab === 'courses' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
                   }`}
                 >
                   <BookOpen className="w-4 h-4" />
@@ -330,7 +349,7 @@ export const App: React.FC = () => {
                 <button
                   onClick={() => { setActiveTab('dashboard'); setAdminTab('logs'); setMobileMenuOpen(false); }}
                   className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
-                    activeTab === 'dashboard' && adminTab === 'logs' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
+                    isRoleDashboardActive && adminTab === 'logs' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
                   }`}
                 >
                   <FileText className="w-4 h-4" />
@@ -339,7 +358,7 @@ export const App: React.FC = () => {
                 <button
                   onClick={() => { setActiveTab('dashboard'); setAdminTab('settings'); setMobileMenuOpen(false); }}
                   className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
-                    activeTab === 'dashboard' && adminTab === 'settings' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
+                    isRoleDashboardActive && adminTab === 'settings' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
                   }`}
                 >
                   <Settings className="w-4 h-4" />
@@ -386,7 +405,7 @@ export const App: React.FC = () => {
 
       {/* Full-width Main Content Area */}
       <main className="flex-1 w-full px-3 sm:px-6 lg:px-10 py-6 sm:py-8">
-        {activeTab === 'dashboard' && (
+        {isRoleDashboardActive && (
           user.role === 'ADMIN' ? (
             <AdminDashboard user={user} activeTab={adminTab} onTabChange={setAdminTab} />
           ) : user.role === 'TEACHER' ? (
@@ -498,14 +517,14 @@ export const App: React.FC = () => {
           )
         )}
 
-        {activeTab === 'my-courses' && (
+        {user.role === 'STUDENT' && activeTab === 'my-courses' && (
           <CoursesPage
             initialFilter="ENROLLED"
             onSelectLessonForQuiz={(courseId, activityId) => handleOpenStudyPage(courseId, activityId)}
           />
         )}
 
-        {activeTab === 'courses' && (
+        {user.role === 'STUDENT' && activeTab === 'courses' && (
           <CoursesPage
             initialFilter="ALL"
             onSelectLessonForQuiz={(courseId, activityId) => handleOpenStudyPage(courseId, activityId)}

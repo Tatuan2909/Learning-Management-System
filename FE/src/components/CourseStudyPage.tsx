@@ -112,6 +112,7 @@ export interface SubmittedFileMeta {
 
 export interface PracticeSubmission {
   activityId: string;
+  submissionId?: string;
   status: 'SUBMITTED';
   gradingStatus: 'PENDING' | 'GRADED';
   grade?: string;
@@ -403,7 +404,7 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
     try {
       const studentId = getStudentId();
       await api.post(`/lessons/${itemId}/complete`, { studentId });
-    } catch (err) {
+    } catch (err: any) {
       console.error('Lỗi cập nhật hoàn thành bài học:', err);
     }
   };
@@ -489,6 +490,7 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
           const sub = res.data.mySubmission;
           const record: PracticeSubmission = {
             activityId: selectedActivity.id,
+            submissionId: sub.id,
             status: 'SUBMITTED',
             gradingStatus: (sub.grade !== null && sub.grade !== undefined) ? 'GRADED' : 'PENDING',
             grade: (sub.grade !== null && sub.grade !== undefined) ? `${sub.grade}/${res.data.maxScore || 10}` : undefined,
@@ -659,15 +661,23 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
       const studentId = getStudentId();
       const formData = new FormData();
       formData.append('studentId', studentId);
-      if (stagedNote.trim()) formData.append('submissionText', stagedNote.trim());
-      if (stagedGitUrl.trim()) formData.append('gitRepoUrl', stagedGitUrl.trim());
+      formData.append('submissionText', stagedNote.trim());
+      formData.append('gitRepoUrl', stagedGitUrl.trim());
       stagedFiles.forEach((file) => {
         formData.append('files', file);
       });
 
-      const res = await api.post(`/assignments/by-lesson/${activityId}/submit-files`, formData, {
+      const shouldUpdateExisting = Boolean(existing?.submissionId);
+      const shouldReplaceFiles = Boolean(isEditingPractice && stagedFiles.length > 0);
+      formData.append('replaceFiles', shouldReplaceFiles ? 'true' : 'false');
+
+      const requestConfig = {
         headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      };
+
+      const res = shouldUpdateExisting
+        ? await api.put(`/assignments/submissions/${existing?.submissionId}/submit-files`, formData, requestConfig)
+        : await api.post(`/assignments/by-lesson/${activityId}/submit-files`, formData, requestConfig);
 
       const newFilesMeta: SubmittedFileMeta[] = stagedFiles.map((f) => ({
         name: f.name,
@@ -677,25 +687,50 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
         url: res.data?.fileUrl || undefined
       }));
 
-      const finalFiles = existing && stagedFiles.length === 0
-        ? existing.files
-        : [...(existing?.files || []), ...newFilesMeta];
+      const responseFiles: SubmittedFileMeta[] = Array.isArray(res.data?.files)
+        ? res.data.files.map((f: any) => ({
+            name: f.fileName,
+            size: f.fileSize || 0,
+            type: f.fileType || 'application/octet-stream',
+            url: f.fileUrl
+          }))
+        : [];
+
+      const finalFiles = responseFiles.length > 0
+        ? responseFiles
+        : shouldReplaceFiles
+          ? newFilesMeta
+          : existing && stagedFiles.length === 0
+            ? existing.files
+            : [...(existing?.files || []), ...newFilesMeta];
+
+      const submittedAt = res.data?.submittedAt
+        ? new Date(res.data.submittedAt).toLocaleString('vi-VN', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+          })
+        : new Date().toLocaleString('vi-VN', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+          });
 
       const record: PracticeSubmission = {
         activityId,
+        submissionId: res.data?.submissionId || existing?.submissionId,
         status: 'SUBMITTED',
         gradingStatus: existing?.gradingStatus || 'PENDING',
-        submittedAt: new Date().toLocaleString('vi-VN', {
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric'
-        }),
+        submittedAt,
         files: finalFiles,
-        note: stagedNote.trim() || existing?.note || '',
-        gitRepoUrl: stagedGitUrl.trim() || existing?.gitRepoUrl || ''
+        note: stagedNote.trim(),
+        gitRepoUrl: stagedGitUrl.trim()
       };
 
       const updated = { ...practiceSubmissions, [activityId]: record };
@@ -716,6 +751,10 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
       alert('🎉 Chúc mừng! Bạn đã nộp bài tập thực hành thành công lên hệ thống và đã lưu vào CSDL.');
     } catch (err) {
       console.error('Lỗi khi nộp bài tập:', err);
+      if ((err as any)?.response) {
+        alert((err as any).response.data?.message || 'Khong the luu bai nop tren may chu. Vui long thu lai.');
+        return;
+      }
       // Fallback
       const newFilesMeta: SubmittedFileMeta[] = stagedFiles.map((f) => ({
         name: f.name,
@@ -729,6 +768,7 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
 
       const record: PracticeSubmission = {
         activityId,
+        submissionId: existing?.submissionId,
         status: 'SUBMITTED',
         gradingStatus: existing?.gradingStatus || 'PENDING',
         submittedAt: new Date().toLocaleString('vi-VN'),
@@ -737,7 +777,13 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
         gitRepoUrl: stagedGitUrl.trim() || existing?.gitRepoUrl || ''
       };
 
-      setPracticeSubmissions({ ...practiceSubmissions, [activityId]: record });
+      const updated = { ...practiceSubmissions, [activityId]: record };
+      setPracticeSubmissions(updated);
+      try {
+        localStorage.setItem('lms_practice_submissions', JSON.stringify(updated));
+      } catch (e) {
+        console.error(e);
+      }
       if (selectedActivity && !selectedActivity.isCompleted) {
         toggleItemCompletion(activityId);
       }
@@ -749,10 +795,26 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
     }
   };
 
-  const handleDeleteSubmission = (activityId: string) => {
+  const handleDeleteSubmission = async (activityId: string) => {
     if (!window.confirm('Bạn có chắc chắn muốn hủy / xóa bài nộp này? Trạng thái sẽ quay về Chưa nộp bài.')) {
       return;
     }
+    const existing = practiceSubmissions[activityId];
+    try {
+      const studentId = getStudentId();
+      if (existing?.submissionId) {
+        await api.delete(`/assignments/submissions/${existing.submissionId}`, { params: { studentId } });
+      } else {
+        await api.delete(`/assignments/by-lesson/${activityId}/submission`, { params: { studentId } });
+      }
+    } catch (err: any) {
+      if (err?.response?.status !== 404) {
+        console.error('Loi xoa bai nop:', err);
+        alert('Khong the xoa bai nop tren may chu. Vui long thu lai.');
+        return;
+      }
+    }
+
     const updated = { ...practiceSubmissions };
     delete updated[activityId];
     setPracticeSubmissions(updated);
@@ -763,6 +825,15 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
     setStagedGitUrl('');
     setStagedNote('');
     setIsEditingPractice(false);
+    setSections((prev) =>
+      prev.map((section) => ({
+        ...section,
+        items: section.items.map((item) =>
+          item.id === activityId ? { ...item, isCompleted: false } : item
+        )
+      }))
+    );
+    setSelectedActivity((prev) => (prev && prev.id === activityId ? { ...prev, isCompleted: false } : prev));
   };
 
   const handleStartEditSubmission = (submission: PracticeSubmission) => {

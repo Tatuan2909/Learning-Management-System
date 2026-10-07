@@ -21,3 +21,7 @@ C:\Users\ACXSAB\Desktop\Learning Management System\BE\Lms.Domain\obj\Debug\net8.
 C:\Users\ACXSAB\Desktop\Learning Management System\BE\Lms.Domain\obj\Debug\net8.0\refint\Lms.Domain.dll
 C:\Users\ACXSAB\Desktop\Learning Management System\BE\Lms.Domain\obj\Debug\net8.0\Lms.Domain.pdb
 C:\Users\ACXSAB\Desktop\Learning Management System\BE\Lms.Domain\obj\Debug\net8.0\ref\Lms.Domain.dll
+C:\Users\ACXSAB\AppData\Local\Temp\lms-api-build-check\Lms.Domain.deps.json
+C:\Users\ACXSAB\AppData\Local\Temp\lms-api-build-check\Lms.Domain.dll
+C:\Users\ACXSAB\AppData\Local\Temp\lms-api-build-check\Lms.Domain.pdb
+C:\Users\ACXSAB\Desktop\Learning Management System\BE\Lms.Domain\obj\Debug\net8.0\Lms.Domain.csproj.Up2Date

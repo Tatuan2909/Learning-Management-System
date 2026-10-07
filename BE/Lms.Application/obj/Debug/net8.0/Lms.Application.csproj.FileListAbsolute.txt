@@ -29,3 +29,6 @@ C:\Users\ACXSAB\Desktop\Learning Management System\BE\Lms.Application\obj\Debug\
 C:\Users\ACXSAB\Desktop\Learning Management System\BE\Lms.Application\obj\Debug\net8.0\refint\Lms.Application.dll
 C:\Users\ACXSAB\Desktop\Learning Management System\BE\Lms.Application\obj\Debug\net8.0\Lms.Application.pdb
 C:\Users\ACXSAB\Desktop\Learning Management System\BE\Lms.Application\obj\Debug\net8.0\ref\Lms.Application.dll
+C:\Users\ACXSAB\AppData\Local\Temp\lms-api-build-check\Lms.Application.deps.json
+C:\Users\ACXSAB\AppData\Local\Temp\lms-api-build-check\Lms.Application.dll
+C:\Users\ACXSAB\AppData\Local\Temp\lms-api-build-check\Lms.Application.pdb

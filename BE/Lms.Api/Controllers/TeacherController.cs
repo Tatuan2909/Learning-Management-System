@@ -558,7 +558,39 @@ public class TeacherController : ControllerBase
     }
 
     /// <summary>
-    /// Giảng viên chấm điểm và nhập nhận xét cho bài nộp của sinh viên
+    /// Download a submitted practice file with the student's original file name.
+    /// </summary>
+    [HttpGet("submission-files/{fileId}/download")]
+    public async Task<IActionResult> DownloadSubmissionFile(Guid fileId)
+    {
+        var submissionFile = await _db.SubmissionFiles.FindAsync(fileId);
+        if (submissionFile == null)
+        {
+            return NotFound("Khong tim thay tep bai nop.");
+        }
+
+        var storedFileName = Path.GetFileName(submissionFile.FileUrl);
+        if (string.IsNullOrWhiteSpace(storedFileName))
+        {
+            return NotFound("Duong dan tep bai nop khong hop le.");
+        }
+
+        var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "submissions");
+        var filePath = Path.Combine(uploadsFolder, storedFileName);
+        if (!System.IO.File.Exists(filePath))
+        {
+            return NotFound("Tep bai nop khong con ton tai tren may chu.");
+        }
+
+        var contentType = string.IsNullOrWhiteSpace(submissionFile.FileType)
+            ? "application/octet-stream"
+            : submissionFile.FileType;
+
+        return PhysicalFile(filePath, contentType, submissionFile.FileName);
+    }
+
+    /// <summary>
+    /// Grade a student practice submission and save teacher feedback.
     /// </summary>
     [HttpPost("submissions/{submissionId}/grade")]
     public async Task<IActionResult> GradeSubmission(Guid submissionId, [FromBody] GradeSubmissionRequestDto request, [FromQuery] Guid? teacherId)
