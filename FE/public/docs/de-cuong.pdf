@@ -1,0 +1,76 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length 743 >>
+stream
+BT
+/F1 18 Tf
+50 740 Td
+(DE CUONG CHI TIET HOC PHAN - INT3306) Tj
+ET
+BT
+/F1 12 Tf
+50 700 Td
+(Hoc phan: Phat trien ung dung Mobile & Web da nen tang) Tj
+ET
+BT
+/F1 12 Tf
+50 675 Td
+(Giang vien phu trach: TS. Nguyen Van A) Tj
+ET
+BT
+/F1 12 Tf
+50 650 Td
+(So tin chi: 3 (2 ly thuyet + 1 thuc hanh)) Tj
+ET
+BT
+/F1 12 Tf
+50 625 Td
+(Muc tieu: Nam vung Clean Architecture, RESTful API va ReactJS.) Tj
+ET
+BT
+/F1 12 Tf
+50 600 Td
+(Tuan 1: Gioi thieu Clean Architecture & Web API) Tj
+ET
+BT
+/F1 12 Tf
+50 575 Td
+(Tuan 2: Entity Framework Core va CSDL SQL Server) Tj
+ET
+BT
+/F1 12 Tf
+50 550 Td
+(Tuan 3: Authentication voi JWT & Role-based Access Control) Tj
+ET
+BT
+/F1 12 Tf
+50 525 Td
+(Danh gia: Chuyen can (10%), Bai tap (20%), BTL (30%), Thi cuoi ky (40%)) Tj
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000241 00000 n 
+0000001034 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+1104
+%%EOF

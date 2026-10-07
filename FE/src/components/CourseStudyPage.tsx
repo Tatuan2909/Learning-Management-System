@@ -37,10 +37,14 @@ import {
   FolderUp,
   FileArchive,
   Github,
-  Calendar
+  Calendar,
+  Maximize2,
+  Minimize2,
+  Eye
 } from 'lucide-react';
 import { PostLessonQuiz } from './PostLessonQuiz';
 import { parseVideoUrl } from '../utils/videoHelper';
+import { parseDocumentUrl } from '../utils/documentHelper';
 
 interface Props {
   courseId?: string;
@@ -87,6 +91,16 @@ const DEFAULT_QUIZ_PASSWORD = 'quiz123';
 
 const getQuizAccessKey = (item: CurriculumItem) => item.quizId || item.id;
 
+// Video và tài liệu (PDF, DOCX, TEXT, LINK...) tự động hoàn thành khi vào xem
+// Luyện tập (PRACTICE) và trắc nghiệm (QUIZ) phải làm/nộp thì mới hoàn thành
+const isAutoCompletedOnView = (type: ActivityType): boolean => {
+  return type !== 'PRACTICE' && type !== 'QUIZ';
+};
+
+const isPracticeOrQuiz = (type: ActivityType): boolean => {
+  return type === 'PRACTICE' || type === 'QUIZ';
+};
+
 
 export interface SubmittedFileMeta {
   name: string;
@@ -107,6 +121,234 @@ export interface PracticeSubmission {
   gitRepoUrl?: string;
 }
 
+const renderDocumentReaderContent = (title: string, type: ActivityType) => {
+  const isSyllabus = title.toLowerCase().includes('đề cương') || title.toLowerCase().includes('de-cuong');
+  const isTopics = title.toLowerCase().includes('đề tài') || title.toLowerCase().includes('de-tai') || title.toLowerCase().includes('btl');
+
+  if (isSyllabus) {
+    return (
+      <div className="space-y-6 text-left">
+        <div className="border-b border-slate-200 pb-5 text-center">
+          <p className="text-xs uppercase font-extrabold text-blue-700 tracking-wider">Đại học Quốc gia Hà Nội • Khoa Công nghệ Thông tin</p>
+          <h2 className="text-xl sm:text-2xl font-black text-slate-900 mt-2 uppercase">Đề cương chi tiết học phần</h2>
+          <p className="text-sm font-bold text-slate-700 mt-1">Phát triển ứng dụng Mobile & Web đa nền tảng (INT3306)</p>
+          <p className="text-xs text-slate-500 mt-0.5">Số tín chỉ: 3 (2 lý thuyết + 1 thực hành) • Giảng viên: TS. Nguyễn Văn A</p>
+        </div>
+
+        <div>
+          <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wide flex items-center gap-2 mb-2">
+            <span className="w-1.5 h-4 bg-blue-600 rounded-full inline-block"></span>
+            1. Mục tiêu học phần & Chuẩn đầu ra (CLO)
+          </h3>
+          <ul className="text-xs sm:text-sm text-slate-700 space-y-1.5 list-disc list-inside leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <li><strong>CLO 1:</strong> Nắm vững nguyên lý kiến trúc phần mềm Clean Architecture, Dependency Inversion và Separation of Concerns.</li>
+            <li><strong>CLO 2:</strong> Thiết kế và xây dựng hệ thống RESTful API chuẩn hóa với ASP.NET Core (.NET 8) kết nối Microsoft SQL Server.</li>
+            <li><strong>CLO 3:</strong> Xây dựng giao diện ứng dụng web hiện đại với ReactJS, TypeScript và Tailwind CSS kết nối Web API.</li>
+            <li><strong>CLO 4:</strong> Làm việc nhóm hiệu quả, quản lý mã nguồn bằng Git/GitHub, thực hiện kiểm thử và báo cáo dự án.</li>
+          </ul>
+        </div>
+
+        <div>
+          <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wide flex items-center gap-2 mb-2">
+            <span className="w-1.5 h-4 bg-blue-600 rounded-full inline-block"></span>
+            2. Kế hoạch giảng dạy chi tiết 15 tuần
+          </h3>
+          <div className="overflow-x-auto border border-slate-200 rounded-xl">
+            <table className="w-full text-xs text-left">
+              <thead className="bg-slate-100 text-slate-700 font-bold uppercase text-[11px] border-b border-slate-200">
+                <tr>
+                  <th className="p-3">Tuần</th>
+                  <th className="p-3">Nội dung bài học</th>
+                  <th className="p-3">Hoạt động & Bài tập</th>
+                  <th className="p-3">Yêu cầu chuẩn bị</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-slate-700">
+                <tr className="hover:bg-blue-50/30">
+                  <td className="p-3 font-bold text-blue-700">Tuần 1</td>
+                  <td className="p-3">Tổng quan Clean Architecture, .NET 8 Web API & RESTful Principles</td>
+                  <td className="p-3">Bài giảng SCORM, Luyện tập tạo Controller & Test Swagger</td>
+                  <td className="p-3">Cài đặt .NET 8 SDK, VS Code/Visual Studio</td>
+                </tr>
+                <tr className="hover:bg-blue-50/30">
+                  <td className="p-3 font-bold text-blue-700">Tuần 2</td>
+                  <td className="p-3">Entity Framework Core, Code-First & CSDL SQL Server</td>
+                  <td className="p-3">Thiết kế bảng Database, Migration, Seed Data bài học</td>
+                  <td className="p-3">Cài đặt Microsoft SQL Server Express</td>
+                </tr>
+                <tr className="hover:bg-blue-50/30">
+                  <td className="p-3 font-bold text-blue-700">Tuần 3</td>
+                  <td className="p-3">Xác thực người dùng: JWT Token & Phân quyền Role-based</td>
+                  <td className="p-3">Bài trắc nghiệm Đánh giá Tuần 1-3, Mở khóa đề tài BTL</td>
+                  <td className="p-3">Đăng ký nhóm Bài tập lớn (3-4 sinh viên)</td>
+                </tr>
+                <tr className="hover:bg-blue-50/30">
+                  <td className="p-3 font-bold text-blue-700">Tuần 4-6</td>
+                  <td className="p-3">Repository Pattern, Unit of Work & Validation với FluentValidation</td>
+                  <td className="p-3">Báo cáo đề cương kiến trúc dự án BTL</td>
+                  <td className="p-3">Khởi tạo Git Repository nhóm</td>
+                </tr>
+                <tr className="hover:bg-blue-50/30">
+                  <td className="p-3 font-bold text-blue-700">Tuần 7-10</td>
+                  <td className="p-3">Phát triển Frontend ReactJS, TypeScript & Gọi API qua Axios</td>
+                  <td className="p-3">Nộp bài tập tiến độ giữa kỳ</td>
+                  <td className="p-3">Ghép nối giao diện với Backend API</td>
+                </tr>
+                <tr className="hover:bg-blue-50/30">
+                  <td className="p-3 font-bold text-blue-700">Tuần 11-14</td>
+                  <td className="p-3">Tối ưu hiệu năng, Bảo mật, Viết Unit Test & Triển khai</td>
+                  <td className="p-3">Hoàn thiện mã nguồn & Viết tài liệu báo cáo</td>
+                  <td className="p-3">Chuẩn bị Slide thuyết trình</td>
+                </tr>
+                <tr className="hover:bg-blue-50/30">
+                  <td className="p-3 font-bold text-blue-700">Tuần 15</td>
+                  <td className="p-3">Bảo vệ Bài tập lớn & Tổng kết học phần</td>
+                  <td className="p-3">Vấn đáp nhóm & Chấm điểm cuối kỳ</td>
+                  <td className="p-3">Nộp toàn bộ source code + tài liệu</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div>
+          <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wide flex items-center gap-2 mb-2">
+            <span className="w-1.5 h-4 bg-blue-600 rounded-full inline-block"></span>
+            3. Phương pháp đánh giá học phần
+          </h3>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-center">
+              <span className="text-xs text-slate-500 block">Chuyên cần</span>
+              <span className="text-lg font-black text-blue-600">10%</span>
+            </div>
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-center">
+              <span className="text-xs text-slate-500 block">Trắc nghiệm & Luyện tập</span>
+              <span className="text-lg font-black text-indigo-600">20%</span>
+            </div>
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-center">
+              <span className="text-xs text-slate-500 block">Bài tập lớn (BTL)</span>
+              <span className="text-lg font-black text-emerald-600">30%</span>
+            </div>
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-center">
+              <span className="text-xs text-slate-500 block">Thi cuối kỳ</span>
+              <span className="text-lg font-black text-rose-600">40%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isTopics) {
+    return (
+      <div className="space-y-6 text-left">
+        <div className="border-b border-slate-200 pb-5 text-center">
+          <p className="text-xs uppercase font-extrabold text-indigo-700 tracking-wider">Học phần: INT3306 - Học kỳ I (2024 - 2025)</p>
+          <h2 className="text-xl sm:text-2xl font-black text-slate-900 mt-2 uppercase">Danh sách đề tài gợi ý Bài tập lớn</h2>
+          <p className="text-xs text-slate-500 mt-1">Quy định: Nhóm từ 3 - 4 thành viên • Quản lý source code trên GitHub</p>
+        </div>
+
+        <div className="p-4 bg-indigo-50/60 border border-indigo-200 rounded-2xl text-xs text-indigo-900 space-y-1.5">
+          <strong className="block text-sm font-bold text-indigo-950">Yêu cầu công nghệ bắt buộc đối với tất cả các đề tài:</strong>
+          <ul className="list-disc list-inside space-y-1 leading-relaxed">
+            <li><strong>Backend:</strong> C# .NET 8 Web API, thiết kế theo chuẩn Clean Architecture (Domain, Application, Infrastructure, Presentation).</li>
+            <li><strong>Database:</strong> Microsoft SQL Server, quản lý bảng và truy vấn bằng Entity Framework Core (Code-First Migration).</li>
+            <li><strong>Frontend:</strong> ReactJS với TypeScript, Tailwind CSS, gọi API qua Axios và có giao diện Responsive (Mobile + Desktop).</li>
+            <li><strong>Quản lý tiến độ:</strong> Tạo Git repository công khai, phân chia commit rõ ràng theo từng thành viên trong nhóm.</li>
+          </ul>
+        </div>
+
+        <div className="space-y-4">
+          <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wide flex items-center gap-2">
+            <span className="w-1.5 h-4 bg-indigo-600 rounded-full inline-block"></span>
+            Danh mục các đề tài được phê duyệt
+          </h3>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="p-4 rounded-2xl border border-slate-200 bg-white hover:border-indigo-300 transition-all space-y-2">
+              <span className="px-2.5 py-0.5 rounded-md bg-blue-100 text-blue-800 font-extrabold text-[10px]">Đề tài 01</span>
+              <h4 className="font-extrabold text-sm text-slate-900">Hệ thống Quản lý Học tập Trực tuyến (LMS)</h4>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Quản lý khóa học, đề cương tuần học, phát bài giảng video YouTube, đính kèm tài liệu PDF/Word, nộp bài thực hành và tổ chức thi trắc nghiệm trực tuyến có tính thời gian & tự động chấm điểm.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-2xl border border-slate-200 bg-white hover:border-indigo-300 transition-all space-y-2">
+              <span className="px-2.5 py-0.5 rounded-md bg-purple-100 text-purple-800 font-extrabold text-[10px]">Đề tài 02</span>
+              <h4 className="font-extrabold text-sm text-slate-900">Hệ thống Đặt lịch Khám & Bệnh án Điện tử</h4>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Phân quyền Bác sĩ / Bệnh nhân, quản lý chuyên khoa, đặt lịch hẹn theo khung giờ, kê đơn thuốc điện tử, theo dõi lịch sử khám chữa bệnh và xuất báo cáo PDF.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-2xl border border-slate-200 bg-white hover:border-indigo-300 transition-all space-y-2">
+              <span className="px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-extrabold text-[10px]">Đề tài 03</span>
+              <h4 className="font-extrabold text-sm text-slate-900">Sàn Thương mại Điện tử E-Commerce Đa kênh</h4>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Quản lý danh mục hàng hóa, giỏ hàng, đặt hàng trực tuyến, thanh toán giả lập với mã QR/VNPAY, phân hệ quản lý kho và bảng thống kê doanh thu thời gian thực.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-2xl border border-slate-200 bg-white hover:border-indigo-300 transition-all space-y-2">
+              <span className="px-2.5 py-0.5 rounded-md bg-amber-100 text-amber-800 font-extrabold text-[10px]">Đề tài 04</span>
+              <h4 className="font-extrabold text-sm text-slate-900">Nền tảng Tuyển dụng & Kết nối Thực tập sinh CNTT</h4>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Doanh nghiệp đăng tin tuyển dụng, sinh viên nộp CV (định dạng PDF/Word), bộ lọc kỹ năng ứng viên, theo dõi trạng thái hồ sơ (Chờ duyệt, Phỏng vấn, Trúng tuyển).
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // General Lesson 1 or default lecture document
+  return (
+    <div className="space-y-6 text-left">
+      <div className="border-b border-slate-200 pb-5 text-center">
+        <p className="text-xs uppercase font-extrabold text-rose-700 tracking-wider">Học phần INT3306 • Tài liệu nghiên cứu chuyên đề</p>
+        <h2 className="text-xl sm:text-2xl font-black text-slate-900 mt-2 uppercase">{title}</h2>
+        <p className="text-xs text-slate-500 mt-1">Định dạng: {type} • Biên soạn: TS. Nguyễn Văn A</p>
+      </div>
+
+      <div className="space-y-3">
+        <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wide flex items-center gap-2">
+          <span className="w-1.5 h-4 bg-rose-600 rounded-full inline-block"></span>
+          1. Tổng quan kiến trúc Clean Architecture trong C# .NET 8
+        </h3>
+        <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
+          Clean Architecture là mẫu kiến trúc phần mềm nhấn mạnh vào nguyên tắc <strong>Tách biệt mối quan tâm (Separation of Concerns)</strong> và <strong>Đảo ngược phụ thuộc (Dependency Inversion)</strong>. Trọng tâm của hệ thống là mô hình miền (Domain Model), các thành phần công nghệ như Cơ sở dữ liệu, Framework, Giao diện người dùng đều là các phụ thuộc bên ngoài và có thể dễ dàng thay thế hoặc bảo trì mà không làm ảnh hưởng đến lõi nghiệp vụ.
+        </p>
+      </div>
+
+      <div className="space-y-3">
+        <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wide flex items-center gap-2">
+          <span className="w-1.5 h-4 bg-rose-600 rounded-full inline-block"></span>
+          2. Các tầng chính trong hệ thống
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+          <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+            <strong className="text-blue-700 font-bold block text-sm">Tầng Domain (Lõi)</strong>
+            <p className="text-slate-600 leading-relaxed">Chứa các Entities (User, Course, Lesson), Value Objects, Domain Exceptions và quy tắc nghiệp vụ cốt lõi không phụ thuộc vào bất kỳ thư viện bên ngoài nào.</p>
+          </div>
+          <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+            <strong className="text-indigo-700 font-bold block text-sm">Tầng Application</strong>
+            <p className="text-slate-600 leading-relaxed">Chứa các Use Cases, Interfaces (IRepository, IJwtProvider), Data Transfer Objects (DTOs), và logic điều phối quy trình xử lý.</p>
+          </div>
+          <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+            <strong className="text-emerald-700 font-bold block text-sm">Tầng Infrastructure</strong>
+            <p className="text-slate-600 leading-relaxed">Cài đặt kết nối SQL Server (AppDbContext), cấu hình Entity Framework Core, lưu trữ file và tích hợp các dịch vụ bên thứ ba.</p>
+          </div>
+          <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+            <strong className="text-purple-700 font-bold block text-sm">Tầng Presentation (Web API)</strong>
+            <p className="text-slate-600 leading-relaxed">Xây dựng Controllers (CoursesController, LessonsController), Middleware xử lý lỗi, Dependency Injection container và Swagger documentation.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, onBack }) => {
   const [quizPasswordInput, setQuizPasswordInput] = useState('');
   const [quizPasswordError, setQuizPasswordError] = useState('');
@@ -122,6 +364,8 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
   const [course, setCourse] = useState<CourseDetail | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [sections, setSections] = useState<Section[]>([]);
+  // Selected Activity State: null = viewing course outline, non-null = viewing dedicated page of that activity
+  const [selectedActivity, setSelectedActivity] = useState<CurriculumItem | null>(null);
 
   const getStudentId = () => {
     try {
@@ -132,6 +376,36 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
   };
 
   const targetCourseId = courseId || '44444444-4444-4444-4444-444444444444';
+
+  // Toggle item completion state (To do <-> Done) with optimistic local state update
+  const toggleItemCompletion = async (itemId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+
+    // Optimistically update sections and current activity
+    setSections((prevSections) =>
+      prevSections.map((sec) => {
+        let hasChanges = false;
+        const newItems = sec.items.map((item) => {
+          if (item.id === itemId) {
+            hasChanges = true;
+            return { ...item, isCompleted: true };
+          }
+          return item;
+        });
+
+        return hasChanges ? { ...sec, items: newItems } : sec;
+      })
+    );
+
+    setSelectedActivity((prev) => (prev && prev.id === itemId ? { ...prev, isCompleted: true } : prev));
+
+    try {
+      const studentId = getStudentId();
+      await api.post(`/lessons/${itemId}/complete`, { studentId });
+    } catch (err) {
+      console.error('Lỗi cập nhật hoàn thành bài học:', err);
+    }
+  };
 
   const fetchCourseData = async () => {
     try {
@@ -164,7 +438,16 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
         for (const sec of mappedSections) {
           const found = sec.items.find((item) => item.id === initialActivityId);
           if (found) {
-            setSelectedActivity(found);
+            if (found.type === 'DOCX') {
+              setDocViewMode('reader');
+            } else if (found.type === 'PDF') {
+              setDocViewMode('embed');
+            }
+            const shouldAutoComplete = isAutoCompletedOnView(found.type) && !found.isCompleted;
+            setSelectedActivity(shouldAutoComplete ? { ...found, isCompleted: true } : found);
+            if (shouldAutoComplete) {
+              toggleItemCompletion(found.id);
+            }
             break;
           }
         }
@@ -199,49 +482,19 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
   const [isEditingPractice, setIsEditingPractice] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Selected Activity State: null = viewing course outline, non-null = viewing dedicated page of that activity
-  const [selectedActivity, setSelectedActivity] = useState<CurriculumItem | null>(null);
+  // Document Viewer State
+  const [docFullscreen, setDocFullscreen] = useState<boolean>(false);
+  const [docViewMode, setDocViewMode] = useState<'embed' | 'reader'>('embed');
 
   // Calculate total completed items
   const allItems = sections.flatMap((s) => s.items);
   const completedCount = allItems.filter((i) => i.isCompleted).length;
-  const progressPercent = Math.round((completedCount / allItems.length) * 100);
+  const progressPercent = allItems.length > 0 ? Math.round((completedCount / allItems.length) * 100) : 0;
 
   // Find current activity index for next/previous navigation
   const currentIndex = selectedActivity ? allItems.findIndex((i) => i.id === selectedActivity.id) : -1;
   const prevActivity = currentIndex > 0 ? allItems[currentIndex - 1] : null;
   const nextActivity = currentIndex >= 0 && currentIndex < allItems.length - 1 ? allItems[currentIndex + 1] : null;
-
-  // Toggle item completion state (To do <-> Done)
-  const toggleItemCompletion = async (itemId: string, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-
-    try {
-      const studentId = getStudentId();
-      await api.post(`/lessons/${itemId}/complete`, { studentId });
-
-      setSections((prevSections) =>
-        prevSections.map((sec) => {
-          let hasChanges = false;
-          const newItems = sec.items.map((item) => {
-            if (item.id === itemId) {
-              hasChanges = true;
-              return { ...item, isCompleted: true };
-            }
-            return item;
-          });
-
-          return hasChanges ? { ...sec, items: newItems } : sec;
-        })
-      );
-
-      if (selectedActivity && selectedActivity.id === itemId) {
-        setSelectedActivity((prev) => prev ? { ...prev, isCompleted: true } : null);
-      }
-    } catch (err) {
-      console.error('Lỗi cập nhật hoàn thành bài học:', err);
-    }
-  };
 
   // Toggle Section Collapse/Expand
   const toggleSection = (sectionId: string) => {
@@ -264,10 +517,26 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
       setQuizPasswordInput('');
       setQuizPasswordError('');
     }
-    setSelectedActivity(item);
+
+    if (item.type === 'DOCX') {
+      setDocViewMode('reader');
+    } else if (item.type === 'PDF') {
+      setDocViewMode('embed');
+    }
+    setDocFullscreen(false);
+
+    const shouldAutoComplete = isAutoCompletedOnView(item.type) && !item.isCompleted;
+    setSelectedActivity(shouldAutoComplete ? { ...item, isCompleted: true } : item);
     setMobileSidebarOpen(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Video, bài giảng, tài liệu (PDF, DOCX...) tự động hoàn thành khi mở xem
+    // Luyện tập (PRACTICE) và trắc nghiệm (QUIZ) phải làm/nộp thì mới đánh dấu hoàn thành
+    if (shouldAutoComplete) {
+      toggleItemCompletion(item.id);
+    }
   };
+
 
   const handleUnlockQuiz = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -677,17 +946,10 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
               </button>
             </div>
 
-            <button
-              onClick={() => toggleItemCompletion(activity.id)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 ${
-                activity.isCompleted
-                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-              }`}
-            >
-              <Check className="w-3.5 h-3.5" />
-              <span>{activity.isCompleted ? 'Đã hoàn thành' : 'Đánh dấu hoàn thành'}</span>
-            </button>
+            <div className="px-3 py-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 bg-emerald-50 text-emerald-800 border-emerald-300">
+              <Check className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Đã nộp & Hoàn thành</span>
+            </div>
           </div>
         )}
 
@@ -1017,17 +1279,44 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
           {selectedActivity ? (
             <div className="flex items-center gap-2">
               {/* Mark Completed Toggle Button */}
-              <button
-                onClick={() => toggleItemCompletion(selectedActivity.id)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border ${
-                  selectedActivity.isCompleted
-                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                    : 'bg-white text-slate-700 hover:bg-slate-50 border-slate-200'
-                }`}
-              >
-                <Check className={`w-3.5 h-3.5 ${selectedActivity.isCompleted ? 'text-emerald-600' : 'text-slate-400'}`} />
-                <span className="hidden sm:inline">{selectedActivity.isCompleted ? 'Đã hoàn thành' : 'Đánh dấu Hoàn thành'}</span>
-              </button>
+              {isPracticeOrQuiz(selectedActivity.type) ? (
+                selectedActivity.isCompleted ? (
+                  <div className="px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-emerald-50 text-emerald-800 border border-emerald-300">
+                    <Check className="w-3.5 h-3.5 text-emerald-600" />
+                    <span className="hidden sm:inline">
+                      {selectedActivity.type === 'PRACTICE' ? 'Đã nộp bài tập' : 'Đã đạt bài kiểm tra'}
+                    </span>
+                    <span className="sm:hidden">Đã xong</span>
+                  </div>
+                ) : (
+                  <div
+                    className="px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-amber-50 text-amber-700 border border-amber-200 cursor-default"
+                    title={
+                      selectedActivity.type === 'PRACTICE'
+                        ? 'Cần nộp bài tập thực hành để đánh dấu hoàn thành'
+                        : 'Cần làm bài trắc nghiệm để đánh dấu hoàn thành'
+                    }
+                  >
+                    <Clock className="w-3.5 h-3.5 text-amber-600" />
+                    <span className="hidden sm:inline">
+                      {selectedActivity.type === 'PRACTICE' ? 'Cần nộp bài' : 'Cần làm kiểm tra'}
+                    </span>
+                    <span className="sm:hidden">Chưa làm</span>
+                  </div>
+                )
+              ) : (
+                <button
+                  onClick={() => toggleItemCompletion(selectedActivity.id)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border ${
+                    selectedActivity.isCompleted
+                      ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                      : 'bg-white text-slate-700 hover:bg-slate-50 border-slate-200'
+                  }`}
+                >
+                  <Check className={`w-3.5 h-3.5 ${selectedActivity.isCompleted ? 'text-emerald-600' : 'text-slate-400'}`} />
+                  <span className="hidden sm:inline">{selectedActivity.isCompleted ? 'Đã hoàn thành' : 'Đánh dấu Hoàn thành'}</span>
+                </button>
+              )}
 
               {/* Prev / Next activity buttons */}
               <div className="flex items-center gap-1">
@@ -1131,18 +1420,30 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
                     className={`text-xs font-bold px-3 py-1.5 rounded-xl border flex items-center gap-1.5 ${
                       selectedActivity.isCompleted
                         ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                        : 'bg-slate-50 text-slate-600 border-slate-200'
+                        : 'bg-amber-50 text-amber-700 border-amber-200'
                     }`}
                   >
                     {selectedActivity.isCompleted ? (
                       <>
                         <Check className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>Đã hoàn thành</span>
+                        <span>
+                          {selectedActivity.type === 'PRACTICE'
+                            ? 'Đã nộp bài tập'
+                            : selectedActivity.type === 'QUIZ'
+                            ? 'Đã vượt qua bài kiểm tra'
+                            : 'Đã hoàn thành'}
+                        </span>
                       </>
                     ) : (
                       <>
-                        <Clock className="w-3.5 h-3.5 text-slate-400" />
-                        <span>Chưa hoàn thành</span>
+                        <Clock className="w-3.5 h-3.5 text-amber-600" />
+                        <span>
+                          {selectedActivity.type === 'PRACTICE'
+                            ? 'Chưa nộp bài'
+                            : selectedActivity.type === 'QUIZ'
+                            ? 'Chưa làm bài'
+                            : 'Chưa hoàn thành'}
+                        </span>
                       </>
                     )}
                   </span>
@@ -1283,86 +1584,185 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
                       <div className="space-y-1">
                         <h4 className="font-bold text-slate-900 text-sm">Hướng dẫn học tập:</h4>
                         <p className="text-xs text-slate-600 leading-relaxed">
-                          Bạn có thể ghi chú bài giảng và xem lại bất kỳ lúc nào. Sau khi học xong, nhấn nút xác nhận hoàn thành bên cạnh.
+                          Hệ thống đã tự động ghi nhận hoàn thành bài học này khi bạn vào xem bài giảng.
                         </p>
                       </div>
 
-                      <button
-                        onClick={() => {
-                          toggleItemCompletion(selectedActivity.id);
-                          if (nextActivity && !nextActivity.isLocked) {
-                            handleOpenActivity(nextActivity);
-                          }
-                        }}
-                        className="px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-xs transition-all whitespace-nowrap flex items-center gap-2 cursor-pointer"
-                      >
-                        <Check className="w-4 h-4" />
-                        <span>Hoàn thành & Sang bài tiếp</span>
-                      </button>
+                      {nextActivity && !nextActivity.isLocked ? (
+                        <button
+                          onClick={() => handleOpenActivity(nextActivity)}
+                          className="px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-xs transition-all whitespace-nowrap flex items-center gap-2 cursor-pointer"
+                        >
+                          <span>Chuyển sang bài tiếp theo</span>
+                          <ArrowRight className="w-4 h-4" />
+                        </button>
+                      ) : (
+                        <div className="px-4 py-2.5 bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold text-xs rounded-xl flex items-center gap-2">
+                          <Check className="w-4 h-4 text-emerald-600" />
+                          <span>Đã hoàn thành</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
               })()}
 
               {/* 3. PDF / DOCX DOCUMENT DEDICATED PAGE */}
-              {(selectedActivity.type === 'PDF' || selectedActivity.type === 'DOCX') && (
-                <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-2xs space-y-6 text-center">
-                  <div className="w-16 h-16 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mx-auto shadow-xs">
-                    <FileText className="w-8 h-8" />
-                  </div>
+              {(selectedActivity.type === 'PDF' || selectedActivity.type === 'DOCX') && (() => {
+                const docEmbedInfo = parseDocumentUrl(selectedActivity.contentUrl, selectedActivity.type);
 
-                  <div>
-                    <span className="text-xs font-bold bg-rose-100 text-rose-800 px-3 py-1 rounded-full uppercase">
-                      Tài liệu học tập ({selectedActivity.type})
-                    </span>
-                    <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900 mt-3">
-                      {selectedActivity.title}
-                    </h3>
-                    <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-lg mx-auto">
-                      Tài liệu phục vụ bài học và ôn tập kiến thức chuyên môn. Bạn có thể xem trực tuyến hoặc tải về máy cá nhân.
-                    </p>
-                  </div>
+                return (
+                  <div className={`space-y-5 transition-all ${docFullscreen ? 'fixed inset-0 z-50 p-4 sm:p-6 bg-slate-900/95 backdrop-blur-md flex flex-col overflow-y-auto' : ''}`}>
+                    {/* Document Header & Controls Toolbar */}
+                    <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                          selectedActivity.type === 'PDF' ? 'bg-rose-50 text-rose-600 border border-rose-200' : 'bg-blue-50 text-blue-600 border border-blue-200'
+                        }`}>
+                          <FileText className="w-5 h-5" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md ${
+                              selectedActivity.type === 'PDF' ? 'bg-rose-100 text-rose-800' : 'bg-blue-100 text-blue-800'
+                            }`}>
+                              {selectedActivity.type}
+                            </span>
+                            <span className="text-xs text-slate-400 font-medium truncate">Tài liệu học tập trực tuyến</span>
+                          </div>
+                          <h3 className="text-sm sm:text-base font-extrabold text-slate-900 truncate mt-0.5">
+                            {selectedActivity.title}
+                          </h3>
+                        </div>
+                      </div>
 
-                  {/* PDF Viewer / Download actions */}
-                  <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200 max-w-lg mx-auto space-y-4">
-                    <div className="flex items-center justify-between text-xs text-slate-600 border-b border-slate-200 pb-3">
-                      <span>Định dạng: <strong>{selectedActivity.type}</strong></span>
-                      <span>Dung lượng: <strong>2.4 MB</strong></span>
-                      <span>Số trang: <strong>28 trang</strong></span>
+                      {/* Right action controls */}
+                      <div className="flex flex-wrap items-center gap-2 self-stretch md:self-auto justify-end">
+                        {/* Switch View Modes */}
+                        <div className="p-1 bg-slate-100 rounded-xl flex items-center gap-1 border border-slate-200">
+                          <button
+                            type="button"
+                            onClick={() => setDocViewMode('embed')}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                              docViewMode === 'embed'
+                                ? 'bg-white text-blue-700 shadow-xs'
+                                : 'text-slate-600 hover:text-slate-900'
+                            }`}
+                            title="Mở trong khung nhúng trực tiếp"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>Khung nhúng</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDocViewMode('reader')}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                              docViewMode === 'reader'
+                                ? 'bg-white text-blue-700 shadow-xs'
+                                : 'text-slate-600 hover:text-slate-900'
+                            }`}
+                            title="Mở bản đọc chi tiết"
+                          >
+                            <BookOpen className="w-3.5 h-3.5" />
+                            <span>Bản đọc chi tiết</span>
+                          </button>
+                        </div>
+
+                        {/* Fullscreen button */}
+                        <button
+                          type="button"
+                          onClick={() => setDocFullscreen((prev) => !prev)}
+                          className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-all text-xs font-bold flex items-center gap-1.5"
+                          title={docFullscreen ? 'Thu nhỏ cửa sổ' : 'Phóng to toàn màn hình'}
+                        >
+                          {docFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                          <span className="hidden sm:inline">{docFullscreen ? 'Thu nhỏ' : 'Toàn màn hình'}</span>
+                        </button>
+
+                        {/* Open in new tab */}
+                        {selectedActivity.contentUrl && (
+                          <a
+                            href={selectedActivity.contentUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-all text-xs font-bold flex items-center gap-1.5"
+                            title="Mở tài liệu ở tab mới"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                            <span className="hidden sm:inline">Mở tab mới</span>
+                          </a>
+                        )}
+
+                        {/* Download button */}
+                        {selectedActivity.contentUrl && (
+                          <a
+                            href={selectedActivity.contentUrl}
+                            download
+                            className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-all text-xs font-bold flex items-center gap-1.5"
+                            title="Tải tệp tài liệu về máy"
+                          >
+                            <Download className="w-4 h-4" />
+                            <span className="hidden sm:inline">Tải về</span>
+                          </a>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                      <a
-                        href={selectedActivity.contentUrl || '#'}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-xs flex items-center justify-center gap-2 transition-all"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                        <span>Xem trực tuyến</span>
-                      </a>
-                      <a
-                        href={selectedActivity.contentUrl || '#'}
-                        download
-                        className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl border border-slate-200 flex items-center justify-center gap-2 transition-all"
-                      >
-                        <Download className="w-4 h-4" />
-                        <span>Tải về máy (.pdf)</span>
-                      </a>
+                    {/* Main Embedded Viewer Area */}
+                    <div className={`w-full bg-white rounded-3xl border border-slate-200 shadow-2xs overflow-hidden ${
+                      docFullscreen ? 'flex-1 min-h-[600px]' : 'min-h-[750px] lg:min-h-[850px]'
+                    }`}>
+                      {docViewMode === 'embed' && docEmbedInfo.embedUrl ? (
+                        <div className="w-full h-full flex flex-col relative bg-slate-50">
+                          <iframe
+                            src={docEmbedInfo.embedUrl}
+                            title={selectedActivity.title}
+                            className="w-full flex-1 border-0 min-h-[750px] lg:min-h-[850px] bg-white"
+                            allow="fullscreen"
+                          />
+                        </div>
+                      ) : (
+                        /* Reader View */
+                        <div className="p-6 sm:p-10 max-w-4xl mx-auto overflow-y-auto">
+                          {renderDocumentReaderContent(selectedActivity.title, selectedActivity.type)}
+                        </div>
+                      )}
                     </div>
-                  </div>
 
-                  <div className="pt-2">
-                    <button
-                      onClick={() => toggleItemCompletion(selectedActivity.id)}
-                      className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all inline-flex items-center gap-2"
-                    >
-                      <Check className="w-4 h-4" />
-                      <span>Đánh dấu đã đọc & nghiên cứu xong</span>
-                    </button>
+                    {/* Bottom Guidance and Next Lesson Navigation */}
+                    {!docFullscreen && (
+                      <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center flex-shrink-0">
+                            <Check className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-slate-900 text-xs sm:text-sm">Đã tự động ghi nhận hoàn thành bài học</h4>
+                            <p className="text-xs text-slate-500">
+                              Hệ thống đã tự động mở xem tài liệu và cập nhật tiến độ học phần cho bạn.
+                            </p>
+                          </div>
+                        </div>
+
+                        {nextActivity && !nextActivity.isLocked ? (
+                          <button
+                            onClick={() => handleOpenActivity(nextActivity)}
+                            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-xs transition-all whitespace-nowrap flex items-center gap-2 cursor-pointer"
+                          >
+                            <span>Chuyển sang bài tiếp theo</span>
+                            <ArrowRight className="w-4 h-4" />
+                          </button>
+                        ) : (
+                          <div className="px-4 py-2 bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold text-xs rounded-xl flex items-center gap-1.5">
+                            <Check className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Đã hoàn thành nội dung</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* 4. PRACTICE DEDICATED PAGE */}
               {selectedActivity.type === 'PRACTICE' && renderPracticeSection(selectedActivity)}
@@ -1558,17 +1958,30 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
                                 <div className="flex items-center gap-2 flex-shrink-0">
                                   {/* Status Badge */}
                                   {item.isCompleted ? (
-                                    <button
-                                      onClick={(e) => toggleItemCompletion(item.id, e)}
-                                      className="px-2.5 py-1 bg-emerald-50 text-emerald-800 border border-emerald-300 rounded-lg text-xs font-bold flex items-center gap-1 shadow-2xs hover:bg-emerald-100"
+                                    <div
+                                      className="px-2.5 py-1 bg-emerald-50 text-emerald-800 border border-emerald-300 rounded-lg text-xs font-bold flex items-center gap-1 shadow-2xs"
+                                      title="Đã hoàn thành"
                                     >
                                       <Check className="w-3.5 h-3.5 text-emerald-600" />
                                       <span>Done</span>
-                                    </button>
+                                    </div>
+                                  ) : isPracticeOrQuiz(item.type) ? (
+                                    <div
+                                      className="px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg text-xs font-semibold flex items-center gap-1 cursor-default"
+                                      title={
+                                        item.type === 'PRACTICE'
+                                          ? 'Cần nộp bài thực hành để đánh dấu hoàn thành'
+                                          : 'Cần vượt qua bài trắc nghiệm để đánh dấu hoàn thành'
+                                      }
+                                    >
+                                      <Clock className="w-3 h-3 text-amber-600" />
+                                      <span>{item.type === 'PRACTICE' ? 'Chưa nộp' : 'Chưa làm'}</span>
+                                    </div>
                                   ) : (
                                     <button
                                       onClick={(e) => toggleItemCompletion(item.id, e)}
                                       className="px-2.5 py-1 bg-slate-50 text-slate-600 border border-slate-200 rounded-lg text-xs font-medium flex items-center gap-1 hover:bg-slate-100"
+                                      title="Bấm để đánh dấu hoàn thành"
                                     >
                                       <span>To do</span>
                                     </button>
