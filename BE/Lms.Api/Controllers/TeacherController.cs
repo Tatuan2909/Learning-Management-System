@@ -141,6 +141,25 @@ public class TeacherController : ControllerBase
         };
     }
 
+    private static object ToCourseStudentResponse(Enrollment enrollment)
+    {
+        var student = enrollment.Student;
+        var profile = student.StudentProfile;
+
+        return new
+        {
+            id = enrollment.StudentId.ToString(),
+            courseId = enrollment.CourseId.ToString(),
+            studentCode = profile?.StudentCode ?? "SV2024" + enrollment.StudentId.ToString()[..4],
+            fullName = student.FullName,
+            email = student.Email,
+            className = profile?.AdministrativeClass ?? "CNTT-K65",
+            enrolledAt = enrollment.EnrolledAt.ToString("yyyy-MM-dd"),
+            progressPercentage = (double)enrollment.ProgressPercentage,
+            status = enrollment.Status
+        };
+    }
+
     /// <summary>
     /// Lấy danh sách bài học / hoạt động của khóa học
     /// </summary>
@@ -405,18 +424,7 @@ public class TeacherController : ControllerBase
             .OrderBy(e => e.Student.FullName)
             .ToListAsync();
 
-        var result = enrollments.Select(e => new
-        {
-            id = e.StudentId.ToString(),
-            courseId = e.CourseId.ToString(),
-            studentCode = e.Student.StudentProfile?.StudentCode ?? "SV2024" + e.StudentId.ToString().Substring(0, 4),
-            fullName = e.Student.FullName,
-            email = e.Student.Email,
-            className = e.Student.StudentProfile?.AdministrativeClass ?? "CNTT-K65",
-            enrolledAt = e.EnrolledAt.ToString("yyyy-MM-dd"),
-            progressPercentage = (double)e.ProgressPercentage,
-            status = e.Status
-        });
+        var result = enrollments.Select(ToCourseStudentResponse);
 
         return Ok(result);
     }
@@ -499,6 +507,115 @@ public class TeacherController : ControllerBase
     /// <summary>
     /// Thay đổi trạng thái học tập của sinh viên trong lớp (ACTIVE / SUSPENDED)
     /// </summary>
+    [HttpPut("courses/{courseId}/students/{studentId}")]
+    public async Task<IActionResult> UpdateCourseStudent(Guid courseId, Guid studentId, [FromBody] UpdateCourseStudentDto request)
+    {
+        var enrollment = await _db.Enrollments
+            .Include(e => e.Student)
+                .ThenInclude(s => s.StudentProfile)
+            .FirstOrDefaultAsync(e => e.CourseId == courseId && e.StudentId == studentId);
+
+        if (enrollment == null)
+            return NotFound(new { message = "Khong tim thay sinh vien trong lop hoc phan." });
+
+        var student = enrollment.Student;
+        if (student.Role != UserRole.STUDENT)
+            return BadRequest(new { message = "Tai khoan nay khong phai sinh vien." });
+
+        var nextStudentCode = string.IsNullOrWhiteSpace(request.StudentCode)
+            ? student.StudentProfile?.StudentCode
+            : request.StudentCode.Trim().ToUpperInvariant();
+
+        if (!string.IsNullOrWhiteSpace(nextStudentCode))
+        {
+            var duplicateCode = await _db.StudentProfiles
+                .AnyAsync(sp => sp.UserId != studentId && sp.StudentCode.ToUpper() == nextStudentCode);
+
+            if (duplicateCode)
+                return BadRequest(new { message = "MSSV da duoc su dung boi sinh vien khac." });
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Email))
+        {
+            var nextEmail = request.Email.Trim();
+            var duplicateEmail = await _db.Users
+                .AnyAsync(u => u.Id != studentId && u.Email.ToLower() == nextEmail.ToLower());
+
+            if (duplicateEmail)
+                return BadRequest(new { message = "Email da duoc su dung boi tai khoan khac." });
+
+            student.Email = nextEmail;
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.FullName))
+            student.FullName = request.FullName.Trim();
+
+        if (student.StudentProfile == null)
+        {
+            student.StudentProfile = new StudentProfile
+            {
+                UserId = student.Id,
+                StudentCode = nextStudentCode ?? "SV" + DateTime.UtcNow.Ticks.ToString()[^6..],
+                AdministrativeClass = string.IsNullOrWhiteSpace(request.ClassName) ? "CNTT-K65" : request.ClassName.Trim(),
+                Major = "Cong nghe Thong tin",
+                EnrollmentYear = DateTime.UtcNow.Year
+            };
+        }
+        else
+        {
+            if (!string.IsNullOrWhiteSpace(nextStudentCode))
+                student.StudentProfile.StudentCode = nextStudentCode;
+
+            if (!string.IsNullOrWhiteSpace(request.ClassName))
+                student.StudentProfile.AdministrativeClass = request.ClassName.Trim();
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Status))
+        {
+            var nextStatus = request.Status.Trim().ToUpperInvariant();
+            if (nextStatus is not ("ACTIVE" or "SUSPENDED"))
+                return BadRequest(new { message = "Trang thai sinh vien khong hop le." });
+
+            enrollment.Status = nextStatus;
+        }
+
+        student.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return Ok(ToCourseStudentResponse(enrollment));
+    }
+
+    [HttpDelete("courses/{courseId}/students/{studentId}")]
+    public async Task<IActionResult> RemoveStudentFromCourse(Guid courseId, Guid studentId)
+    {
+        var enrollment = await _db.Enrollments
+            .Include(e => e.Student)
+                .ThenInclude(s => s.StudentProfile)
+            .Include(e => e.LessonProgresses)
+            .Include(e => e.FinalGrade)
+            .FirstOrDefaultAsync(e => e.CourseId == courseId && e.StudentId == studentId);
+
+        if (enrollment == null)
+            return NotFound(new { message = "Khong tim thay sinh vien trong lop hoc phan." });
+
+        var removedStudent = ToCourseStudentResponse(enrollment);
+
+        if (enrollment.LessonProgresses.Any())
+            _db.LessonProgresses.RemoveRange(enrollment.LessonProgresses);
+
+        if (enrollment.FinalGrade != null)
+            _db.FinalGrades.Remove(enrollment.FinalGrade);
+
+        _db.Enrollments.Remove(enrollment);
+        await _db.SaveChangesAsync();
+
+        return Ok(new
+        {
+            message = "Da xoa sinh vien khoi lop hoc phan.",
+            student = removedStudent
+        });
+    }
+
     [HttpPost("courses/{courseId}/students/{studentId}/toggle-status")]
     public async Task<IActionResult> ToggleStudentStatus(Guid courseId, Guid studentId)
     {
@@ -776,5 +893,15 @@ public class UpdateTeacherLessonDto
 }
 
 public record AddStudentToCourseDto(string StudentCode, string FullName, string Email, string ClassName);
+
+public class UpdateCourseStudentDto
+{
+    public string? StudentCode { get; set; }
+    public string? FullName { get; set; }
+    public string? Email { get; set; }
+    public string? ClassName { get; set; }
+    public string? Status { get; set; }
+}
+
 public record GradeSubmissionRequestDto(decimal Grade, string? Feedback);
 public record CreateAnnouncementDto(string Title, string Content, bool IsPinned = false);

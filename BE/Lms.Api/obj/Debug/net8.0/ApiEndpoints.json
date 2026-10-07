@@ -766,6 +766,53 @@
   },
   {
     "ContainingType": "Lms.Api.Controllers.TeacherController",
+    "Method": "UpdateCourseStudent",
+    "RelativePath": "api/Teacher/courses/{courseId}/students/{studentId}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "courseId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "studentId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "request",
+        "Type": "Lms.Api.Controllers.UpdateCourseStudentDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Lms.Api.Controllers.TeacherController",
+    "Method": "RemoveStudentFromCourse",
+    "RelativePath": "api/Teacher/courses/{courseId}/students/{studentId}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "courseId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "studentId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Lms.Api.Controllers.TeacherController",
     "Method": "ToggleStudentStatus",
     "RelativePath": "api/Teacher/courses/{courseId}/students/{studentId}/toggle-status",
     "HttpMethod": "POST",

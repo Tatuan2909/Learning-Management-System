@@ -588,9 +588,16 @@ export const TeacherDashboard: React.FC<Props> = ({
     }
   };
 
-  const handleRemoveStudent = (studentId: string, studentName: string) => {
+  const handleRemoveStudent = async (studentId: string, studentName: string) => {
+    if (!currentCourse) return;
     if (confirm(`Bạn có chắc chắn muốn xóa sinh viên ${studentName} khỏi lớp học phần này không?`)) {
+      const deleteResult = await api.delete(`/teacher/courses/${currentCourse.id}/students/${studentId}`).catch((err: any) => {
+        alert('Loi xoa sinh vien: ' + (err.response?.data?.message || err.message));
+        return null;
+      });
+      if (!deleteResult) return;
       setStudentsList((prev) => prev.filter((st) => st.id !== studentId));
+      setGradebookRows((prev) => prev.filter((row) => row.studentId !== studentId));
       if (currentCourse) {
         setCourses((prev) =>
           prev.map((c) => (c.id === currentCourse.id ? { ...c, enrolledStudents: Math.max(0, c.enrolledStudents - 1) } : c))
