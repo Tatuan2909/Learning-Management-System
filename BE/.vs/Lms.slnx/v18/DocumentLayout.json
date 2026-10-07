@@ -116,7 +116,7 @@
               "RelativeDocumentMoniker": "Lms.Api\\Program.cs",
               "ToolTip": "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\BE\\Lms.Api\\Program.cs",
               "RelativeToolTip": "Lms.Api\\Program.cs",
-              "ViewState": "AgIAAE8AAAAAAAAAAAAIwGgAAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAE8AAAAAAAAAAAAIwGkAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-10-07T08:48:59.739Z",
               "EditorCaption": ""
@@ -167,8 +167,7 @@
               "RelativeToolTip": "Lms.Application\\DTOs\\Dashboard\\UpcomingDeadlineDto.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-10-07T08:48:11.218Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-10-07T08:48:11.218Z"
             },
             {
               "$type": "Document",

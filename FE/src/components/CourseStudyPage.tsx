@@ -40,6 +40,7 @@ import {
   Calendar
 } from 'lucide-react';
 import { PostLessonQuiz } from './PostLessonQuiz';
+import { parseVideoUrl } from '../utils/videoHelper';
 
 interface Props {
   courseId?: string;
@@ -57,6 +58,7 @@ export type ActivityType =
   | 'PRACTICE'
   | 'QUIZ'
   | 'VIDEO'
+  | 'LECTURE'
   | 'TEXT';
 
 export interface CurriculumItem {
@@ -440,6 +442,13 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
         return (
           <div className="w-8 h-8 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 shadow-2xs">
             <Box className="w-4.5 h-4.5" />
+          </div>
+        );
+      case 'VIDEO':
+      case 'LECTURE':
+        return (
+          <div className="w-8 h-8 rounded-lg bg-red-50 border border-red-200 flex items-center justify-center text-red-600 shadow-2xs">
+            <PlayCircle className="w-4.5 h-4.5" />
           </div>
         );
       case 'DOCX':
@@ -1220,55 +1229,80 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
                 </div>
               )}
 
-              {/* 2. SCORM / VIDEO DEDICATED PAGE */}
-              {selectedActivity.type === 'SCORM' && (
-                <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-2xs space-y-6">
-                  <div>
-                    <span className="text-xs font-bold bg-amber-100 text-amber-800 px-3 py-1 rounded-full uppercase">
-                      Bài giảng SCORM Video tương tác
-                    </span>
-                    <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900 mt-2">
-                      {selectedActivity.title}
-                    </h3>
-                    <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                      Xem hết nội dung bài giảng để nắm chắc kiến thức trước khi làm bài tập và bài trắc nghiệm.
-                    </p>
-                  </div>
+              {/* 2. SCORM / VIDEO / LECTURE DEDICATED PAGE */}
+              {(selectedActivity.type === 'SCORM' || selectedActivity.type === 'VIDEO' || (selectedActivity.type as string) === 'LECTURE') && (() => {
+                const videoInfo = parseVideoUrl(selectedActivity.contentUrl);
 
-                  {/* Theater Video Player */}
-                  <div className="bg-slate-900 rounded-3xl overflow-hidden aspect-video w-full shadow-lg border border-slate-800">
-                    <iframe
-                      className="w-full h-full"
-                      src={selectedActivity.contentUrl || 'https://www.youtube.com/embed/d95475151'}
-                      title={selectedActivity.title}
-                      allowFullScreen
-                    ></iframe>
-                  </div>
-
-                  {/* Study Notes & Completion Action */}
-                  <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <div className="space-y-1">
-                      <h4 className="font-bold text-slate-900 text-sm">Hướng dẫn học tập:</h4>
-                      <p className="text-xs text-slate-600 leading-relaxed">
-                        Bạn có thể ghi chú bài giảng và xem lại bất kỳ lúc nào. Sau khi học xong, nhấn nút xác nhận hoàn thành bên cạnh.
+                return (
+                  <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-2xs space-y-6">
+                    <div>
+                      <span className="text-xs font-bold bg-amber-100 text-amber-800 px-3 py-1 rounded-full uppercase">
+                        Bài giảng Video
+                      </span>
+                      <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900 mt-2">
+                        {selectedActivity.title}
+                      </h3>
+                      <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                        Xem hết nội dung bài giảng video để nắm chắc kiến thức trước khi làm bài tập và bài trắc nghiệm.
                       </p>
                     </div>
 
-                    <button
-                      onClick={() => {
-                        toggleItemCompletion(selectedActivity.id);
-                        if (nextActivity && !nextActivity.isLocked) {
-                          handleOpenActivity(nextActivity);
-                        }
-                      }}
-                      className="px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-xs transition-all whitespace-nowrap flex items-center gap-2"
-                    >
-                      <Check className="w-4 h-4" />
-                      <span>Hoàn thành & Sang bài tiếp</span>
-                    </button>
+                    {/* Theater Video Player */}
+                    <div className="bg-slate-900 rounded-3xl overflow-hidden aspect-video w-full shadow-lg border border-slate-800 relative group flex items-center justify-center">
+                      {videoInfo.embedUrl ? (
+                        videoInfo.isDirectVideo ? (
+                          <video
+                            className="w-full h-full"
+                            controls
+                            playsInline
+                            src={videoInfo.embedUrl}
+                          >
+                            Trình duyệt của bạn không hỗ trợ phát thẻ video trực tiếp.
+                          </video>
+                        ) : (
+                          <iframe
+                            className="w-full h-full"
+                            src={videoInfo.embedUrl}
+                            title={selectedActivity.title}
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                            referrerPolicy="strict-origin-when-cross-origin"
+                            allowFullScreen
+                          ></iframe>
+                        )
+                      ) : (
+                        <div className="text-center p-8 text-slate-400 space-y-3">
+                          <PlayCircle className="w-16 h-16 mx-auto text-slate-600 opacity-60" />
+                          <p className="text-sm font-semibold">Chưa có liên kết video hoặc URL không khả dụng.</p>
+                          <p className="text-xs text-slate-500">Giảng viên có thể cập nhật đường link video trong Bảng điều khiển giảng viên.</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Study Notes & Completion Action */}
+                    <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+                      <div className="space-y-1">
+                        <h4 className="font-bold text-slate-900 text-sm">Hướng dẫn học tập:</h4>
+                        <p className="text-xs text-slate-600 leading-relaxed">
+                          Bạn có thể ghi chú bài giảng và xem lại bất kỳ lúc nào. Sau khi học xong, nhấn nút xác nhận hoàn thành bên cạnh.
+                        </p>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          toggleItemCompletion(selectedActivity.id);
+                          if (nextActivity && !nextActivity.isLocked) {
+                            handleOpenActivity(nextActivity);
+                          }
+                        }}
+                        className="px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-xs transition-all whitespace-nowrap flex items-center gap-2 cursor-pointer"
+                      >
+                        <Check className="w-4 h-4" />
+                        <span>Hoàn thành & Sang bài tiếp</span>
+                      </button>
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* 3. PDF / DOCX DOCUMENT DEDICATED PAGE */}
               {(selectedActivity.type === 'PDF' || selectedActivity.type === 'DOCX') && (
