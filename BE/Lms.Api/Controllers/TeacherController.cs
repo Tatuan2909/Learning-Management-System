@@ -103,6 +103,44 @@ public class TeacherController : ControllerBase
         });
     }
 
+    private static string MapContentTypeToCategory(LessonContentType contentType)
+    {
+        return contentType switch
+        {
+            LessonContentType.VIDEO => "LECTURE",
+            LessonContentType.SCORM => "LECTURE",
+            LessonContentType.OVERVIEW => "LECTURE",
+            LessonContentType.PDF => "DOCUMENT",
+            LessonContentType.DOCX => "DOCUMENT",
+            LessonContentType.LINK => "DOCUMENT",
+            LessonContentType.PRACTICE => "PRACTICE",
+            LessonContentType.QUIZ => "QUIZ",
+            LessonContentType.ANNOUNCEMENT => "FORUM",
+            _ => "LECTURE"
+        };
+    }
+
+    private static LessonContentType ParseActivityTypeToContentType(string? activityType)
+    {
+        var raw = activityType?.Trim().ToUpper() ?? "";
+        return raw switch
+        {
+            "LECTURE" => LessonContentType.VIDEO,
+            "DOCUMENT" => LessonContentType.PDF,
+            "PRACTICE" => LessonContentType.PRACTICE,
+            "QUIZ" => LessonContentType.QUIZ,
+            "FORUM" => LessonContentType.ANNOUNCEMENT,
+            "VIDEO" => LessonContentType.VIDEO,
+            "SCORM" => LessonContentType.SCORM,
+            "OVERVIEW" => LessonContentType.OVERVIEW,
+            "PDF" => LessonContentType.PDF,
+            "DOCX" => LessonContentType.DOCX,
+            "LINK" => LessonContentType.LINK,
+            "TEXT" => LessonContentType.TEXT,
+            _ => LessonContentType.VIDEO
+        };
+    }
+
     /// <summary>
     /// Lấy danh sách bài học / hoạt động của khóa học
     /// </summary>
@@ -121,7 +159,8 @@ public class TeacherController : ControllerBase
             id = l.Id.ToString(),
             courseId = l.CourseId.ToString(),
             weekNumber = l.Section?.OrderIndex ?? 1,
-            activityType = l.ContentType.ToString(),
+            activityType = MapContentTypeToCategory(l.ContentType),
+            contentType = l.ContentType.ToString(),
             lessonNumber = l.OrderIndex,
             title = l.Title,
             durationMinutes = 45,
@@ -161,10 +200,7 @@ public class TeacherController : ControllerBase
             await _db.SaveChangesAsync();
         }
 
-        if (!Enum.TryParse<LessonContentType>(request.ActivityType, true, out var contentType))
-        {
-            contentType = LessonContentType.VIDEO;
-        }
+        var contentType = ParseActivityTypeToContentType(request.ActivityType);
 
         var maxOrder = await _db.Lessons
             .Where(l => l.CourseId == courseId && l.SectionId == section.Id)
@@ -211,7 +247,95 @@ public class TeacherController : ControllerBase
             id = lesson.Id.ToString(),
             courseId = lesson.CourseId.ToString(),
             weekNumber = request.WeekNumber,
-            activityType = lesson.ContentType.ToString(),
+            activityType = MapContentTypeToCategory(lesson.ContentType),
+            contentType = lesson.ContentType.ToString(),
+            lessonNumber = lesson.OrderIndex,
+            title = lesson.Title,
+            durationMinutes = request.DurationMinutes > 0 ? request.DurationMinutes : 45,
+            isUnlocked = !lesson.IsLocked,
+            description = lesson.BodyMarkdown,
+            resourceUrl = lesson.ContentUrl
+        });
+    }
+
+    /// <summary>
+    /// Giảng viên cập nhật bài học / hoạt động
+    /// </summary>
+    [HttpPut("lessons/{lessonId}")]
+    public async Task<IActionResult> UpdateLesson(Guid lessonId, [FromBody] UpdateTeacherLessonDto request)
+    {
+        var lesson = await _db.Lessons
+            .Include(l => l.Section)
+            .FirstOrDefaultAsync(l => l.Id == lessonId);
+        if (lesson == null) return NotFound("Không tìm thấy bài học.");
+
+        var contentType = ParseActivityTypeToContentType(request.ActivityType);
+
+        lesson.Title = request.Title;
+        lesson.ContentType = contentType;
+        lesson.ContentUrl = request.ResourceUrl;
+        lesson.BodyMarkdown = request.Description;
+
+        // Xử lý chuyển tuần nếu weekNumber thay đổi
+        if (lesson.Section == null || lesson.Section.OrderIndex != request.WeekNumber)
+        {
+            var section = await _db.CourseSections
+                .FirstOrDefaultAsync(s => s.CourseId == lesson.CourseId && s.OrderIndex == request.WeekNumber);
+            if (section == null)
+            {
+                section = new CourseSection
+                {
+                    Id = Guid.NewGuid(),
+                    CourseId = lesson.CourseId,
+                    Title = $"Week {request.WeekNumber}: Kế hoạch học tập tuần {request.WeekNumber}",
+                    OrderIndex = request.WeekNumber,
+                    IsExpanded = true,
+                    IsLocked = false
+                };
+                _db.CourseSections.Add(section);
+                await _db.SaveChangesAsync();
+            }
+            lesson.SectionId = section.Id;
+            lesson.Section = section;
+        }
+
+        // Cập nhật Assignment liên kết nếu có
+        if (contentType == LessonContentType.PRACTICE)
+        {
+            var assignment = await _db.Assignments.FirstOrDefaultAsync(a => a.LessonId == lesson.Id);
+            if (assignment != null)
+            {
+                assignment.Title = request.Title;
+                if (!string.IsNullOrEmpty(request.Description))
+                {
+                    assignment.Instructions = request.Description;
+                }
+            }
+            else
+            {
+                _db.Assignments.Add(new Assignment
+                {
+                    Id = Guid.NewGuid(),
+                    CourseId = lesson.CourseId,
+                    LessonId = lesson.Id,
+                    Title = request.Title,
+                    Instructions = request.Description ?? "Vui lòng hoàn thành yêu cầu thực hành và nộp bài đúng hạn.",
+                    DueDate = DateTime.UtcNow.AddDays(7),
+                    MaxScore = 10.00m,
+                    AllowGitRepo = true
+                });
+            }
+        }
+
+        await _db.SaveChangesAsync();
+
+        return Ok(new
+        {
+            id = lesson.Id.ToString(),
+            courseId = lesson.CourseId.ToString(),
+            weekNumber = lesson.Section?.OrderIndex ?? request.WeekNumber,
+            activityType = MapContentTypeToCategory(lesson.ContentType),
+            contentType = lesson.ContentType.ToString(),
             lessonNumber = lesson.OrderIndex,
             title = lesson.Title,
             durationMinutes = request.DurationMinutes > 0 ? request.DurationMinutes : 45,
@@ -242,8 +366,25 @@ public class TeacherController : ControllerBase
     [HttpDelete("lessons/{lessonId}")]
     public async Task<IActionResult> DeleteLesson(Guid lessonId)
     {
-        var lesson = await _db.Lessons.FindAsync(lessonId);
+        var lesson = await _db.Lessons
+            .Include(l => l.Progresses)
+            .Include(l => l.Quiz)
+            .FirstOrDefaultAsync(l => l.Id == lessonId);
         if (lesson == null) return NotFound("Không tìm thấy bài học.");
+
+        if (lesson.Progresses.Any())
+        {
+            _db.LessonProgresses.RemoveRange(lesson.Progresses);
+        }
+        if (lesson.Quiz != null)
+        {
+            _db.Quizzes.Remove(lesson.Quiz);
+        }
+        var assignments = await _db.Assignments.Where(a => a.LessonId == lessonId).ToListAsync();
+        foreach (var a in assignments)
+        {
+            a.LessonId = null;
+        }
 
         _db.Lessons.Remove(lesson);
         await _db.SaveChangesAsync();
@@ -569,7 +710,29 @@ public class TeacherController : ControllerBase
 }
 
 public record CreateTeacherCourseDto(string CourseCode, string Title, string? Description, decimal WeightAttendance = 10, decimal WeightAssignments = 30, decimal WeightFinalExam = 60);
-public record CreateTeacherLessonDto(int WeekNumber, string ActivityType, string Title, int DurationMinutes = 45, string? ResourceUrl = null, string? Description = null, string? Password = null);
+
+public class CreateTeacherLessonDto
+{
+    public int WeekNumber { get; set; } = 1;
+    public string ActivityType { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
+    public int DurationMinutes { get; set; } = 45;
+    public string? ResourceUrl { get; set; }
+    public string? Description { get; set; }
+    public string? Password { get; set; }
+}
+
+public class UpdateTeacherLessonDto
+{
+    public int WeekNumber { get; set; } = 1;
+    public string ActivityType { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
+    public int DurationMinutes { get; set; } = 45;
+    public string? ResourceUrl { get; set; }
+    public string? Description { get; set; }
+    public string? Password { get; set; }
+}
+
 public record AddStudentToCourseDto(string StudentCode, string FullName, string Email, string ClassName);
 public record GradeSubmissionRequestDto(decimal Grade, string? Feedback);
 public record CreateAnnouncementDto(string Title, string Content, bool IsPinned = false);

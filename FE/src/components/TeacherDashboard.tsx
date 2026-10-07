@@ -125,6 +125,17 @@ const saveStoredCoursePassword = (courseCode: string, password: string) => {
 const courseHasEnrollmentPassword = (course: TeacherCourse) => Boolean((course.accessPassword || '').trim());
 const teacherActivityOrder: TeacherActivityType[] = ['LECTURE', 'DOCUMENT', 'PRACTICE', 'QUIZ'];
 const addableTeacherActivityTypes: TeacherActivityType[] = teacherActivityOrder;
+
+export const mapToActivityCategory = (typeOrContentType: string): TeacherActivityType => {
+  const t = (typeOrContentType || '').toUpperCase();
+  if (t === 'LECTURE' || t === 'VIDEO' || t === 'SCORM' || t === 'OVERVIEW') return 'LECTURE';
+  if (t === 'DOCUMENT' || t === 'PDF' || t === 'DOCX' || t === 'LINK') return 'DOCUMENT';
+  if (t === 'PRACTICE') return 'PRACTICE';
+  if (t === 'QUIZ') return 'QUIZ';
+  if (t === 'FORUM' || t === 'ANNOUNCEMENT' || t === 'TEXT') return 'FORUM';
+  return 'LECTURE';
+};
+
 const getActivityMeta = (type: TeacherActivityType) => {
   switch (type) {
     case 'LECTURE':
@@ -259,6 +270,18 @@ export const TeacherDashboard: React.FC<Props> = ({
   const [newLessonDescription, setNewLessonDescription] = useState('');
   const [newLessonPassword, setNewLessonPassword] = useState('');
   const [newLessonDueDate, setNewLessonDueDate] = useState('');
+
+  // Edit Lesson Modal State
+  const [showEditLessonModal, setShowEditLessonModal] = useState(false);
+  const [editingLesson, setEditingLesson] = useState<TeacherLesson | null>(null);
+  const [editLessonWeek, setEditLessonWeek] = useState(1);
+  const [editLessonType, setEditLessonType] = useState<TeacherActivityType>('LECTURE');
+  const [editLessonTitle, setEditLessonTitle] = useState('');
+  const [editLessonDuration, setEditLessonDuration] = useState(45);
+  const [editLessonUrl, setEditLessonUrl] = useState('');
+  const [editLessonDescription, setEditLessonDescription] = useState('');
+  const [editLessonPassword, setEditLessonPassword] = useState('');
+  const [editLessonDueDate, setEditLessonDueDate] = useState('');
 
   // Add Student to Course Modal State
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
@@ -423,6 +446,77 @@ export const TeacherDashboard: React.FC<Props> = ({
       alert('Đã thêm hoạt động mới vào tuần học trong CSDL!');
     } catch (err: any) {
       alert('Lỗi thêm hoạt động: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const openEditActivityModal = (lesson: TeacherLesson) => {
+    setEditingLesson(lesson);
+    setEditLessonWeek(lesson.weekNumber);
+    setEditLessonType(mapToActivityCategory(lesson.activityType));
+    setEditLessonTitle(lesson.title);
+    setEditLessonDuration(lesson.durationMinutes || 45);
+    setEditLessonUrl(lesson.resourceUrl || '');
+    setEditLessonDescription(lesson.description || '');
+    setEditLessonPassword(lesson.password || '');
+    setEditLessonDueDate(lesson.dueDate || '');
+    setShowEditLessonModal(true);
+  };
+
+  const handleUpdateLesson = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingLesson || !editLessonTitle.trim() || !currentCourse) return;
+
+    try {
+      const res = await api.put<TeacherLesson>(`/teacher/lessons/${editingLesson.id}`, {
+        weekNumber: editLessonWeek,
+        activityType: editLessonType,
+        title: editLessonTitle.trim(),
+        durationMinutes: editLessonDuration || 45,
+        description: editLessonDescription.trim() || undefined,
+        resourceUrl: editLessonUrl.trim() || undefined,
+        password: editLessonType === 'QUIZ' ? editLessonPassword.trim() || undefined : undefined
+      });
+
+      setLessons((prev) =>
+        prev.map((les) => (les.id === editingLesson.id ? { ...les, ...res.data } : les))
+      );
+      setShowEditLessonModal(false);
+      setEditingLesson(null);
+      alert('Đã cập nhật hoạt động thành công trong CSDL!');
+    } catch (err: any) {
+      alert('Lỗi cập nhật hoạt động: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const handleDeleteLesson = async (lessonId: string, title: string) => {
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa hoạt động: "${title}"?\n\nHoạt động này sẽ bị xóa vĩnh viễn khỏi cơ sở dữ liệu.`)) {
+      return;
+    }
+
+    try {
+      await api.delete(`/teacher/lessons/${lessonId}`);
+      setLessons((prev) => prev.filter((les) => les.id !== lessonId));
+      if (currentCourse) {
+        setCourses((prev) =>
+          prev.map((c) =>
+            c.id === currentCourse.id ? { ...c, lessonsCount: Math.max(0, c.lessonsCount - 1) } : c
+          )
+        );
+      }
+      alert(`Đã xóa thành công hoạt động: "${title}" khỏi CSDL!`);
+    } catch (err: any) {
+      alert('Lỗi khi xóa hoạt động: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const handleToggleLessonLock = async (lessonId: string) => {
+    try {
+      const res = await api.post<{ lessonId: string; isLocked: boolean }>(`/teacher/lessons/${lessonId}/toggle-lock`);
+      setLessons((prev) =>
+        prev.map((les) => (les.id === lessonId ? { ...les, isUnlocked: !res.data.isLocked } : les))
+      );
+    } catch (err: any) {
+      alert('Lỗi chuyển trạng thái khóa: ' + (err.response?.data?.message || err.message));
     }
   };
 
@@ -1021,7 +1115,7 @@ export const TeacherDashboard: React.FC<Props> = ({
                     {courseWeekNumbers.map((weekNumber) => {
                       const weekItems = courseLessons.filter((lesson) => lesson.weekNumber === weekNumber);
                       const availableActivityCount = teacherActivityOrder.filter((type) =>
-                        weekItems.some((lesson) => lesson.activityType === type)
+                        weekItems.some((lesson) => mapToActivityCategory(lesson.activityType) === type)
                       ).length;
                       return (
                         <div key={weekNumber} className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
@@ -1029,7 +1123,7 @@ export const TeacherDashboard: React.FC<Props> = ({
                             <div>
                               <h5 className="font-extrabold text-slate-900 text-sm">Tuần {weekNumber}</h5>
                               <p className="text-xs text-slate-500 mt-0.5">
-                                {availableActivityCount}/{teacherActivityOrder.length} loại hoạt động đã sẵn sàng cho tuần này
+                                {availableActivityCount}/{teacherActivityOrder.length} loại hoạt động đã sẵn sàng cho tuần này ({weekItems.length} hoạt động)
                               </p>
                             </div>
                             <button
@@ -1045,13 +1139,16 @@ export const TeacherDashboard: React.FC<Props> = ({
                             {teacherActivityOrder.map((type) => {
                               const meta = getActivityMeta(type);
                               const Icon = meta.icon;
-                              const item = weekItems.find((lesson) => lesson.activityType === type);
+                              const matchingItems = weekItems.filter(
+                                (lesson) => mapToActivityCategory(lesson.activityType) === type
+                              );
+                              const hasItems = matchingItems.length > 0;
 
                               return (
                                 <div
                                   key={type}
-                                  className={`min-h-[168px] rounded-2xl border p-4 flex flex-col justify-between ${
-                                    item ? 'bg-white border-slate-200' : 'bg-slate-50 border-dashed border-slate-300'
+                                  className={`min-h-[175px] rounded-2xl border p-4 flex flex-col justify-between ${
+                                    hasItems ? 'bg-white border-slate-200 shadow-2xs' : 'bg-slate-50 border-dashed border-slate-300'
                                   }`}
                                 >
                                   <div className="space-y-3">
@@ -1060,29 +1157,63 @@ export const TeacherDashboard: React.FC<Props> = ({
                                         <Icon className="w-3 h-3" />
                                         {meta.label}
                                       </span>
-                                      {item && (
-                                        <span className={`text-[10px] font-bold rounded-full px-2 py-0.5 border ${
-                                          item.isUnlocked
-                                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                            : 'bg-slate-100 text-slate-600 border-slate-200'
-                                        }`}>
-                                          {item.isUnlocked ? 'Mở' : 'Khóa'}
+                                      {hasItems && (
+                                        <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                                          {matchingItems.length} mục
                                         </span>
                                       )}
                                     </div>
 
-                                    {item ? (
-                                      <div className="space-y-2">
-                                        <h6 className="font-bold text-slate-900 text-xs leading-snug">{item.title}</h6>
-                                        <div className="space-y-1 text-[11px] text-slate-500">
-                                          <span className="flex items-center gap-1.5">
-                                            <Clock className="w-3 h-3" />
-                                            {item.durationMinutes} phút
-                                          </span>
-                                          {item.resourceUrl && <span className="block truncate">Link: {item.resourceUrl}</span>}
-                                          {item.dueDate && <span className="block">Hạn: {item.dueDate}</span>}
-                                          {item.password && <span className="block text-indigo-600 font-bold">Có mật khẩu quiz</span>}
-                                        </div>
+                                    {hasItems ? (
+                                      <div className="space-y-3">
+                                        {matchingItems.map((item) => (
+                                          <div key={item.id} className="space-y-1.5 pb-2.5 border-b border-slate-100 last:border-b-0 last:pb-0">
+                                            <div className="flex items-start justify-between gap-2">
+                                              <h6 className="font-bold text-slate-900 text-xs leading-snug line-clamp-2">{item.title}</h6>
+                                              <button
+                                                onClick={() => handleToggleLessonLock(item.id)}
+                                                className={`shrink-0 text-[10px] font-bold rounded-full px-2 py-0.5 border cursor-pointer transition-colors ${
+                                                  item.isUnlocked
+                                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                                                    : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+                                                }`}
+                                                title="Bấm để đổi trạng thái khóa/mở"
+                                              >
+                                                {item.isUnlocked ? 'Mở' : 'Khóa'}
+                                              </button>
+                                            </div>
+                                            <div className="space-y-0.5 text-[11px] text-slate-500">
+                                              <span className="flex items-center gap-1">
+                                                <Clock className="w-3 h-3" />
+                                                {item.durationMinutes} phút
+                                              </span>
+                                              {item.resourceUrl && (
+                                                <span className="block truncate text-blue-600 hover:underline" title={item.resourceUrl}>
+                                                  Link: {item.resourceUrl}
+                                                </span>
+                                              )}
+                                              {item.dueDate && <span className="block text-slate-400">Hạn: {item.dueDate}</span>}
+                                              {item.password && <span className="block text-indigo-600 font-bold">Có mật khẩu quiz</span>}
+                                            </div>
+                                            <div className="flex items-center gap-1.5 pt-1">
+                                              <button
+                                                onClick={() => openEditActivityModal(item)}
+                                                className="flex-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl flex items-center justify-center gap-1 transition-colors"
+                                              >
+                                                <Edit3 className="w-3 h-3" />
+                                                <span>Sửa</span>
+                                              </button>
+                                              <button
+                                                onClick={() => handleDeleteLesson(item.id, item.title)}
+                                                className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs rounded-xl flex items-center justify-center gap-1 transition-colors"
+                                                title="Xóa hoạt động khỏi CSDL"
+                                              >
+                                                <Trash2 className="w-3 h-3" />
+                                                <span>Xóa</span>
+                                              </button>
+                                            </div>
+                                          </div>
+                                        ))}
                                       </div>
                                     ) : (
                                       <p className="text-xs font-semibold text-slate-500 leading-relaxed">
@@ -1091,17 +1222,10 @@ export const TeacherDashboard: React.FC<Props> = ({
                                     )}
                                   </div>
 
-                                  {item ? (
-                                    <button
-                                      onClick={() => alert(`Chỉnh sửa hoạt động: ${item.title}`)}
-                                      className="mt-4 w-full px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl"
-                                    >
-                                      Sửa
-                                    </button>
-                                  ) : (
+                                  {!hasItems && (
                                     <button
                                       onClick={() => openAddActivityModal(weekNumber, type)}
-                                      className="mt-4 w-full px-3 py-2 bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 font-bold text-xs rounded-xl inline-flex items-center justify-center gap-1.5"
+                                      className="mt-4 w-full px-3 py-2 bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 font-bold text-xs rounded-xl inline-flex items-center justify-center gap-1.5 transition-colors"
                                     >
                                       <PlusCircle className="w-3.5 h-3.5" />
                                       <span>Thêm {meta.label}</span>
@@ -1116,43 +1240,94 @@ export const TeacherDashboard: React.FC<Props> = ({
                     })}
                   </div>
 
+                  {/* DANH SÁCH CHI TIẾT TẤT CẢ HOẠT ĐỘNG */}
                   <div className="space-y-3 w-full">
-                    {courseLessons.filter((les) => les.activityType !== 'FORUM').map((les) => (
-                      <div
-                        key={les.id}
-                        className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-700 font-extrabold flex items-center justify-center text-sm border border-blue-200">
-                            {les.lessonNumber}
-                          </div>
-                          <div>
-                            <h5 className="font-bold text-slate-900 text-sm">{les.title}</h5>
-                            <span className="text-xs text-slate-500 flex items-center gap-2 mt-0.5">
-                              <Clock className="w-3.5 h-3.5" /> Thời lượng dự kiến: {les.durationMinutes} phút
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`px-3 py-1 rounded-full text-xs font-bold ${
-                              les.isUnlocked
-                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                : 'bg-slate-100 text-slate-600 border border-slate-200'
-                            }`}
-                          >
-                            {les.isUnlocked ? 'Đang mở cho sinh viên' : 'Đang khóa (Tuần tự)'}
-                          </span>
-                          <button
-                            onClick={() => alert(`Chỉnh sửa bài giảng: ${les.title}`)}
-                            className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl"
-                          >
-                            Sửa
-                          </button>
-                        </div>
+                    <div className="flex items-center justify-between pt-2">
+                      <h5 className="font-extrabold text-slate-800 text-sm">
+                        Toàn bộ danh sách hoạt động khóa học ({courseLessons.length} hoạt động)
+                      </h5>
+                    </div>
+                    {courseLessons.length === 0 ? (
+                      <div className="p-8 text-center bg-white rounded-2xl border border-slate-200 text-slate-500 text-xs">
+                        Khóa học hiện chưa có hoạt động nào. Hãy bấm "Thêm hoạt động tuần học" để bắt đầu thiết kế nội dung giảng dạy.
                       </div>
-                    ))}
+                    ) : (
+                      courseLessons.map((les) => {
+                        const meta = getActivityMeta(mapToActivityCategory(les.activityType));
+                        const Icon = meta.icon;
+                        return (
+                          <div
+                            key={les.id}
+                            className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-slate-300 transition-all"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-700 font-extrabold flex items-center justify-center text-sm border border-blue-200 shrink-0">
+                                {les.lessonNumber}
+                              </div>
+                              <div>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-extrabold ${meta.color}`}>
+                                    <Icon className="w-2.5 h-2.5" />
+                                    {meta.label}
+                                  </span>
+                                  <span className="text-[11px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
+                                    Tuần {les.weekNumber}
+                                  </span>
+                                  <h5 className="font-bold text-slate-900 text-sm">{les.title}</h5>
+                                </div>
+                                <div className="text-xs text-slate-500 flex flex-wrap items-center gap-3 mt-1">
+                                  <span className="flex items-center gap-1">
+                                    <Clock className="w-3.5 h-3.5" /> {les.durationMinutes} phút
+                                  </span>
+                                  {les.resourceUrl && (
+                                    <span className="truncate max-w-xs text-blue-600" title={les.resourceUrl}>
+                                      Link: {les.resourceUrl}
+                                    </span>
+                                  )}
+                                  {les.description && (
+                                    <span className="text-slate-400 truncate max-w-md" title={les.description}>
+                                      {les.description}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                              <button
+                                onClick={() => handleToggleLessonLock(les.id)}
+                                className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors flex items-center gap-1.5 cursor-pointer ${
+                                  les.isUnlocked
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                                    : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+                                }`}
+                                title="Nhấp để đổi trạng thái Khóa / Mở cho sinh viên"
+                              >
+                                {les.isUnlocked ? <Unlock className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
+                                <span>{les.isUnlocked ? 'Đang mở' : 'Đang khóa'}</span>
+                              </button>
+
+                              <button
+                                onClick={() => openEditActivityModal(les)}
+                                className="px-3 py-1.5 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-700 font-bold text-xs rounded-xl flex items-center gap-1.5 transition-colors border border-slate-200"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                                <span>Sửa</span>
+                              </button>
+
+                              <button
+                                onClick={() => handleDeleteLesson(les.id, les.title)}
+                                className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl flex items-center gap-1.5 transition-colors border border-rose-200"
+                                title="Xóa bài học khỏi CSDL"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                <span>Xóa</span>
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
                   </div>
                 </div>
               )}
@@ -1883,6 +2058,169 @@ export const TeacherDashboard: React.FC<Props> = ({
                 >
                   Thêm hoạt động
                 </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: CHỈNH SỬA HOẠT ĐỘNG (EditLessonModal)                             */}
+      {/* ========================================================================= */}
+      {showEditLessonModal && editingLesson && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl p-6 text-slate-900 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="font-extrabold text-lg flex items-center gap-2">
+                <Edit3 className="w-5 h-5 text-blue-600" />
+                Chỉnh sửa hoạt động: {editingLesson.title}
+              </h3>
+              <button
+                onClick={() => {
+                  setShowEditLessonModal(false);
+                  setEditingLesson(null);
+                }}
+                className="text-slate-400 hover:text-slate-600 font-bold p-1 rounded-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateLesson} className="space-y-4 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Tuần học:</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={editLessonWeek}
+                    onChange={(e) => setEditLessonWeek(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Loại hoạt động:</label>
+                  <select
+                    value={editLessonType}
+                    onChange={(e) => {
+                      const newType = e.target.value as TeacherActivityType;
+                      setEditLessonType(newType);
+                      if (newType !== 'QUIZ') setEditLessonPassword('');
+                    }}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {addableTeacherActivityTypes.map((type) => (
+                      <option key={type} value={type}>
+                        {getActivityMeta(type).label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Tiêu đề hoạt động:</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Nhập tiêu đề hoạt động"
+                  value={editLessonTitle}
+                  onChange={(e) => setEditLessonTitle(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Thời lượng / thời gian làm (phút):</label>
+                <input
+                  type="number"
+                  min="5"
+                  max="180"
+                  value={editLessonDuration}
+                  onChange={(e) => setEditLessonDuration(parseInt(e.target.value) || 45)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Link tài nguyên / video / tài liệu:</label>
+                <input
+                  type="text"
+                  placeholder="URL video youtube, PDF, file hoặc liên kết bài tập..."
+                  value={editLessonUrl}
+                  onChange={(e) => setEditLessonUrl(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Mô tả / hướng dẫn bài học:</label>
+                <textarea
+                  rows={3}
+                  placeholder="Nội dung tóm tắt, mục tiêu học tập hoặc hướng dẫn làm bài..."
+                  value={editLessonDescription}
+                  onChange={(e) => setEditLessonDescription(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className={editLessonType === 'QUIZ' ? 'grid grid-cols-1 sm:grid-cols-2 gap-3' : 'grid grid-cols-1 gap-3'}>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Hạn nộp / hạn làm:</label>
+                  <input
+                    type="date"
+                    value={editLessonDueDate}
+                    onChange={(e) => setEditLessonDueDate(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                {editLessonType === 'QUIZ' && (
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Mật khẩu quiz:</label>
+                    <input
+                      type="text"
+                      placeholder="Để trống nếu quiz không cần mật khẩu"
+                      value={editLessonPassword}
+                      onChange={(e) => setEditLessonPassword(e.target.value)}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleDeleteLesson(editingLesson.id, editingLesson.title);
+                    setShowEditLessonModal(false);
+                    setEditingLesson(null);
+                  }}
+                  className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold rounded-xl inline-flex items-center gap-1.5 transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Xóa hoạt động này</span>
+                </button>
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowEditLessonModal(false);
+                      setEditingLesson(null);
+                    }}
+                    className="px-4 py-2 bg-slate-200 text-slate-800 font-semibold rounded-xl hover:bg-slate-300 transition-colors"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-xs inline-flex items-center gap-1.5 transition-colors"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    <span>Lưu thay đổi</span>
+                  </button>
+                </div>
               </div>
             </form>
           </div>

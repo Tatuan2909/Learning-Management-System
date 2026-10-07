@@ -586,6 +586,27 @@
   },
   {
     "ContainingType": "Lms.Api.Controllers.TeacherController",
+    "Method": "UpdateLesson",
+    "RelativePath": "api/Teacher/lessons/{lessonId}",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "lessonId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "request",
+        "Type": "Lms.Api.Controllers.UpdateTeacherLessonDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Lms.Api.Controllers.TeacherController",
     "Method": "DeleteLesson",
     "RelativePath": "api/Teacher/lessons/{lessonId}",
     "HttpMethod": "DELETE",
