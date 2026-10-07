@@ -134,14 +134,6 @@ export interface TeacherAnnouncement {
   createdAt: string;
 }
 
-const getCoursePasswordStorageKey = (courseCode: string) => `lms_course_password_${courseCode}`;
-const readStoredCoursePassword = (courseCode: string, fallback?: string) => {
-  const storedPassword = localStorage.getItem(getCoursePasswordStorageKey(courseCode));
-  return storedPassword !== null ? storedPassword : fallback;
-};
-const saveStoredCoursePassword = (courseCode: string, password: string) => {
-  localStorage.setItem(getCoursePasswordStorageKey(courseCode), password);
-};
 const courseHasEnrollmentPassword = (course: TeacherCourse) => Boolean((course.accessPassword || '').trim());
 const teacherActivityOrder: TeacherActivityType[] = ['LECTURE', 'DOCUMENT', 'PRACTICE', 'QUIZ'];
 const addableTeacherActivityTypes: TeacherActivityType[] = teacherActivityOrder;
@@ -375,23 +367,30 @@ export const TeacherDashboard: React.FC<Props> = ({
     setCoursePasswordDraft('');
   };
 
-  const handleSaveCoursePassword = (e: React.FormEvent) => {
+  const handleSaveCoursePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!passwordEditingCourse) return;
 
     const nextPassword = coursePasswordDraft.trim();
-    setCourses((prev) =>
-      prev.map((course) =>
-        course.id === passwordEditingCourse.id ? { ...course, accessPassword: nextPassword } : course
-      )
-    );
-    saveStoredCoursePassword(passwordEditingCourse.courseCode, nextPassword);
-    closeCoursePasswordModal();
-    alert(
-      nextPassword
-        ? `Đã đặt mật khẩu ghi danh cho khóa học ${passwordEditingCourse.courseCode}.`
-        : `Đã bỏ mật khẩu ghi danh cho khóa học ${passwordEditingCourse.courseCode}. Sinh viên có thể ghi danh tự do.`
-    );
+    try {
+      await api.post(`/teacher/courses/${passwordEditingCourse.id}/password`, {
+        password: nextPassword || null
+      });
+
+      setCourses((prev) =>
+        prev.map((course) =>
+          course.id === passwordEditingCourse.id ? { ...course, accessPassword: nextPassword || undefined } : course
+        )
+      );
+      closeCoursePasswordModal();
+      alert(
+        nextPassword
+          ? `Đã lưu mật khẩu ghi danh "${nextPassword}" vào CSDL cho khóa học ${passwordEditingCourse.courseCode}.`
+          : `Đã gỡ bỏ mật khẩu ghi danh trong CSDL cho khóa học ${passwordEditingCourse.courseCode}. Sinh viên có thể ghi danh tự do.`
+      );
+    } catch (err: any) {
+      alert('Lỗi lưu mật khẩu khóa học vào CSDL: ' + (err.response?.data?.message || err.message));
+    }
   };
 
   const handleCreateCourse = async (e: React.FormEvent) => {

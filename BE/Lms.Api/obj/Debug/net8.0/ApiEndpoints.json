@@ -729,6 +729,27 @@
   },
   {
     "ContainingType": "Lms.Api.Controllers.TeacherController",
+    "Method": "UpdateCoursePassword",
+    "RelativePath": "api/Teacher/courses/{courseId}/password",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "courseId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "request",
+        "Type": "Lms.Api.Controllers.UpdateCoursePasswordDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Lms.Api.Controllers.TeacherController",
     "Method": "GetCourseStudents",
     "RelativePath": "api/Teacher/courses/{courseId}/students",
     "HttpMethod": "GET",

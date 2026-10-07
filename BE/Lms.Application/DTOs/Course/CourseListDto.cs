@@ -16,4 +16,6 @@ public class CourseListDto
     public decimal WeightAttendance { get; set; }
     public decimal WeightAssignments { get; set; }
     public decimal WeightFinalExam { get; set; }
+    public bool HasPassword { get; set; }
+    public string? AccessPassword { get; set; }
 }

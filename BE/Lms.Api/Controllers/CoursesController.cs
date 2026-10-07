@@ -50,6 +50,8 @@ public class CoursesController : ControllerBase
                 IsEnrolled = enrollment != null,
                 ProgressPercentage = enrollment?.ProgressPercentage ?? 0m,
                 LessonsCount = c.Lessons.Count,
+                HasPassword = !string.IsNullOrEmpty(c.EnrollmentPassword),
+                AccessPassword = c.EnrollmentPassword,
                 WeightAttendance = c.WeightAttendance,
                 WeightAssignments = c.WeightAssignments,
                 WeightFinalExam = c.WeightFinalExam
@@ -86,6 +88,8 @@ public class CoursesController : ControllerBase
             IsEnrolled = true,
             ProgressPercentage = e.ProgressPercentage,
             LessonsCount = e.Course.Lessons.Count,
+            HasPassword = !string.IsNullOrEmpty(e.Course.EnrollmentPassword),
+            AccessPassword = e.Course.EnrollmentPassword,
             WeightAttendance = e.Course.WeightAttendance,
             WeightAssignments = e.Course.WeightAssignments,
             WeightFinalExam = e.Course.WeightFinalExam
@@ -183,6 +187,14 @@ public class CoursesController : ControllerBase
         var course = await _db.Courses.FindAsync(id);
         if (course == null) return NotFound(new { message = "Khóa học không tồn tại." });
 
+        if (!string.IsNullOrEmpty(course.EnrollmentPassword))
+        {
+            if (string.IsNullOrEmpty(request.Password) || request.Password.Trim() != course.EnrollmentPassword.Trim())
+            {
+                return BadRequest(new { message = "Mật khẩu ghi danh khóa học không chính xác." });
+            }
+        }
+
         var existing = await _db.Enrollments
             .FirstOrDefaultAsync(e => e.CourseId == id && e.StudentId == request.StudentId);
 
@@ -232,4 +244,4 @@ public class CoursesController : ControllerBase
     }
 }
 
-public record StudentIdRequest(Guid StudentId);
+public record StudentIdRequest(Guid StudentId, string? Password = null);

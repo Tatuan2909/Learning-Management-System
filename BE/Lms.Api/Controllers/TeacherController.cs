@@ -43,6 +43,7 @@ public class TeacherController : ControllerBase
             department = "Khoa Công nghệ Thông tin",
             enrolledStudents = c.Enrollments.Count,
             lessonsCount = c.Lessons.Count,
+            accessPassword = c.EnrollmentPassword,
             weightAttendance = c.WeightAttendance,
             weightAssignments = c.WeightAssignments,
             weightFinalExam = c.WeightFinalExam
@@ -866,9 +867,34 @@ public class TeacherController : ControllerBase
             pendingSubmissions
         });
     }
+
+    /// <summary>
+    /// Giảng viên cập nhật hoặc gỡ bỏ mật khẩu ghi danh của khóa học
+    /// </summary>
+    [HttpPost("courses/{courseId}/password")]
+    public async Task<IActionResult> UpdateCoursePassword(Guid courseId, [FromBody] UpdateCoursePasswordDto request)
+    {
+        var course = await _db.Courses.FindAsync(courseId);
+        if (course == null) return NotFound(new { message = "Không tìm thấy khóa học." });
+
+        course.EnrollmentPassword = string.IsNullOrWhiteSpace(request.Password) ? null : request.Password.Trim();
+        course.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return Ok(new
+        {
+            courseId = course.Id.ToString(),
+            hasPassword = !string.IsNullOrEmpty(course.EnrollmentPassword),
+            accessPassword = course.EnrollmentPassword,
+            message = string.IsNullOrEmpty(course.EnrollmentPassword)
+                ? "Đã gỡ bỏ mật khẩu ghi danh khóa học."
+                : "Đã cập nhật mật khẩu ghi danh khóa học thành công trong CSDL!"
+        });
+    }
 }
 
-public record CreateTeacherCourseDto(string CourseCode, string Title, string? Description, decimal WeightAttendance = 10, decimal WeightAssignments = 30, decimal WeightFinalExam = 60);
+public record UpdateCoursePasswordDto(string? Password);
+public record CreateTeacherCourseDto(string CourseCode, string Title, string? Description, decimal WeightAttendance = 10, decimal WeightAssignments = 30, decimal WeightFinalExam = 60, string? Password = null);
 
 public class CreateTeacherLessonDto
 {

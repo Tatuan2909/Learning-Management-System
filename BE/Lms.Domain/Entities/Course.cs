@@ -16,6 +16,7 @@ public class Course
     public decimal WeightAttendance { get; set; } = 10.00m;
     public decimal WeightAssignments { get; set; } = 30.00m;
     public decimal WeightFinalExam { get; set; } = 60.00m;
+    public string? EnrollmentPassword { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 

@@ -284,6 +284,7 @@ export const App: React.FC = () => {
               user={user}
               onLogout={handleLogout}
               onOpenProfilePage={() => setActiveTab('profile')}
+              onSwitchUser={handleLoginSuccess}
             />
           </div>
 

@@ -10,25 +10,6 @@ interface Props {
 
 type CoursePasswordAction = 'enroll' | 'study' | 'lesson';
 
-const DEFAULT_COURSE_PASSWORD = 'course123';
-const ENROLLED_COURSES_STORAGE_KEY = 'lms_enrolled_course_ids';
-const getCoursePasswordStorageKey = (courseCode: string) => `lms_course_password_${courseCode}`;
-const readStoredCoursePassword = (courseCode: string, fallback?: string) => {
-  const storedPassword = localStorage.getItem(getCoursePasswordStorageKey(courseCode));
-  return storedPassword !== null ? storedPassword : fallback;
-};
-const readStoredEnrollmentIds = () => {
-  try {
-    return JSON.parse(localStorage.getItem(ENROLLED_COURSES_STORAGE_KEY) || '[]') as string[];
-  } catch {
-    return [];
-  }
-};
-const writeStoredEnrollmentId = (courseId: string) => {
-  const enrolledIds = new Set(readStoredEnrollmentIds());
-  enrolledIds.add(courseId);
-  localStorage.setItem(ENROLLED_COURSES_STORAGE_KEY, JSON.stringify(Array.from(enrolledIds)));
-};
 const hasCoursePassword = (course: CourseItem) => Boolean((course.accessPassword || '').trim());
 
 export const CoursesPage: React.FC<Props> = ({ initialFilter = 'ALL', onSelectLessonForQuiz }) => {
@@ -120,19 +101,29 @@ export const CoursesPage: React.FC<Props> = ({ initialFilter = 'ALL', onSelectLe
     setCoursePasswordError('');
   };
 
-  const enrollCourse = async (course: CourseItem) => {
+  const enrollCourse = async (course: CourseItem, passwordInput?: string): Promise<boolean> => {
     try {
       const studentId = getStudentId();
-      await api.post(`/courses/${course.id}/enroll`, { studentId });
+      await api.post(`/courses/${course.id}/enroll`, {
+        studentId,
+        password: passwordInput || course.accessPassword || undefined
+      });
       alert(
         hasCoursePassword(course)
           ? 'Chúc mừng! Bạn đã nhập đúng mật khẩu và ghi danh thành công vào khóa học.'
           : 'Chúc mừng! Bạn đã ghi danh thành công vào khóa học.'
       );
       fetchCourses();
+      return true;
     } catch (err: any) {
       console.error('Lỗi ghi danh:', err);
-      alert('Lỗi ghi danh: ' + (err.response?.data?.message || err.message));
+      const msg = err.response?.data?.message || err.message || 'Lỗi ghi danh khóa học.';
+      if (passwordDialog) {
+        setCoursePasswordError(msg);
+      } else {
+        alert('Lỗi ghi danh: ' + msg);
+      }
+      return false;
     }
   };
 
@@ -143,18 +134,19 @@ export const CoursesPage: React.FC<Props> = ({ initialFilter = 'ALL', onSelectLe
     }
   };
 
-  const handleCoursePasswordSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleCoursePasswordSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!passwordDialog) return;
 
-    const expectedPassword = (passwordDialog.course.accessPassword || '').trim();
-    if (coursePasswordInput.trim() !== expectedPassword) {
-      setCoursePasswordError('Mật khẩu khóa học chưa đúng. Vui lòng kiểm tra lại.');
+    if (!coursePasswordInput.trim()) {
+      setCoursePasswordError('Vui lòng nhập mật khẩu khóa học.');
       return;
     }
 
-    enrollCourse(passwordDialog.course);
-    closePasswordDialog();
+    const success = await enrollCourse(passwordDialog.course, coursePasswordInput.trim());
+    if (success) {
+      closePasswordDialog();
+    }
   };
 
   const filteredCourses = courses.filter((course) => {

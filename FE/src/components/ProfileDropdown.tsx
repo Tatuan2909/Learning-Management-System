@@ -1,17 +1,20 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { User, LogOut, Globe, ChevronDown, ChevronRight, Check } from 'lucide-react';
+import { User, LogOut, Globe, ChevronDown, ChevronRight, Check, GraduationCap } from 'lucide-react';
 import { AuthUser } from '../types';
+import api from '../api/axios';
 
 interface Props {
   user: AuthUser;
   onLogout: () => void;
   onOpenProfilePage: () => void;
+  onSwitchUser?: (newUser: AuthUser) => void;
 }
 
 export const ProfileDropdown: React.FC<Props> = ({
   user,
   onLogout,
-  onOpenProfilePage
+  onOpenProfilePage,
+  onSwitchUser
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [language, setLanguage] = useState<'VI' | 'EN'>('VI');
@@ -29,6 +32,34 @@ export const ProfileDropdown: React.FC<Props> = ({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const handleQuickSwitch = async (role: 'STUDENT' | 'TEACHER') => {
+    try {
+      setIsOpen(false);
+      const email = role === 'TEACHER' ? 'teacher@lms.edu.vn' : 'student@lms.edu.vn';
+      const password = role === 'TEACHER' ? 'teacher123' : 'student123';
+      const response = await api.post('/auth/login', { email, password });
+      const data = response.data;
+      const newUser: AuthUser = {
+        userId: data.userId,
+        email: data.email,
+        fullName: data.fullName,
+        role: data.role as 'ADMIN' | 'TEACHER' | 'STUDENT',
+        token: data.token,
+        refreshToken: data.refreshToken,
+        studentCode: data.role === 'STUDENT' ? 'SV2024001' : undefined,
+        teacherCode: data.role === 'TEACHER' ? 'GV001' : undefined
+      };
+      localStorage.setItem('access_token', newUser.token);
+      localStorage.setItem('refresh_token', newUser.refreshToken);
+      localStorage.setItem('user_info', JSON.stringify(newUser));
+      if (onSwitchUser) {
+        onSwitchUser(newUser);
+      }
+    } catch (err) {
+      console.error('Lỗi chuyển đổi tài khoản:', err);
+    }
+  };
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -171,6 +202,39 @@ export const ProfileDropdown: React.FC<Props> = ({
                     {language === 'EN' && <Check className="w-3.5 h-3.5 text-white" />}
                   </button>
                 </div>
+              )}
+            </div>
+
+            {/* Quick Role Switcher */}
+            <div className="border-t border-slate-100 pt-1 mt-1">
+              <span className="block px-3 py-1 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+                Đổi tài khoản nhanh
+              </span>
+              {user.role !== 'TEACHER' && (
+                <button
+                  type="button"
+                  onClick={() => handleQuickSwitch('TEACHER')}
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-xl hover:bg-indigo-50 text-indigo-700 transition-colors text-left"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <GraduationCap className="w-4 h-4 text-indigo-600 flex-shrink-0" />
+                    <span className="font-semibold text-xs">Giảng viên (TS. Nguyễn Văn A)</span>
+                  </div>
+                  <span className="text-[10px] bg-indigo-100 text-indigo-800 font-extrabold px-1.5 py-0.5 rounded">GV</span>
+                </button>
+              )}
+              {user.role !== 'STUDENT' && (
+                <button
+                  type="button"
+                  onClick={() => handleQuickSwitch('STUDENT')}
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-xl hover:bg-blue-50 text-blue-700 transition-colors text-left"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <User className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                    <span className="font-semibold text-xs">Sinh viên (Trần Thị B)</span>
+                  </div>
+                  <span className="text-[10px] bg-blue-100 text-blue-800 font-extrabold px-1.5 py-0.5 rounded">SV</span>
+                </button>
               )}
             </div>
           </div>
