@@ -122,7 +122,8 @@ const saveStoredCoursePassword = (courseCode: string, password: string) => {
   localStorage.setItem(getCoursePasswordStorageKey(courseCode), password);
 };
 const courseHasEnrollmentPassword = (course: TeacherCourse) => Boolean((course.accessPassword || '').trim());
-const teacherActivityOrder: TeacherActivityType[] = ['LECTURE', 'DOCUMENT', 'PRACTICE', 'QUIZ', 'FORUM'];
+const teacherActivityOrder: TeacherActivityType[] = ['LECTURE', 'DOCUMENT', 'PRACTICE', 'QUIZ'];
+const addableTeacherActivityTypes: TeacherActivityType[] = teacherActivityOrder;
 const getActivityMeta = (type: TeacherActivityType) => {
   switch (type) {
     case 'LECTURE':
@@ -641,11 +642,20 @@ export const TeacherDashboard: React.FC<Props> = ({
     alert(`Đã tạo thành công khóa học: ${newCourse.courseCode} - ${newCourse.title}`);
   };
 
+  const handleNewLessonTypeChange = (activityType: TeacherActivityType) => {
+    setNewLessonType(activityType);
+    setNewLessonDuration(activityType === 'QUIZ' ? 15 : 45);
+    if (activityType !== 'QUIZ') {
+      setNewLessonPassword('');
+    }
+  };
+
   const openAddActivityModal = (weekNumber?: number, activityType?: TeacherActivityType) => {
+    const selectedType = activityType && addableTeacherActivityTypes.includes(activityType) ? activityType : 'LECTURE';
     setNewLessonWeek(weekNumber || Math.max(...courseWeekNumbers, 1));
-    setNewLessonType(activityType || 'LECTURE');
+    setNewLessonType(selectedType);
     setNewLessonTitle('');
-    setNewLessonDuration(activityType === 'FORUM' ? 10 : activityType === 'QUIZ' ? 15 : 45);
+    setNewLessonDuration(selectedType === 'QUIZ' ? 15 : 45);
     setNewLessonUrl('');
     setNewLessonDescription('');
     setNewLessonPassword('');
@@ -1279,13 +1289,16 @@ export const TeacherDashboard: React.FC<Props> = ({
                   <div className="space-y-5 w-full">
                     {courseWeekNumbers.map((weekNumber) => {
                       const weekItems = courseLessons.filter((lesson) => lesson.weekNumber === weekNumber);
+                      const availableActivityCount = teacherActivityOrder.filter((type) =>
+                        weekItems.some((lesson) => lesson.activityType === type)
+                      ).length;
                       return (
                         <div key={weekNumber} className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
                           <div className="p-4 border-b border-slate-100 bg-slate-50/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                             <div>
                               <h5 className="font-extrabold text-slate-900 text-sm">Tuần {weekNumber}</h5>
                               <p className="text-xs text-slate-500 mt-0.5">
-                                {weekItems.length}/5 loại hoạt động đã được tạo cho tuần này
+                                {availableActivityCount}/{teacherActivityOrder.length} loại hoạt động đã sẵn sàng cho tuần này
                               </p>
                             </div>
                             <button
@@ -1297,7 +1310,7 @@ export const TeacherDashboard: React.FC<Props> = ({
                             </button>
                           </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3 p-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 p-4">
                             {teacherActivityOrder.map((type) => {
                               const meta = getActivityMeta(type);
                               const Icon = meta.icon;
@@ -1373,7 +1386,7 @@ export const TeacherDashboard: React.FC<Props> = ({
                   </div>
 
                   <div className="space-y-3 w-full">
-                    {courseLessons.map((les) => (
+                    {courseLessons.filter((les) => les.activityType !== 'FORUM').map((les) => (
                       <div
                         key={les.id}
                         className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
@@ -2044,10 +2057,10 @@ export const TeacherDashboard: React.FC<Props> = ({
                   <label className="block font-bold text-slate-700 mb-1">Loại hoạt động:</label>
                   <select
                     value={newLessonType}
-                    onChange={(e) => setNewLessonType(e.target.value as TeacherActivityType)}
+                    onChange={(e) => handleNewLessonTypeChange(e.target.value as TeacherActivityType)}
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900"
                   >
-                    {teacherActivityOrder.map((type) => (
+                    {addableTeacherActivityTypes.map((type) => (
                       <option key={type} value={type}>
                         {getActivityMeta(type).label}
                       </option>
@@ -2057,13 +2070,13 @@ export const TeacherDashboard: React.FC<Props> = ({
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Tiêu đề hoạt động:</label>
-                <input
-                  type="text"
-                  placeholder="Ví dụ: Bài giảng Tuần 3, Tài liệu PDF, Luyện tập, Quiz, Diễn đàn..."
-                  value={newLessonTitle}
-                  onChange={(e) => setNewLessonTitle(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900"
+                  <label className="block font-bold text-slate-700 mb-1">Tiêu đề hoạt động:</label>
+                  <input
+                    type="text"
+                    placeholder="Ví dụ: Bài giảng Tuần 3, Tài liệu PDF, Luyện tập hoặc Quiz..."
+                    value={newLessonTitle}
+                    onChange={(e) => setNewLessonTitle(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900"
                 />
               </div>
 
@@ -2080,28 +2093,28 @@ export const TeacherDashboard: React.FC<Props> = ({
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Link tài nguyên hoặc bài học:</label>
-                <input
-                  type="text"
-                  placeholder="URL video, PDF, DOCX, link bài tập hoặc diễn đàn"
-                  value={newLessonUrl}
-                  onChange={(e) => setNewLessonUrl(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900"
+                  <label className="block font-bold text-slate-700 mb-1">Link tài nguyên hoặc bài học:</label>
+                  <input
+                    type="text"
+                    placeholder="URL video, PDF, DOCX hoặc link bài tập"
+                    value={newLessonUrl}
+                    onChange={(e) => setNewLessonUrl(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900"
                 />
               </div>
 
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Mô tả / hướng dẫn:</label>
-                <textarea
-                  rows={3}
-                  placeholder="Nhập mô tả ngắn, yêu cầu luyện tập, quy định làm quiz hoặc chủ đề thảo luận..."
-                  value={newLessonDescription}
-                  onChange={(e) => setNewLessonDescription(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900"
+                  <textarea
+                    rows={3}
+                    placeholder="Nhập mô tả ngắn, yêu cầu luyện tập hoặc quy định làm quiz..."
+                    value={newLessonDescription}
+                    onChange={(e) => setNewLessonDescription(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900"
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className={newLessonType === 'QUIZ' ? 'grid grid-cols-1 sm:grid-cols-2 gap-3' : 'grid grid-cols-1 gap-3'}>
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Hạn nộp / hạn làm:</label>
                   <input
@@ -2111,17 +2124,18 @@ export const TeacherDashboard: React.FC<Props> = ({
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900"
                   />
                 </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Mật khẩu quiz:</label>
-                  <input
-                    type="text"
-                    disabled={newLessonType !== 'QUIZ'}
-                    placeholder={newLessonType === 'QUIZ' ? 'Để trống nếu quiz không cần mật khẩu' : 'Chỉ dùng cho bài trắc nghiệm'}
-                    value={newLessonPassword}
-                    onChange={(e) => setNewLessonPassword(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 disabled:opacity-50"
-                  />
-                </div>
+                {newLessonType === 'QUIZ' && (
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Mật khẩu quiz:</label>
+                    <input
+                      type="text"
+                      placeholder="Để trống nếu quiz không cần mật khẩu"
+                      value={newLessonPassword}
+                      onChange={(e) => setNewLessonPassword(e.target.value)}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900"
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
