@@ -42,6 +42,7 @@ export interface CourseItem {
   teacherName: string;
   progressPercentage: number;
   isEnrolled: boolean;
+  accessPassword?: string;
   lessonsCount: number;
   lessons?: LessonItem[];
 }

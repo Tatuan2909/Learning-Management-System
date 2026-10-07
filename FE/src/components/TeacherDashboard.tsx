@@ -20,7 +20,9 @@ import {
   Lock,
   Unlock,
   UserCheck,
-  UserX
+  UserX,
+  HelpCircle,
+  MessageSquare
 } from 'lucide-react';
 import { AuthUser } from '../types';
 
@@ -37,18 +39,27 @@ export interface TeacherCourse {
   department: string;
   enrolledStudents: number;
   lessonsCount: number;
+  accessPassword?: string;
   weightAttendance: number;
   weightAssignments: number;
   weightFinalExam: number;
 }
 
+export type TeacherActivityType = 'LECTURE' | 'DOCUMENT' | 'PRACTICE' | 'QUIZ' | 'FORUM';
+
 export interface TeacherLesson {
   id: string;
   courseId: string;
+  weekNumber: number;
+  activityType: TeacherActivityType;
   lessonNumber: number;
   title: string;
   durationMinutes: number;
   isUnlocked: boolean;
+  description?: string;
+  resourceUrl?: string;
+  password?: string;
+  dueDate?: string;
 }
 
 export interface CourseStudent {
@@ -102,6 +113,51 @@ export interface TeacherAnnouncement {
   createdAt: string;
 }
 
+const getCoursePasswordStorageKey = (courseCode: string) => `lms_course_password_${courseCode}`;
+const readStoredCoursePassword = (courseCode: string, fallback?: string) => {
+  const storedPassword = localStorage.getItem(getCoursePasswordStorageKey(courseCode));
+  return storedPassword !== null ? storedPassword : fallback;
+};
+const saveStoredCoursePassword = (courseCode: string, password: string) => {
+  localStorage.setItem(getCoursePasswordStorageKey(courseCode), password);
+};
+const courseHasEnrollmentPassword = (course: TeacherCourse) => Boolean((course.accessPassword || '').trim());
+const teacherActivityOrder: TeacherActivityType[] = ['LECTURE', 'DOCUMENT', 'PRACTICE', 'QUIZ', 'FORUM'];
+const getActivityMeta = (type: TeacherActivityType) => {
+  switch (type) {
+    case 'LECTURE':
+      return {
+        label: 'Bài giảng',
+        icon: BookOpen,
+        color: 'bg-blue-50 text-blue-700 border-blue-200'
+      };
+    case 'DOCUMENT':
+      return {
+        label: 'Tài liệu',
+        icon: FileText,
+        color: 'bg-rose-50 text-rose-700 border-rose-200'
+      };
+    case 'PRACTICE':
+      return {
+        label: 'Luyện tập',
+        icon: Edit3,
+        color: 'bg-emerald-50 text-emerald-700 border-emerald-200'
+      };
+    case 'QUIZ':
+      return {
+        label: 'Bài trắc nghiệm',
+        icon: HelpCircle,
+        color: 'bg-indigo-50 text-indigo-700 border-indigo-200'
+      };
+    case 'FORUM':
+      return {
+        label: 'Diễn đàn',
+        icon: MessageSquare,
+        color: 'bg-amber-50 text-amber-700 border-amber-200'
+      };
+  }
+};
+
 export const TeacherDashboard: React.FC<Props> = ({
   user,
   activeTab: propActiveTab,
@@ -134,6 +190,7 @@ export const TeacherDashboard: React.FC<Props> = ({
       department: 'Khoa Công nghệ Thông tin',
       enrolledStudents: 45,
       lessonsCount: 4,
+      accessPassword: readStoredCoursePassword('INT3306', 'course123'),
       weightAttendance: 10,
       weightAssignments: 30,
       weightFinalExam: 60
@@ -145,6 +202,7 @@ export const TeacherDashboard: React.FC<Props> = ({
       department: 'Khoa Công nghệ Phần mềm',
       enrolledStudents: 38,
       lessonsCount: 3,
+      accessPassword: readStoredCoursePassword('SE302'),
       weightAttendance: 10,
       weightAssignments: 30,
       weightFinalExam: 60
@@ -156,6 +214,8 @@ export const TeacherDashboard: React.FC<Props> = ({
     {
       id: 'les-1',
       courseId: 'c1',
+      weekNumber: 1,
+      activityType: 'LECTURE',
       lessonNumber: 1,
       title: 'Giới thiệu Clean Architecture & RESTful API .NET 8',
       durationMinutes: 45,
@@ -164,6 +224,8 @@ export const TeacherDashboard: React.FC<Props> = ({
     {
       id: 'les-2',
       courseId: 'c1',
+      weekNumber: 1,
+      activityType: 'DOCUMENT',
       lessonNumber: 2,
       title: 'Entity Framework Core & PostgreSQL Database Migration',
       durationMinutes: 60,
@@ -172,6 +234,8 @@ export const TeacherDashboard: React.FC<Props> = ({
     {
       id: 'les-3',
       courseId: 'c1',
+      weekNumber: 1,
+      activityType: 'PRACTICE',
       lessonNumber: 3,
       title: 'Xác thực JWT Token & Cơ chế Refresh Token Rotation',
       durationMinutes: 50,
@@ -180,14 +244,39 @@ export const TeacherDashboard: React.FC<Props> = ({
     {
       id: 'les-4',
       courseId: 'c1',
+      weekNumber: 1,
+      activityType: 'QUIZ',
       lessonNumber: 4,
       title: 'Tích hợp Frontend React Vite TypeScript & API Client',
       durationMinutes: 75,
+      isUnlocked: false,
+      password: 'quiz123'
+    },
+    {
+      id: 'les-4-forum',
+      courseId: 'c1',
+      weekNumber: 1,
+      activityType: 'FORUM',
+      lessonNumber: 5,
+      title: 'Diễn đàn hỏi đáp Tuần 1',
+      durationMinutes: 10,
+      isUnlocked: true
+    },
+    {
+      id: 'les-4-week2',
+      courseId: 'c1',
+      weekNumber: 2,
+      activityType: 'LECTURE',
+      lessonNumber: 6,
+      title: 'Bài giảng Tuần 2: JWT Authentication & Role Authorization',
+      durationMinutes: 60,
       isUnlocked: false
     },
     {
       id: 'les-5',
       courseId: 'c2',
+      weekNumber: 1,
+      activityType: 'LECTURE',
       lessonNumber: 1,
       title: 'Nguyên lý Domain-Driven Design (DDD) & Bounded Context',
       durationMinutes: 60,
@@ -196,6 +285,8 @@ export const TeacherDashboard: React.FC<Props> = ({
     {
       id: 'les-6',
       courseId: 'c2',
+      weekNumber: 1,
+      activityType: 'DOCUMENT',
       lessonNumber: 2,
       title: 'API Gateway Ocelot & Service Discovery Consul',
       durationMinutes: 55,
@@ -204,6 +295,8 @@ export const TeacherDashboard: React.FC<Props> = ({
     {
       id: 'les-7',
       courseId: 'c2',
+      weekNumber: 1,
+      activityType: 'PRACTICE',
       lessonNumber: 3,
       title: 'Message Broker RabbitMQ & Event-Driven Architecture',
       durationMinutes: 80,
@@ -419,10 +512,19 @@ export const TeacherDashboard: React.FC<Props> = ({
   const [newCourseCode, setNewCourseCode] = useState('');
   const [newCourseTitle, setNewCourseTitle] = useState('');
   const [newCourseDept, setNewCourseDept] = useState('Khoa Công nghệ Thông tin');
+  const [passwordCourseId, setPasswordCourseId] = useState<string | null>(null);
+  const [coursePasswordDraft, setCoursePasswordDraft] = useState('');
+  const [showCoursePasswordModal, setShowCoursePasswordModal] = useState(false);
 
   const [showAddLessonModal, setShowAddLessonModal] = useState(false);
+  const [newLessonWeek, setNewLessonWeek] = useState(1);
+  const [newLessonType, setNewLessonType] = useState<TeacherActivityType>('LECTURE');
   const [newLessonTitle, setNewLessonTitle] = useState('');
   const [newLessonDuration, setNewLessonDuration] = useState(45);
+  const [newLessonUrl, setNewLessonUrl] = useState('');
+  const [newLessonDescription, setNewLessonDescription] = useState('');
+  const [newLessonPassword, setNewLessonPassword] = useState('');
+  const [newLessonDueDate, setNewLessonDueDate] = useState('');
 
   // Add Student to Course Modal State
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
@@ -447,9 +549,13 @@ export const TeacherDashboard: React.FC<Props> = ({
 
   // Currently selected course object
   const currentCourse = courses.find((c) => c.id === selectedCourseId) || courses[0];
+  const passwordEditingCourse = courses.find((c) => c.id === passwordCourseId) || null;
 
   // Filtered data for the current active course
   const courseLessons = lessons.filter((l) => l.courseId === currentCourse?.id);
+  const courseWeekNumbers = Array.from(
+    new Set([...courseLessons.map((lesson) => lesson.weekNumber), 1])
+  ).sort((a, b) => a - b);
   const courseStudents = studentsList.filter((st) => st.courseId === currentCourse?.id);
   const courseSubmissions = submissions.filter((s) => s.courseId === currentCourse?.id);
   const coursePendingSubmissionsCount = courseSubmissions.filter((s) => s.status === 'SUBMITTED').length;
@@ -481,6 +587,37 @@ export const TeacherDashboard: React.FC<Props> = ({
     setSelectedCourseId(null);
   };
 
+  const openCoursePasswordModal = (course: TeacherCourse) => {
+    setPasswordCourseId(course.id);
+    setCoursePasswordDraft(course.accessPassword || '');
+    setShowCoursePasswordModal(true);
+  };
+
+  const closeCoursePasswordModal = () => {
+    setShowCoursePasswordModal(false);
+    setPasswordCourseId(null);
+    setCoursePasswordDraft('');
+  };
+
+  const handleSaveCoursePassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!passwordEditingCourse) return;
+
+    const nextPassword = coursePasswordDraft.trim();
+    setCourses((prev) =>
+      prev.map((course) =>
+        course.id === passwordEditingCourse.id ? { ...course, accessPassword: nextPassword } : course
+      )
+    );
+    saveStoredCoursePassword(passwordEditingCourse.courseCode, nextPassword);
+    closeCoursePasswordModal();
+    alert(
+      nextPassword
+        ? `Đã đặt mật khẩu ghi danh cho khóa học ${passwordEditingCourse.courseCode}.`
+        : `Đã bỏ mật khẩu ghi danh cho khóa học ${passwordEditingCourse.courseCode}. Sinh viên có thể ghi danh tự do.`
+    );
+  };
+
   const handleCreateCourse = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCourseCode || !newCourseTitle) return;
@@ -504,6 +641,18 @@ export const TeacherDashboard: React.FC<Props> = ({
     alert(`Đã tạo thành công khóa học: ${newCourse.courseCode} - ${newCourse.title}`);
   };
 
+  const openAddActivityModal = (weekNumber?: number, activityType?: TeacherActivityType) => {
+    setNewLessonWeek(weekNumber || Math.max(...courseWeekNumbers, 1));
+    setNewLessonType(activityType || 'LECTURE');
+    setNewLessonTitle('');
+    setNewLessonDuration(activityType === 'FORUM' ? 10 : activityType === 'QUIZ' ? 15 : 45);
+    setNewLessonUrl('');
+    setNewLessonDescription('');
+    setNewLessonPassword('');
+    setNewLessonDueDate('');
+    setShowAddLessonModal(true);
+  };
+
   const handleCreateLesson = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newLessonTitle || !currentCourse) return;
@@ -511,10 +660,16 @@ export const TeacherDashboard: React.FC<Props> = ({
     const newLesson: TeacherLesson = {
       id: `les-${Date.now()}`,
       courseId: currentCourse.id,
+      weekNumber: newLessonWeek,
+      activityType: newLessonType,
       lessonNumber: courseLessons.length + 1,
       title: newLessonTitle,
       durationMinutes: newLessonDuration || 45,
-      isUnlocked: true
+      isUnlocked: true,
+      description: newLessonDescription || undefined,
+      resourceUrl: newLessonUrl || undefined,
+      password: newLessonType === 'QUIZ' ? newLessonPassword || undefined : undefined,
+      dueDate: newLessonDueDate || undefined
     };
 
     setLessons([...lessons, newLesson]);
@@ -524,7 +679,11 @@ export const TeacherDashboard: React.FC<Props> = ({
     setShowAddLessonModal(false);
     setNewLessonTitle('');
     setNewLessonDuration(45);
-    alert('Đã thêm bài giảng mới vào khóa học!');
+    setNewLessonUrl('');
+    setNewLessonDescription('');
+    setNewLessonPassword('');
+    setNewLessonDueDate('');
+    alert('Đã thêm hoạt động mới vào tuần học!');
   };
 
   const handleAddStudentToCourse = (e: React.FormEvent) => {
@@ -807,15 +966,34 @@ export const TeacherDashboard: React.FC<Props> = ({
                       <span className="text-xs text-slate-500 mt-1 block">
                         {c.enrolledStudents} sinh viên • {c.lessonsCount} bài giảng
                       </span>
+                      <span
+                        className={`mt-2 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold ${
+                          courseHasEnrollmentPassword(c)
+                            ? 'border-amber-200 bg-amber-50 text-amber-700'
+                            : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                        }`}
+                      >
+                        {courseHasEnrollmentPassword(c) ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
+                        {courseHasEnrollmentPassword(c) ? 'Có mật khẩu ghi danh' : 'Ghi danh tự do'}
+                      </span>
                     </div>
 
-                    <button
-                      onClick={() => handleOpenCourse(c.id, 'lessons')}
-                      className="px-3.5 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 font-bold text-xs rounded-xl transition-all border border-blue-200 flex items-center gap-1"
-                    >
-                      <span>Vào lớp</span>
-                      <ChevronRight className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <button
+                        onClick={() => openCoursePasswordModal(c)}
+                        className="px-3.5 py-2 bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold text-xs rounded-xl transition-all border border-slate-200 flex items-center justify-center gap-1"
+                      >
+                        <Lock className="w-3.5 h-3.5" />
+                        <span>Mật khẩu</span>
+                      </button>
+                      <button
+                        onClick={() => handleOpenCourse(c.id, 'lessons')}
+                        className="px-3.5 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 font-bold text-xs rounded-xl transition-all border border-blue-200 flex items-center justify-center gap-1"
+                      >
+                        <span>Vào lớp</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -863,6 +1041,16 @@ export const TeacherDashboard: React.FC<Props> = ({
                           </span>
                           <h4 className="font-extrabold text-slate-900 text-lg mt-2">{c.title}</h4>
                           <span className="text-xs text-slate-500 block mt-0.5">{c.department}</span>
+                          <span
+                            className={`mt-2 inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold ${
+                              courseHasEnrollmentPassword(c)
+                                ? 'border-amber-200 bg-amber-50 text-amber-700'
+                                : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                            }`}
+                          >
+                            {courseHasEnrollmentPassword(c) ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
+                            {courseHasEnrollmentPassword(c) ? 'Có mật khẩu ghi danh' : 'Không yêu cầu mật khẩu'}
+                          </span>
                         </div>
                         <span className="text-xs text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">
                           Đang giảng dạy
@@ -901,6 +1089,13 @@ export const TeacherDashboard: React.FC<Props> = ({
                           className="py-2 px-3 bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold text-xs rounded-xl transition-all border border-slate-200"
                         >
                           Sinh viên ({studentCount})
+                        </button>
+                        <button
+                          onClick={() => openCoursePasswordModal(c)}
+                          className="py-2 px-3 bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold text-xs rounded-xl transition-all border border-slate-200 inline-flex items-center gap-1"
+                        >
+                          <Lock className="w-3.5 h-3.5" />
+                          <span>Mật khẩu</span>
                         </button>
                         <button
                           onClick={() => handleOpenCourse(c.id, 'grading')}
@@ -958,11 +1153,28 @@ export const TeacherDashboard: React.FC<Props> = ({
                       <p className="text-xs text-slate-500 mt-0.5">
                         {currentCourse.department} • {courseStudents.length} sinh viên • {courseLessons.length} bài giảng
                       </p>
+                      <span
+                        className={`mt-2 inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold ${
+                          courseHasEnrollmentPassword(currentCourse)
+                            ? 'border-amber-200 bg-amber-50 text-amber-700'
+                            : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                        }`}
+                      >
+                        {courseHasEnrollmentPassword(currentCourse) ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
+                        {courseHasEnrollmentPassword(currentCourse) ? 'Đang yêu cầu mật khẩu ghi danh' : 'Sinh viên ghi danh không cần mật khẩu'}
+                      </span>
                     </div>
                   </div>
 
                   {/* Fast Course Switcher */}
                   <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => openCoursePasswordModal(currentCourse)}
+                      className="px-3 py-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 transition-all"
+                    >
+                      <Lock className="w-3.5 h-3.5" />
+                      <span>Mật khẩu</span>
+                    </button>
                     <span className="text-xs text-slate-500 font-medium hidden md:inline">Đổi môn học:</span>
                     <select
                       value={selectedCourseId}
@@ -1056,12 +1268,108 @@ export const TeacherDashboard: React.FC<Props> = ({
                       </p>
                     </div>
                     <button
-                      onClick={() => setShowAddLessonModal(true)}
+                      onClick={() => openAddActivityModal()}
                       className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl flex items-center gap-2 shadow-xs transition-all"
                     >
                       <PlusCircle className="w-4 h-4" />
-                      <span>Thêm bài giảng mới</span>
+                      <span>Thêm hoạt động tuần học</span>
                     </button>
+                  </div>
+
+                  <div className="space-y-5 w-full">
+                    {courseWeekNumbers.map((weekNumber) => {
+                      const weekItems = courseLessons.filter((lesson) => lesson.weekNumber === weekNumber);
+                      return (
+                        <div key={weekNumber} className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+                          <div className="p-4 border-b border-slate-100 bg-slate-50/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div>
+                              <h5 className="font-extrabold text-slate-900 text-sm">Tuần {weekNumber}</h5>
+                              <p className="text-xs text-slate-500 mt-0.5">
+                                {weekItems.length}/5 loại hoạt động đã được tạo cho tuần này
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => openAddActivityModal(weekNumber)}
+                              className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-xs transition-all"
+                            >
+                              <PlusCircle className="w-3.5 h-3.5" />
+                              <span>Thêm hoạt động tuần {weekNumber}</span>
+                            </button>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3 p-4">
+                            {teacherActivityOrder.map((type) => {
+                              const meta = getActivityMeta(type);
+                              const Icon = meta.icon;
+                              const item = weekItems.find((lesson) => lesson.activityType === type);
+
+                              return (
+                                <div
+                                  key={type}
+                                  className={`min-h-[168px] rounded-2xl border p-4 flex flex-col justify-between ${
+                                    item ? 'bg-white border-slate-200' : 'bg-slate-50 border-dashed border-slate-300'
+                                  }`}
+                                >
+                                  <div className="space-y-3">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-extrabold ${meta.color}`}>
+                                        <Icon className="w-3 h-3" />
+                                        {meta.label}
+                                      </span>
+                                      {item && (
+                                        <span className={`text-[10px] font-bold rounded-full px-2 py-0.5 border ${
+                                          item.isUnlocked
+                                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                            : 'bg-slate-100 text-slate-600 border-slate-200'
+                                        }`}>
+                                          {item.isUnlocked ? 'Mở' : 'Khóa'}
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    {item ? (
+                                      <div className="space-y-2">
+                                        <h6 className="font-bold text-slate-900 text-xs leading-snug">{item.title}</h6>
+                                        <div className="space-y-1 text-[11px] text-slate-500">
+                                          <span className="flex items-center gap-1.5">
+                                            <Clock className="w-3 h-3" />
+                                            {item.durationMinutes} phút
+                                          </span>
+                                          {item.resourceUrl && <span className="block truncate">Link: {item.resourceUrl}</span>}
+                                          {item.dueDate && <span className="block">Hạn: {item.dueDate}</span>}
+                                          {item.password && <span className="block text-indigo-600 font-bold">Có mật khẩu quiz</span>}
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <p className="text-xs font-semibold text-slate-500 leading-relaxed">
+                                        Chưa có {meta.label.toLowerCase()} cho tuần này.
+                                      </p>
+                                    )}
+                                  </div>
+
+                                  {item ? (
+                                    <button
+                                      onClick={() => alert(`Chỉnh sửa hoạt động: ${item.title}`)}
+                                      className="mt-4 w-full px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl"
+                                    >
+                                      Sửa
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={() => openAddActivityModal(weekNumber, type)}
+                                      className="mt-4 w-full px-3 py-2 bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 font-bold text-xs rounded-xl inline-flex items-center justify-center gap-1.5"
+                                    >
+                                      <PlusCircle className="w-3.5 h-3.5" />
+                                      <span>Thêm {meta.label}</span>
+                                    </button>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
 
                   <div className="space-y-3 w-full">
@@ -1562,6 +1870,73 @@ export const TeacherDashboard: React.FC<Props> = ({
         </div>
       )}
 
+      {showCoursePasswordModal && passwordEditingCourse && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl p-6 text-slate-900 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="font-extrabold text-lg flex items-center gap-2">
+                  <Lock className="w-5 h-5 text-blue-600" />
+                  Mật khẩu ghi danh khóa học
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  {passwordEditingCourse.courseCode} - {passwordEditingCourse.title}
+                </p>
+              </div>
+              <button
+                onClick={closeCoursePasswordModal}
+                className="text-slate-400 hover:text-slate-600 font-bold p-1 rounded-lg"
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveCoursePassword} className="space-y-4 text-xs">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-2">
+                <label className="block font-bold text-slate-700">Mật khẩu khóa học</label>
+                <input
+                  type="text"
+                  value={coursePasswordDraft}
+                  onChange={(e) => setCoursePasswordDraft(e.target.value)}
+                  placeholder="Để trống nếu cho phép ghi danh tự do"
+                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="text-[11px] text-slate-500 leading-relaxed">
+                  Khi có mật khẩu, sinh viên chưa ghi danh phải nhập đúng mật khẩu mới được ghi danh. Khi để trống, sinh viên có thể ghi danh ngay.
+                </p>
+              </div>
+
+              <div className="flex justify-between gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setCoursePasswordDraft('')}
+                  className="px-4 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold rounded-xl inline-flex items-center gap-1.5"
+                >
+                  <Unlock className="w-3.5 h-3.5" />
+                  <span>Bỏ mật khẩu</span>
+                </button>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={closeCoursePasswordModal}
+                    className="px-4 py-2 bg-slate-200 text-slate-800 font-semibold rounded-xl"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-xs inline-flex items-center gap-1.5"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    <span>Lưu</span>
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* ========================================================================= */}
       {/* MODAL 1: TẠO KHÓA HỌC MỚI                                                */}
       {/* ========================================================================= */}
@@ -1639,11 +2014,11 @@ export const TeacherDashboard: React.FC<Props> = ({
       {/* ========================================================================= */}
       {showAddLessonModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 w-full max-w-md rounded-3xl shadow-2xl p-6 text-slate-900 space-y-4">
+          <div className="bg-white border border-slate-200 w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl p-6 text-slate-900 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="font-extrabold text-lg flex items-center gap-2">
                 <PlusCircle className="w-5 h-5 text-blue-600" />
-                Thêm Bài giảng vào {currentCourse?.courseCode}
+                Thêm hoạt động tuần học vào {currentCourse?.courseCode}
               </h3>
               <button
                 onClick={() => setShowAddLessonModal(false)}
@@ -1654,11 +2029,38 @@ export const TeacherDashboard: React.FC<Props> = ({
             </div>
 
             <form onSubmit={handleCreateLesson} className="space-y-4 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Tuần học:</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={newLessonWeek}
+                    onChange={(e) => setNewLessonWeek(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Loại hoạt động:</label>
+                  <select
+                    value={newLessonType}
+                    onChange={(e) => setNewLessonType(e.target.value as TeacherActivityType)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900"
+                  >
+                    {teacherActivityOrder.map((type) => (
+                      <option key={type} value={type}>
+                        {getActivityMeta(type).label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Tên bài giảng:</label>
+                <label className="block font-bold text-slate-700 mb-1">Tiêu đề hoạt động:</label>
                 <input
                   type="text"
-                  placeholder="Ví dụ: Bài 5: Xử lý Exception & Global Middleware..."
+                  placeholder="Ví dụ: Bài giảng Tuần 3, Tài liệu PDF, Luyện tập, Quiz, Diễn đàn..."
                   value={newLessonTitle}
                   onChange={(e) => setNewLessonTitle(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900"
@@ -1666,7 +2068,7 @@ export const TeacherDashboard: React.FC<Props> = ({
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Thời lượng học (phút):</label>
+                <label className="block font-bold text-slate-700 mb-1">Thời lượng / thời gian làm (phút):</label>
                 <input
                   type="number"
                   min="5"
@@ -1675,6 +2077,51 @@ export const TeacherDashboard: React.FC<Props> = ({
                   onChange={(e) => setNewLessonDuration(parseInt(e.target.value) || 45)}
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900"
                 />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Link tài nguyên hoặc bài học:</label>
+                <input
+                  type="text"
+                  placeholder="URL video, PDF, DOCX, link bài tập hoặc diễn đàn"
+                  value={newLessonUrl}
+                  onChange={(e) => setNewLessonUrl(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Mô tả / hướng dẫn:</label>
+                <textarea
+                  rows={3}
+                  placeholder="Nhập mô tả ngắn, yêu cầu luyện tập, quy định làm quiz hoặc chủ đề thảo luận..."
+                  value={newLessonDescription}
+                  onChange={(e) => setNewLessonDescription(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Hạn nộp / hạn làm:</label>
+                  <input
+                    type="date"
+                    value={newLessonDueDate}
+                    onChange={(e) => setNewLessonDueDate(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Mật khẩu quiz:</label>
+                  <input
+                    type="text"
+                    disabled={newLessonType !== 'QUIZ'}
+                    placeholder={newLessonType === 'QUIZ' ? 'Để trống nếu quiz không cần mật khẩu' : 'Chỉ dùng cho bài trắc nghiệm'}
+                    value={newLessonPassword}
+                    onChange={(e) => setNewLessonPassword(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 disabled:opacity-50"
+                  />
+                </div>
               </div>
 
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
@@ -1689,7 +2136,7 @@ export const TeacherDashboard: React.FC<Props> = ({
                   type="submit"
                   className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-xs"
                 >
-                  Thêm bài giảng
+                  Thêm hoạt động
                 </button>
               </div>
             </form>

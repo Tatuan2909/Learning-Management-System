@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
@@ -25,7 +25,10 @@ import {
   Clock,
   Send,
   Upload,
-  Download
+  Download,
+  LayoutGrid,
+  KeyRound,
+  AlertCircle
 } from 'lucide-react';
 import { PostLessonQuiz } from './PostLessonQuiz';
 
@@ -54,6 +57,7 @@ export interface CurriculumItem {
   isCompleted: boolean;
   isLocked: boolean;
   quizId?: string;
+  password?: string;
 }
 
 export interface Section {
@@ -64,6 +68,10 @@ export interface Section {
   isLocked: boolean;
   items: CurriculumItem[];
 }
+
+const DEFAULT_QUIZ_PASSWORD = 'quiz123';
+
+const getQuizAccessKey = (item: CurriculumItem) => item.quizId || item.id;
 
 const defaultSections: Section[] = [
   {
@@ -182,6 +190,7 @@ const defaultSections: Section[] = [
         title: 'Bài trắc nghiệm đánh giá thường xuyên Bài 1',
         type: 'QUIZ',
         quizId: '66666666-6666-6666-6666-666666666666',
+        password: DEFAULT_QUIZ_PASSWORD,
         isCompleted: false,
         isLocked: false
       },
@@ -228,6 +237,7 @@ const defaultSections: Section[] = [
         title: 'Bài trắc nghiệm đánh giá thường xuyên Bài 2',
         type: 'QUIZ',
         quizId: 'quiz-2',
+        password: DEFAULT_QUIZ_PASSWORD,
         isCompleted: false,
         isLocked: true
       }
@@ -236,16 +246,20 @@ const defaultSections: Section[] = [
 ];
 
 export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, onBack }) => {
+  const [quizPasswordInput, setQuizPasswordInput] = useState('');
+  const [quizPasswordError, setQuizPasswordError] = useState('');
+  const [unlockedQuizKeys, setUnlockedQuizKeys] = useState<Record<string, boolean>>({});
+
   // Mobile sidebar drawer open state
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
-  // Collapse all state for main view
+  // Collapse all state for outline view
   const [allCollapsed, setAllCollapsed] = useState(false);
 
   // Sections data
   const [sections, setSections] = useState<Section[]>(defaultSections);
 
-  // Dedicated Activity Page State: null = viewing course outline, non-null = viewing dedicated page of that activity
+  // Selected Activity State: null = viewing course outline, non-null = viewing dedicated page of that activity
   const [selectedActivity, setSelectedActivity] = useState<CurriculumItem | null>(() => {
     if (initialActivityId) {
       for (const sec of defaultSections) {
@@ -305,12 +319,34 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
     setSections((prev) => prev.map((sec) => ({ ...sec, isExpanded: !nextState })));
   };
 
-  // Open dedicated page for an activity
+  // Open dedicated page for an activity while keeping sidebar
   const handleOpenActivity = (item: CurriculumItem) => {
     if (item.isLocked) return;
+    if (item.type === 'QUIZ') {
+      setQuizPasswordInput('');
+      setQuizPasswordError('');
+    }
     setSelectedActivity(item);
     setMobileSidebarOpen(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleUnlockQuiz = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!selectedActivity || selectedActivity.type !== 'QUIZ') return;
+
+    const expectedPassword = selectedActivity.password || DEFAULT_QUIZ_PASSWORD;
+    if (quizPasswordInput.trim() !== expectedPassword) {
+      setQuizPasswordError('Mật khẩu bài trắc nghiệm chưa đúng. Vui lòng kiểm tra lại.');
+      return;
+    }
+
+    setUnlockedQuizKeys((prev) => ({
+      ...prev,
+      [getQuizAccessKey(selectedActivity)]: true
+    }));
+    setQuizPasswordInput('');
+    setQuizPasswordError('');
   };
 
   // Handle Quiz Passed callback -> Unlocks Week 2 & Marks completed
@@ -393,134 +429,203 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
     }
   };
 
-  // Reusable Sidebar Tree Component
+  // Reusable Sidebar Tree Component - Always available both on outline and on dedicated activity page!
   const renderSidebarTree = () => (
-    <div className="space-y-2">
-      <div className="pb-2.5 border-b border-slate-200 flex items-center justify-between">
-        <h3 className="font-extrabold text-xs uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-          <BookOpen className="w-4 h-4 text-blue-600" />
-          <span>Danh mục học phần</span>
-        </h3>
-        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100">
-          {sections.length} Chương
-        </span>
+    <div className="space-y-3">
+      {/* Sidebar Header */}
+      <div className="pb-3 border-b border-slate-200 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 bg-blue-600 rounded-lg text-white">
+            <BookOpen className="w-4 h-4" />
+          </div>
+          <div>
+            <h3 className="font-extrabold text-xs uppercase tracking-wider text-slate-900 leading-none">
+              Danh mục học phần
+            </h3>
+            <span className="text-[10px] text-slate-500 font-medium">Curriculum Outline</span>
+          </div>
+        </div>
+
+        <button
+          onClick={() => setSelectedActivity(null)}
+          className={`text-[10px] font-bold px-2 py-1 rounded-lg border transition-all flex items-center gap-1 ${
+            selectedActivity === null
+              ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
+              : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-900'
+          }`}
+          title="Xem trang đề cương tổng quan"
+        >
+          <LayoutGrid className="w-3 h-3" />
+          <span>Đề cương</span>
+        </button>
       </div>
 
-      {sections.map((section) => {
-        return (
-          <div key={section.id} className="space-y-1">
-            {/* Section Header Item */}
-            <button
-              onClick={() => toggleSection(section.id)}
-              className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold flex items-center justify-between transition-all duration-150 ${
-                section.isLocked
-                  ? 'bg-slate-100 text-slate-400'
-                  : 'bg-white hover:bg-slate-100 text-slate-800 border border-slate-200'
-              }`}
-            >
-              <div className="flex items-center gap-2 min-w-0 pr-2">
-                {section.isExpanded ? (
-                  <ChevronDown className="w-3.5 h-3.5 flex-shrink-0 text-slate-500" />
-                ) : (
-                  <ChevronRight className="w-3.5 h-3.5 flex-shrink-0 text-slate-500" />
-                )}
-                <span className="truncate">{section.title}</span>
-              </div>
+      {/* Sections and Items List */}
+      <div className="space-y-2">
+        {sections.map((section) => {
+          const hasCurrentItem = section.items.some((i) => i.id === selectedActivity?.id);
 
-              {section.isLocked && (
-                <Lock className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-              )}
-            </button>
+          return (
+            <div key={section.id} className="space-y-1">
+              {/* Section Header Button */}
+              <button
+                onClick={() => toggleSection(section.id)}
+                className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold flex items-center justify-between transition-all duration-150 ${
+                  hasCurrentItem
+                    ? 'bg-blue-50/80 text-blue-900 border border-blue-200'
+                    : section.isLocked
+                    ? 'bg-slate-100/70 text-slate-400'
+                    : 'bg-white hover:bg-slate-50 text-slate-800 border border-slate-200/80'
+                }`}
+              >
+                <div className="flex items-center gap-2 min-w-0 pr-1">
+                  {section.isExpanded ? (
+                    <ChevronDown className="w-3.5 h-3.5 flex-shrink-0 text-slate-500" />
+                  ) : (
+                    <ChevronRight className="w-3.5 h-3.5 flex-shrink-0 text-slate-500" />
+                  )}
+                  <span className="truncate">{section.title}</span>
+                </div>
 
-            {/* Sub-items tree list */}
-            {section.isExpanded && (
-              <div className="pl-3 sm:pl-4 space-y-1 mt-1">
-                {section.items.map((item) => {
-                  const isCurrent = selectedActivity?.id === item.id;
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  {section.isLocked ? (
+                    <Lock className="w-3 h-3 text-slate-400" />
+                  ) : (
+                    <span className="text-[10px] text-slate-400 font-semibold">
+                      {section.items.filter((i) => i.isCompleted).length}/{section.items.length}
+                    </span>
+                  )}
+                </div>
+              </button>
 
-                  return (
-                    <button
-                      key={item.id}
-                      disabled={section.isLocked || item.isLocked}
-                      onClick={() => handleOpenActivity(item)}
-                      className={`w-full text-left px-2.5 py-2 rounded-xl text-xs flex items-center justify-between gap-2 transition-all duration-150 ${
-                        isCurrent
-                          ? 'bg-blue-600 text-white font-bold shadow-xs'
-                          : item.isLocked || section.isLocked
-                          ? 'opacity-40 cursor-not-allowed text-slate-400'
-                          : 'hover:bg-slate-100 text-slate-700'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        {item.isCompleted ? (
-                          <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-2xs ${isCurrent ? 'bg-white' : 'bg-emerald-500'}`} title="Hoàn thành"></span>
-                        ) : (
-                          <span className={`w-2.5 h-2.5 rounded-full border-2 flex-shrink-0 ${isCurrent ? 'border-white' : 'border-slate-400'}`} title="Chưa xong"></span>
+              {/* Sub-items list */}
+              {section.isExpanded && (
+                <div className="pl-2 space-y-1 mt-1 border-l-2 border-slate-200/80 ml-2">
+                  {section.items.map((item) => {
+                    const isCurrent = selectedActivity?.id === item.id;
+
+                    return (
+                      <button
+                        key={item.id}
+                        disabled={section.isLocked || item.isLocked}
+                        onClick={() => handleOpenActivity(item)}
+                        className={`w-full text-left px-2.5 py-2 rounded-xl text-xs flex items-center justify-between gap-2 transition-all duration-150 group ${
+                          isCurrent
+                            ? 'bg-blue-600 text-white font-bold shadow-xs'
+                            : item.isLocked || section.isLocked
+                            ? 'opacity-40 cursor-not-allowed text-slate-400'
+                            : 'hover:bg-slate-100/90 text-slate-700 bg-transparent'
+                        }`}
+                        title={item.title}
+                      >
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          {/* Dot / Status Indicator */}
+                          {item.isCompleted ? (
+                            <span
+                              className={`w-2 h-2 rounded-full flex-shrink-0 shadow-2xs ${
+                                isCurrent ? 'bg-white' : 'bg-emerald-500'
+                              }`}
+                              title="Hoàn thành"
+                            ></span>
+                          ) : (
+                            <span
+                              className={`w-2 h-2 rounded-full border-2 flex-shrink-0 ${
+                                isCurrent ? 'border-white' : 'border-slate-400'
+                              }`}
+                              title="Chưa xong"
+                            ></span>
+                          )}
+
+                          <span className="truncate text-[11.5px] leading-snug">
+                            {item.title}
+                          </span>
+                        </div>
+
+                        {item.isLocked && (
+                          <Lock className="w-3 h-3 flex-shrink-0 text-slate-400" />
                         )}
-                        <span className="truncate text-[11.5px]">{item.title}</span>
-                      </div>
-
-                      {item.isLocked && (
-                        <Lock className="w-3 h-3 flex-shrink-0 text-slate-400" />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        );
-      })}
+                        {item.type === 'QUIZ' && !item.isLocked && !unlockedQuizKeys[getQuizAccessKey(item)] && (
+                          <KeyRound className={`w-3 h-3 flex-shrink-0 ${isCurrent ? 'text-white' : 'text-indigo-500'}`} />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 
-  // =========================================================================
-  // VIEW MODE 1: DEDICATED ACTIVITY PAGE (MỖI PHẦN LÀ 1 PAGE RIÊNG BIỆT)
-  // =========================================================================
-  if (selectedActivity) {
-    return (
-      <div className="min-h-screen bg-[#f8fafc] flex flex-col w-full text-slate-900 font-sans antialiased">
-        {/* Dedicated Activity Header & Breadcrumb Bar */}
-        <header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-2xs px-4 sm:px-8 py-3.5">
-          <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
-              {/* Back to Course Outline Button */}
-              <button
-                onClick={() => setSelectedActivity(null)}
-                className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all border border-slate-200 flex-shrink-0"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                <span>Quay lại Khóa học</span>
-              </button>
+  return (
+    <div className="min-h-screen bg-[#f8fafc] flex flex-col w-full text-slate-900 font-sans antialiased">
+      {/* Top Header Navbar */}
+      <header className="bg-white text-slate-900 border-b border-slate-200 px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-3 shadow-2xs sticky top-0 z-40">
+        <div className="flex items-center gap-3 min-w-0">
+          {/* Back button */}
+          {selectedActivity ? (
+            <button
+              onClick={() => setSelectedActivity(null)}
+              className="p-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-800 transition-all flex items-center gap-1.5 text-xs font-bold border border-slate-200 flex-shrink-0"
+              title="Quay lại Đề cương khóa học"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span className="hidden sm:inline">Về Đề cương Khóa học</span>
+            </button>
+          ) : (
+            <button
+              onClick={onBack}
+              className="p-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-800 transition-all flex items-center gap-1.5 text-xs font-bold border border-slate-200 flex-shrink-0"
+              title="Quay lại danh sách Khóa học"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span className="hidden sm:inline">Quay lại Khóa học</span>
+            </button>
+          )}
 
-              <div className="min-w-0 border-l border-slate-200 pl-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-blue-100 text-blue-700">
-                    {selectedActivity.type}
-                  </span>
-                  <span className="text-xs text-slate-500 font-medium hidden sm:inline truncate">
-                    INT3306 • Lập trình Web C# .NET 8 & ReactJS
-                  </span>
-                </div>
-                <h1 className="font-extrabold text-sm sm:text-base text-slate-900 truncate mt-0.5 max-w-xl">
-                  {selectedActivity.title}
-                </h1>
-              </div>
+          {/* Mobile Drawer Trigger Button */}
+          <button
+            onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
+            className="lg:hidden p-2 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all border border-blue-200"
+          >
+            <List className="w-4 h-4" />
+            <span>Danh mục học phần ({completedCount}/{allItems.length})</span>
+          </button>
+
+          {/* Course and Activity Title / Breadcrumb */}
+          <div className="min-w-0 border-l border-slate-200 pl-3">
+            <div className="flex items-center gap-2">
+              <span className="bg-blue-100 text-blue-700 text-[10px] font-black uppercase px-2 py-0.5 rounded-md">
+                INT3306
+              </span>
+              <span className="text-xs text-slate-500 font-medium hidden sm:inline truncate">
+                Lập trình Web C# .NET 8 & ReactJS
+              </span>
             </div>
 
-            {/* Quick Actions & Navigation Controls */}
-            <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-end">
-              {/* Mark Completed Toggle */}
+            <h1 className="font-extrabold text-xs sm:text-sm text-slate-900 leading-tight truncate max-w-[200px] sm:max-w-md lg:max-w-lg mt-0.5">
+              {selectedActivity ? selectedActivity.title : '20241_Phát triển ứng dụng Mobile đa nền tảng (2+1)_12626W.1'}
+            </h1>
+          </div>
+        </div>
+
+        {/* Right Section: Progress Indicator & Quick Nav Controls */}
+        <div className="flex items-center gap-3">
+          {selectedActivity ? (
+            <div className="flex items-center gap-2">
+              {/* Mark Completed Toggle Button */}
               <button
                 onClick={() => toggleItemCompletion(selectedActivity.id)}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border ${
                   selectedActivity.isCompleted
                     ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
                     : 'bg-white text-slate-700 hover:bg-slate-50 border-slate-200'
                 }`}
               >
                 <Check className={`w-3.5 h-3.5 ${selectedActivity.isCompleted ? 'text-emerald-600' : 'text-slate-400'}`} />
-                <span>{selectedActivity.isCompleted ? 'Đã hoàn thành' : 'Đánh dấu Hoàn thành'}</span>
+                <span className="hidden sm:inline">{selectedActivity.isCompleted ? 'Đã hoàn thành' : 'Đánh dấu Hoàn thành'}</span>
               </button>
 
               {/* Prev / Next activity buttons */}
@@ -528,342 +633,35 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
                 <button
                   disabled={!prevActivity || prevActivity.isLocked}
                   onClick={() => prevActivity && handleOpenActivity(prevActivity)}
-                  className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-30 text-slate-700 border border-slate-200 text-xs font-bold transition-all"
+                  className="p-1.5 sm:p-2 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-30 text-slate-700 border border-slate-200 text-xs font-bold transition-all"
                   title={prevActivity ? `Bài trước: ${prevActivity.title}` : 'Không có bài trước'}
                 >
-                  <ArrowLeft className="w-4 h-4" />
+                  <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </button>
                 <button
                   disabled={!nextActivity || nextActivity.isLocked}
                   onClick={() => nextActivity && handleOpenActivity(nextActivity)}
-                  className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-30 text-slate-700 border border-slate-200 text-xs font-bold transition-all"
+                  className="p-1.5 sm:p-2 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-30 text-slate-700 border border-slate-200 text-xs font-bold transition-all"
                   title={nextActivity ? `Bài tiếp theo: ${nextActivity.title}` : 'Không có bài tiếp theo'}
                 >
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </button>
               </div>
             </div>
-          </div>
-        </header>
-
-        {/* Dedicated Activity Body Content */}
-        <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-8 py-6 sm:py-8">
-          {/* ================================================================= */}
-          {/* 1. QUIZ DEDICATED PAGE                                            */}
-          {/* ================================================================= */}
-          {selectedActivity.type === 'QUIZ' && (
-            <div className="space-y-6">
-              <PostLessonQuiz
-                quizId={selectedActivity.quizId}
-                onBack={() => setSelectedActivity(null)}
-                onNextLesson={handleQuizPassed}
-              />
-            </div>
-          )}
-
-          {/* ================================================================= */}
-          {/* 2. SCORM / VIDEO DEDICATED PAGE                                   */}
-          {/* ================================================================= */}
-          {selectedActivity.type === 'SCORM' && (
-            <div className="max-w-5xl mx-auto space-y-6">
-              <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-2xs space-y-6">
-                <div>
-                  <span className="text-xs font-bold bg-amber-100 text-amber-800 px-3 py-1 rounded-full uppercase">
-                    Bài giảng SCORM Video tương tác
-                  </span>
-                  <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 mt-2">
-                    {selectedActivity.title}
-                  </h2>
-                  <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                    Xem hết nội dung bài giảng để nắm chắc kiến thức trước khi làm bài tập và bài trắc nghiệm.
-                  </p>
-                </div>
-
-                {/* Theater Video Player */}
-                <div className="bg-slate-900 rounded-3xl overflow-hidden aspect-video w-full shadow-lg border border-slate-800">
-                  <iframe
-                    className="w-full h-full"
-                    src={selectedActivity.contentUrl || 'https://www.youtube.com/embed/d95475151'}
-                    title={selectedActivity.title}
-                    allowFullScreen
-                  ></iframe>
-                </div>
-
-                {/* Study Notes & Completion Action */}
-                <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
-                  <div className="space-y-1">
-                    <h4 className="font-bold text-slate-900 text-sm">Hướng dẫn học tập:</h4>
-                    <p className="text-xs text-slate-600 leading-relaxed">
-                      Bạn có thể ghi chú bài giảng và xem lại bất kỳ lúc nào. Sau khi học xong, nhấn nút xác nhận hoàn thành bên cạnh.
-                    </p>
-                  </div>
-
-                  <button
-                    onClick={() => {
-                      toggleItemCompletion(selectedActivity.id);
-                      if (nextActivity && !nextActivity.isLocked) {
-                        handleOpenActivity(nextActivity);
-                      }
-                    }}
-                    className="px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-xs transition-all whitespace-nowrap flex items-center gap-2"
-                  >
-                    <Check className="w-4 h-4" />
-                    <span>Hoàn thành & Sang bài tiếp</span>
-                  </button>
-                </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <div className="text-right hidden sm:block">
+                <span className="text-[11px] text-slate-500 block">Tiến độ khóa học</span>
+                <span className="text-xs font-bold text-emerald-600">{progressPercent}% Hoàn thành ({completedCount}/{allItems.length})</span>
+              </div>
+              <div className="w-20 sm:w-28 bg-slate-100 border border-slate-200 h-2.5 rounded-full overflow-hidden">
+                <div
+                  className="bg-emerald-500 h-full rounded-full shadow-2xs transition-all duration-300"
+                  style={{ width: `${progressPercent}%` }}
+                ></div>
               </div>
             </div>
           )}
-
-          {/* ================================================================= */}
-          {/* 3. PDF / DOCX DOCUMENT DEDICATED PAGE                             */}
-          {/* ================================================================= */}
-          {(selectedActivity.type === 'PDF' || selectedActivity.type === 'DOCX') && (
-            <div className="max-w-4xl mx-auto space-y-6">
-              <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-2xs space-y-6 text-center">
-                <div className="w-16 h-16 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mx-auto shadow-xs">
-                  <FileText className="w-8 h-8" />
-                </div>
-
-                <div>
-                  <span className="text-xs font-bold bg-rose-100 text-rose-800 px-3 py-1 rounded-full uppercase">
-                    Tài liệu học tập ({selectedActivity.type})
-                  </span>
-                  <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 mt-3">
-                    {selectedActivity.title}
-                  </h2>
-                  <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-lg mx-auto">
-                    Tài liệu phục vụ bài học và ôn tập kiến thức chuyên môn. Bạn có thể xem trực tuyến hoặc tải về máy cá nhân.
-                  </p>
-                </div>
-
-                {/* PDF Viewer / Download actions */}
-                <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200 max-w-lg mx-auto space-y-4">
-                  <div className="flex items-center justify-between text-xs text-slate-600 border-b border-slate-200 pb-3">
-                    <span>Định dạng: <strong>{selectedActivity.type}</strong></span>
-                    <span>Dung lượng: <strong>2.4 MB</strong></span>
-                    <span>Số trang: <strong>28 trang</strong></span>
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                    <a
-                      href={selectedActivity.contentUrl || '#'}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-xs flex items-center justify-center gap-2 transition-all"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                      <span>Xem trực tuyến</span>
-                    </a>
-                    <a
-                      href={selectedActivity.contentUrl || '#'}
-                      download
-                      className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl border border-slate-200 flex items-center justify-center gap-2 transition-all"
-                    >
-                      <Download className="w-4 h-4" />
-                      <span>Tải về máy (.pdf)</span>
-                    </a>
-                  </div>
-                </div>
-
-                <div className="pt-2">
-                  <button
-                    onClick={() => toggleItemCompletion(selectedActivity.id)}
-                    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all inline-flex items-center gap-2"
-                  >
-                    <Check className="w-4 h-4" />
-                    <span>Đánh dấu đã đọc & nghiên cứu xong</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ================================================================= */}
-          {/* 4. PRACTICE / ASSIGNMENT DEDICATED PAGE                           */}
-          {/* ================================================================= */}
-          {selectedActivity.type === 'PRACTICE' && (
-            <div className="max-w-4xl mx-auto space-y-6">
-              <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-2xs space-y-6">
-                <div>
-                  <span className="text-xs font-bold bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full uppercase">
-                    Bài luyện tập thực hành & Nộp bài
-                  </span>
-                  <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 mt-2">
-                    {selectedActivity.title}
-                  </h2>
-                  <p className="text-xs text-slate-500 mt-1">
-                    Thực hành viết mã nguồn và đóng gói mã nguồn (.zip) hoặc link Git repository để nộp bài đánh giá.
-                  </p>
-                </div>
-
-                {/* Requirements Card */}
-                <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3 text-xs leading-relaxed text-slate-700">
-                  <h4 className="font-bold text-slate-900 text-sm">Yêu cầu thực hành:</h4>
-                  <ul className="list-disc list-inside space-y-1">
-                    <li>Khởi tạo Web API project với .NET 8 SDK sử dụng kiến trúc Clean Architecture.</li>
-                    <li>Triển khai tầng Domain với Entity Course, Student và Lesson.</li>
-                    <li>Sử dụng Entity Framework Core với PostgreSQL Migration.</li>
-                    <li>Đảm bảo các Endpoint tuân thủ quy chuẩn RESTful và phản hồi đúng HTTP Status Code.</li>
-                  </ul>
-                </div>
-
-                {/* Submission Dropzone */}
-                <div className="border-2 border-dashed border-slate-300 rounded-3xl p-8 text-center space-y-3 hover:border-blue-500 transition-colors bg-slate-50/50">
-                  <Upload className="w-10 h-10 text-slate-400 mx-auto" />
-                  <div>
-                    <h5 className="font-bold text-sm text-slate-800">Kéo thả file bài làm tại đây hoặc duyệt file</h5>
-                    <p className="text-xs text-slate-400 mt-0.5">Hỗ trợ file nén .ZIP, .RAR hoặc .PDF (tối đa 25MB)</p>
-                  </div>
-                  <button className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all">
-                    Chọn file bài nộp
-                  </button>
-                </div>
-
-                <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
-                  <button
-                    onClick={() => {
-                      toggleItemCompletion(selectedActivity.id);
-                      alert('Bạn đã nộp bài tập thực hành thành công!');
-                    }}
-                    className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2"
-                  >
-                    <Send className="w-4 h-4" />
-                    <span>Nộp bài & Hoàn thành</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ================================================================= */}
-          {/* 5. ANNOUNCEMENT / FORUM DEDICATED PAGE                            */}
-          {/* ================================================================= */}
-          {selectedActivity.type === 'ANNOUNCEMENT' && (
-            <div className="max-w-4xl mx-auto space-y-6">
-              <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-2xs space-y-6">
-                <div>
-                  <span className="text-xs font-bold bg-purple-100 text-purple-800 px-3 py-1 rounded-full uppercase">
-                    Bảng tin & Diễn đàn trao đổi
-                  </span>
-                  <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 mt-2">
-                    {selectedActivity.title}
-                  </h2>
-                  <p className="text-xs text-slate-500 mt-1">
-                    Không gian thảo luận, đặt câu hỏi cho Giảng viên và bạn cùng lớp.
-                  </p>
-                </div>
-
-                <div className="p-5 rounded-2xl bg-purple-50/50 border border-purple-200 text-xs text-purple-900 space-y-2">
-                  <strong className="block text-sm font-bold">Thông báo từ Giảng viên (TS. Nguyễn Văn A):</strong>
-                  <p className="leading-relaxed">
-                    Chào các em, tuần này chúng ta học về Clean Architecture và RESTful API. Hãy xem trước slide PDF và làm bài trắc nghiệm cuối tuần 1 để kịp mở khóa nội dung tuần 2 nhé!
-                  </p>
-                </div>
-
-                <div className="space-y-3">
-                  <h4 className="font-bold text-slate-900 text-sm">Gửi câu hỏi hoặc ý kiến thảo luận:</h4>
-                  <textarea
-                    rows={3}
-                    placeholder="Nhập nội dung câu hỏi của bạn..."
-                    className="w-full p-4 rounded-2xl border border-slate-200 bg-slate-50 text-xs text-slate-800 focus:outline-blue-600"
-                  ></textarea>
-                  <button className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5">
-                    <Send className="w-3.5 h-3.5" />
-                    <span>Gửi thảo luận</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ================================================================= */}
-          {/* 6. LINK / OVERVIEW DEDICATED PAGE                                 */}
-          {/* ================================================================= */}
-          {(selectedActivity.type === 'LINK' || selectedActivity.type === 'OVERVIEW') && (
-            <div className="max-w-4xl mx-auto space-y-6">
-              <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-2xs space-y-6">
-                <div>
-                  <span className="text-xs font-bold bg-teal-100 text-teal-800 px-3 py-1 rounded-full uppercase">
-                    Liên kết & Tài nguyên ngoài
-                  </span>
-                  <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 mt-2">
-                    {selectedActivity.title}
-                  </h2>
-                  <p className="text-xs text-slate-500 mt-1">
-                    Tài nguyên mã nguồn tham khảo được lưu trữ trên kho lưu trữ trực tuyến.
-                  </p>
-                </div>
-
-                <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200 space-y-4">
-                  <p className="text-xs text-slate-700 leading-relaxed">
-                    Kho mã nguồn mẫu: <strong>{selectedActivity.contentUrl || 'https://github.com/Tatuan2909/Learning-Management-System'}</strong>
-                  </p>
-                  <a
-                    href={selectedActivity.contentUrl || 'https://github.com/Tatuan2909/Learning-Management-System'}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs transition-all"
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                    <span>Mở kho lưu trữ GitHub</span>
-                  </a>
-                </div>
-              </div>
-            </div>
-          )}
-        </main>
-      </div>
-    );
-  }
-
-  // =========================================================================
-  // VIEW MODE 2: COURSE OUTLINE PAGE (GIAO DIỆN TỔNG QUAN KHÓA HỌC)
-  // =========================================================================
-  return (
-    <div className="min-h-screen bg-[#f8fafc] flex flex-col w-full text-slate-900 font-sans transition-colors duration-200">
-      {/* Top Header Navbar - Course Outline View */}
-      <header className="bg-white text-slate-900 border-b border-slate-200 px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-3 shadow-2xs sticky top-0 z-40">
-        <div className="flex items-center gap-3 min-w-0">
-          <button
-            onClick={onBack}
-            className="p-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-700 hover:text-slate-900 transition-all flex items-center gap-1.5 text-xs font-bold border border-slate-200"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">Quay lại danh sách Khóa học</span>
-          </button>
-
-          {/* Mobile Drawer Trigger Button */}
-          <button
-            onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
-            className="lg:hidden p-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all border border-blue-200"
-          >
-            <List className="w-4 h-4" />
-            <span>Nội dung ({completedCount}/{allItems.length})</span>
-          </button>
-
-          <div className="min-w-0 border-l border-slate-200 pl-3">
-            <h1 className="font-extrabold text-sm sm:text-base text-slate-900 leading-tight truncate max-w-[240px] sm:max-w-md lg:max-w-xl">
-              20241_Phát triển ứng dụng Mobile đa nền tảng (2+1)_12626W.1
-            </h1>
-            <p className="text-[11px] text-blue-600 font-mono font-semibold hidden sm:block">
-              Hệ thống Học tập & Quản lý Học phần LMS
-            </p>
-          </div>
-        </div>
-
-        {/* Dynamic Progress Indicator */}
-        <div className="flex items-center gap-3">
-          <div className="text-right hidden sm:block">
-            <span className="text-[11px] text-slate-500 block">Tiến độ khóa học</span>
-            <span className="text-xs font-bold text-emerald-600">{progressPercent}% Hoàn thành ({completedCount}/{allItems.length})</span>
-          </div>
-          <div className="w-20 sm:w-28 bg-slate-100 border border-slate-200 h-2.5 rounded-full overflow-hidden">
-            <div
-              className="bg-emerald-500 h-full rounded-full shadow-2xs transition-all duration-300"
-              style={{ width: `${progressPercent}%` }}
-            ></div>
-          </div>
         </div>
       </header>
 
@@ -893,174 +691,535 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
         </div>
       )}
 
-      {/* Main Responsive Two-Column Layout */}
+      {/* ========================================================================= */}
+      {/* MAIN TWO-COLUMN LAYOUT: SIDEBAR ON LEFT ALWAYS VISIBLE!                   */}
+      {/* RIGHT COLUMN: EITHER DEDICATED ACTIVITY PAGE OR COURSE OUTLINE            */}
+      {/* ========================================================================= */}
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 w-full gap-0 min-h-[calc(100vh-60px)]">
-        {/* Desktop Left Navigation Tree Sidebar */}
-        <div className="hidden lg:block lg:col-span-3 bg-slate-50/80 border-r border-slate-200 p-3.5 space-y-2 overflow-y-auto max-h-[calc(100vh-60px)] sticky top-[60px]">
+        {/* Desktop Left Navigation Tree Sidebar - ALWAYS RENDERED ON LEFT! */}
+        <aside className="hidden lg:block lg:col-span-3 xl:col-span-3 bg-slate-50/80 border-r border-slate-200 p-4 space-y-2 overflow-y-auto max-h-[calc(100vh-60px)] sticky top-[60px]">
           {renderSidebarTree()}
-        </div>
+        </aside>
 
-        {/* Right Main Course Outline Area */}
-        <div className="col-span-1 lg:col-span-9 p-3 sm:p-6 lg:p-8 space-y-6 overflow-y-auto">
-          {/* Course Banner Card */}
-          <div className="bg-gradient-to-r from-blue-50/80 via-indigo-50/40 to-slate-50 p-6 sm:p-8 rounded-3xl border border-blue-100 text-slate-900 shadow-2xs space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] font-extrabold uppercase px-3 py-1 bg-blue-600 text-white rounded-full shadow-2xs">
-                Môn học chính quy
-              </span>
-              <span className="text-xs text-blue-700 font-bold">Học kỳ I • Năm học 2024 - 2025</span>
-            </div>
-            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 leading-tight">
-              Phát triển ứng dụng Mobile & Web đa nền tảng
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-600 max-w-2xl leading-relaxed">
-              Mã học phần: <strong>INT3306</strong> • Giảng viên: <strong>TS. Nguyễn Văn A</strong> • Chọn từng bài học bên dưới để mở giao diện học tập hoặc làm bài trắc nghiệm riêng.
-            </p>
-          </div>
-
-          {/* Section Accordion Cards */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between pb-1">
-              <h3 className="font-extrabold text-slate-900 text-base flex items-center gap-2">
-                <BookOpen className="w-5 h-5 text-blue-600" />
-                <span>Nội dung chương trình học theo tuần</span>
-              </h3>
-              <button
-                onClick={handleToggleCollapseAll}
-                className="text-xs text-blue-600 hover:underline font-bold"
-              >
-                {allCollapsed ? 'Mở rộng tất cả' : 'Thu gọn tất cả'}
-              </button>
-            </div>
-
-            {sections.map((section) => (
-              <div
-                key={section.id}
-                className={`bg-white border rounded-2xl overflow-hidden shadow-2xs transition-colors ${
-                  section.isLocked ? 'border-slate-200 opacity-75' : 'border-slate-200'
-                }`}
-              >
-                {/* Section Header */}
-                <div className="p-4 bg-white flex items-center justify-between border-b border-slate-100">
-                  <button
-                    onClick={() => toggleSection(section.id)}
-                    className="flex items-center gap-2.5 text-left font-extrabold text-base text-slate-900 hover:text-blue-600 transition-colors"
-                  >
-                    <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-600">
-                      {section.isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                    </div>
-                    <span className="truncate">{section.title}</span>
-                  </button>
-
-                  <div className="flex items-center gap-2">
-                    {section.isLocked && (
-                      <span className="text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                        <Lock className="w-3 h-3" /> Đang khóa (Yêu cầu qua bài trắc nghiệm Tuần 1)
+        {/* Right Main Content Area */}
+        <main className="col-span-1 lg:col-span-9 xl:col-span-9 p-4 sm:p-6 lg:p-8 space-y-6 overflow-y-auto">
+          {/* ------------------------------------------------------------------- */}
+          {/* CASE 1: DEDICATED ACTIVITY PAGE (KHI BẤM VÀO BẤT KỲ HOẠT ĐỘNG NÀO)  */}
+          {/* ------------------------------------------------------------------- */}
+          {selectedActivity ? (
+            <div className="space-y-6">
+              {/* Activity Top Navigation Breadcrumb Card */}
+              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  {renderActivityIcon(selectedActivity.type, selectedActivity.subtitle)}
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-100">
+                        {selectedActivity.type}
                       </span>
-                    )}
-                    <span className="text-xs text-slate-400 font-medium">
-                      {section.items.filter((i) => i.isCompleted).length} / {section.items.length} xong
-                    </span>
+                      <span className="text-xs text-slate-400 font-medium">Hoạt động trong học phần</span>
+                    </div>
+                    <h2 className="text-base sm:text-lg font-extrabold text-slate-900 truncate mt-0.5">
+                      {selectedActivity.title}
+                    </h2>
                   </div>
                 </div>
 
-                {/* Section Body */}
-                {section.isExpanded && (
-                  <div className="p-4 sm:p-5 space-y-4">
-                    {section.description && (
-                      <div className="bg-slate-50 p-4 rounded-xl space-y-1.5 text-xs text-slate-700 border border-slate-200">
-                        <ul className="space-y-1.5 list-disc list-inside leading-relaxed">
-                          {section.description.map((desc, idx) => (
-                            <li key={idx}>{desc}</li>
-                          ))}
-                        </ul>
+                <button
+                  onClick={() => setSelectedActivity(null)}
+                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 border border-slate-200"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                  <span>Xem Đề cương khóa học</span>
+                </button>
+              </div>
+
+              {/* 1. QUIZ DEDICATED PAGE */}
+              {selectedActivity.type === 'QUIZ' && (
+                <div className="w-full space-y-6">
+                  {unlockedQuizKeys[getQuizAccessKey(selectedActivity)] ? (
+                    <PostLessonQuiz
+                      quizId={selectedActivity.quizId}
+                      onBack={() => setSelectedActivity(null)}
+                      onNextLesson={handleQuizPassed}
+                    />
+                  ) : (
+                    <form
+                      onSubmit={handleUnlockQuiz}
+                      className="mx-auto w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-2xs space-y-6"
+                    >
+                      <div className="flex items-start gap-4">
+                        <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl border border-indigo-100 bg-indigo-50 text-indigo-700">
+                          <KeyRound className="h-6 w-6" />
+                        </div>
+                        <div>
+                          <span className="text-[11px] font-black uppercase tracking-wider text-indigo-700">
+                            Bảo vệ bài trắc nghiệm
+                          </span>
+                          <h3 className="mt-1 text-xl sm:text-2xl font-extrabold leading-tight text-slate-900">
+                            Nhập mật khẩu để bắt đầu làm bài
+                          </h3>
+                          <p className="mt-2 text-xs sm:text-sm leading-relaxed text-slate-500">
+                            Bài kiểm tra này chỉ mở sau khi bạn xác nhận đúng mật khẩu được cấp riêng cho bài trắc nghiệm.
+                          </p>
+                        </div>
                       </div>
-                    )}
 
-                    {/* Activities List */}
-                    <div className="space-y-2">
-                      {section.items.map((item) => {
-                        const isLocked = section.isLocked || item.isLocked;
+                      <div className="space-y-2">
+                        <label htmlFor="quiz-access-password" className="text-xs font-bold text-slate-700">
+                          Mật khẩu bài trắc nghiệm
+                        </label>
+                        <div className="relative">
+                          <KeyRound className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                          <input
+                            id="quiz-access-password"
+                            type="password"
+                            value={quizPasswordInput}
+                            onChange={(event) => {
+                              setQuizPasswordInput(event.target.value);
+                              setQuizPasswordError('');
+                            }}
+                            autoFocus
+                            placeholder="Nhập mật khẩu bài trắc nghiệm"
+                            className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm font-semibold text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-100"
+                          />
+                        </div>
 
-                        return (
-                          <div
-                            key={item.id}
-                            onClick={() => !isLocked && handleOpenActivity(item)}
-                            className={`p-3.5 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
-                              isLocked
-                                ? 'bg-slate-50 border-slate-200 opacity-60 cursor-not-allowed'
-                                : 'bg-white hover:bg-blue-50/40 border-slate-200 hover:border-blue-300 cursor-pointer shadow-2xs group'
-                            }`}
-                          >
-                            <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                              {renderActivityIcon(item.type, item.subtitle)}
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-2">
-                                  <h4 className={`font-bold text-xs sm:text-sm truncate ${
-                                    isLocked ? 'text-slate-500' : 'text-slate-900 group-hover:text-blue-700'
-                                  }`}>
-                                    {item.title}
-                                  </h4>
-                                </div>
-                                <span className="text-[11px] text-slate-400">
-                                  Loại: {item.type} {item.subtitle ? `• ${item.subtitle}` : ''}
-                                </span>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-2 flex-shrink-0">
-                              {/* Status Badge */}
-                              {item.isCompleted ? (
-                                <button
-                                  onClick={(e) => toggleItemCompletion(item.id, e)}
-                                  className="px-2.5 py-1 bg-emerald-50 text-emerald-800 border border-emerald-300 rounded-lg text-xs font-bold flex items-center gap-1 shadow-2xs hover:bg-emerald-100"
-                                >
-                                  <Check className="w-3.5 h-3.5 text-emerald-600" />
-                                  <span>Done</span>
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={(e) => toggleItemCompletion(item.id, e)}
-                                  className="px-2.5 py-1 bg-slate-50 text-slate-600 border border-slate-200 rounded-lg text-xs font-medium flex items-center gap-1 hover:bg-slate-100"
-                                >
-                                  <span>To do</span>
-                                </button>
-                              )}
-
-                              {/* Action to Open Separate Page */}
-                              {isLocked ? (
-                                <div className="p-2 text-slate-400">
-                                  <Lock className="w-4 h-4" />
-                                </div>
-                              ) : item.type === 'QUIZ' ? (
-                                <button
-                                  onClick={() => handleOpenActivity(item)}
-                                  className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition-all"
-                                >
-                                  <HelpCircle className="w-3.5 h-3.5" />
-                                  <span>Làm bài trắc nghiệm</span>
-                                  <ArrowRight className="w-3.5 h-3.5" />
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={() => handleOpenActivity(item)}
-                                  className="p-2 text-slate-400 group-hover:text-blue-600 transition-colors"
-                                  title="Mở bài học"
-                                >
-                                  <ArrowRight className="w-4 h-4" />
-                                </button>
-                              )}
-                            </div>
+                        {quizPasswordError && (
+                          <div className="flex items-start gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">
+                            <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                            <span>{quizPasswordError}</span>
                           </div>
-                        );
-                      })}
+                        )}
+                      </div>
+
+                      <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:justify-end">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedActivity(null)}
+                          className="rounded-xl bg-slate-100 px-4 py-2.5 text-xs font-bold text-slate-700 transition-all hover:bg-slate-200"
+                        >
+                          Quay lại đề cương
+                        </button>
+                        <button
+                          type="submit"
+                          className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-xs font-extrabold text-white shadow-xs transition-all hover:bg-indigo-700"
+                        >
+                          <KeyRound className="h-3.5 w-3.5" />
+                          <span>Bắt đầu làm bài</span>
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </div>
+              )}
+
+              {/* 2. SCORM / VIDEO DEDICATED PAGE */}
+              {selectedActivity.type === 'SCORM' && (
+                <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-2xs space-y-6">
+                  <div>
+                    <span className="text-xs font-bold bg-amber-100 text-amber-800 px-3 py-1 rounded-full uppercase">
+                      Bài giảng SCORM Video tương tác
+                    </span>
+                    <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900 mt-2">
+                      {selectedActivity.title}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                      Xem hết nội dung bài giảng để nắm chắc kiến thức trước khi làm bài tập và bài trắc nghiệm.
+                    </p>
+                  </div>
+
+                  {/* Theater Video Player */}
+                  <div className="bg-slate-900 rounded-3xl overflow-hidden aspect-video w-full shadow-lg border border-slate-800">
+                    <iframe
+                      className="w-full h-full"
+                      src={selectedActivity.contentUrl || 'https://www.youtube.com/embed/d95475151'}
+                      title={selectedActivity.title}
+                      allowFullScreen
+                    ></iframe>
+                  </div>
+
+                  {/* Study Notes & Completion Action */}
+                  <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="space-y-1">
+                      <h4 className="font-bold text-slate-900 text-sm">Hướng dẫn học tập:</h4>
+                      <p className="text-xs text-slate-600 leading-relaxed">
+                        Bạn có thể ghi chú bài giảng và xem lại bất kỳ lúc nào. Sau khi học xong, nhấn nút xác nhận hoàn thành bên cạnh.
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        toggleItemCompletion(selectedActivity.id);
+                        if (nextActivity && !nextActivity.isLocked) {
+                          handleOpenActivity(nextActivity);
+                        }
+                      }}
+                      className="px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-xs transition-all whitespace-nowrap flex items-center gap-2"
+                    >
+                      <Check className="w-4 h-4" />
+                      <span>Hoàn thành & Sang bài tiếp</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* 3. PDF / DOCX DOCUMENT DEDICATED PAGE */}
+              {(selectedActivity.type === 'PDF' || selectedActivity.type === 'DOCX') && (
+                <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-2xs space-y-6 text-center">
+                  <div className="w-16 h-16 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mx-auto shadow-xs">
+                    <FileText className="w-8 h-8" />
+                  </div>
+
+                  <div>
+                    <span className="text-xs font-bold bg-rose-100 text-rose-800 px-3 py-1 rounded-full uppercase">
+                      Tài liệu học tập ({selectedActivity.type})
+                    </span>
+                    <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900 mt-3">
+                      {selectedActivity.title}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-lg mx-auto">
+                      Tài liệu phục vụ bài học và ôn tập kiến thức chuyên môn. Bạn có thể xem trực tuyến hoặc tải về máy cá nhân.
+                    </p>
+                  </div>
+
+                  {/* PDF Viewer / Download actions */}
+                  <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200 max-w-lg mx-auto space-y-4">
+                    <div className="flex items-center justify-between text-xs text-slate-600 border-b border-slate-200 pb-3">
+                      <span>Định dạng: <strong>{selectedActivity.type}</strong></span>
+                      <span>Dung lượng: <strong>2.4 MB</strong></span>
+                      <span>Số trang: <strong>28 trang</strong></span>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                      <a
+                        href={selectedActivity.contentUrl || '#'}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-xs flex items-center justify-center gap-2 transition-all"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        <span>Xem trực tuyến</span>
+                      </a>
+                      <a
+                        href={selectedActivity.contentUrl || '#'}
+                        download
+                        className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl border border-slate-200 flex items-center justify-center gap-2 transition-all"
+                      >
+                        <Download className="w-4 h-4" />
+                        <span>Tải về máy (.pdf)</span>
+                      </a>
                     </div>
                   </div>
-                )}
+
+                  <div className="pt-2">
+                    <button
+                      onClick={() => toggleItemCompletion(selectedActivity.id)}
+                      className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all inline-flex items-center gap-2"
+                    >
+                      <Check className="w-4 h-4" />
+                      <span>Đánh dấu đã đọc & nghiên cứu xong</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* 4. PRACTICE DEDICATED PAGE */}
+              {selectedActivity.type === 'PRACTICE' && (
+                <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-2xs space-y-6">
+                  <div>
+                    <span className="text-xs font-bold bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full uppercase">
+                      Bài luyện tập thực hành & Nộp bài
+                    </span>
+                    <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900 mt-2">
+                      {selectedActivity.title}
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Thực hành viết mã nguồn và đóng gói mã nguồn (.zip) hoặc link Git repository để nộp bài đánh giá.
+                    </p>
+                  </div>
+
+                  {/* Requirements Card */}
+                  <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3 text-xs leading-relaxed text-slate-700">
+                    <h4 className="font-bold text-slate-900 text-sm">Yêu cầu thực hành:</h4>
+                    <ul className="list-disc list-inside space-y-1">
+                      <li>Khởi tạo Web API project với .NET 8 SDK sử dụng kiến trúc Clean Architecture.</li>
+                      <li>Triển khai tầng Domain với Entity Course, Student và Lesson.</li>
+                      <li>Sử dụng Entity Framework Core với PostgreSQL Migration.</li>
+                      <li>Đảm bảo các Endpoint tuân thủ quy chuẩn RESTful và phản hồi đúng HTTP Status Code.</li>
+                    </ul>
+                  </div>
+
+                  {/* Submission Dropzone */}
+                  <div className="border-2 border-dashed border-slate-300 rounded-3xl p-8 text-center space-y-3 hover:border-blue-500 transition-colors bg-slate-50/50">
+                    <Upload className="w-10 h-10 text-slate-400 mx-auto" />
+                    <div>
+                      <h5 className="font-bold text-sm text-slate-800">Kéo thả file bài làm tại đây hoặc duyệt file</h5>
+                      <p className="text-xs text-slate-400 mt-0.5">Hỗ trợ file nén .ZIP, .RAR hoặc .PDF (tối đa 25MB)</p>
+                    </div>
+                    <button className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all">
+                      Chọn file bài nộp
+                    </button>
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+                    <button
+                      onClick={() => {
+                        toggleItemCompletion(selectedActivity.id);
+                        alert('Bạn đã nộp bài tập thực hành thành công!');
+                      }}
+                      className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2"
+                    >
+                      <Send className="w-4 h-4" />
+                      <span>Nộp bài & Hoàn thành</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* 5. ANNOUNCEMENT DEDICATED PAGE */}
+              {selectedActivity.type === 'ANNOUNCEMENT' && (
+                <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-2xs space-y-6">
+                  <div>
+                    <span className="text-xs font-bold bg-purple-100 text-purple-800 px-3 py-1 rounded-full uppercase">
+                      Bảng tin & Diễn đàn trao đổi
+                    </span>
+                    <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900 mt-2">
+                      {selectedActivity.title}
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Không gian thảo luận, đặt câu hỏi cho Giảng viên và bạn cùng lớp.
+                    </p>
+                  </div>
+
+                  <div className="p-5 rounded-2xl bg-purple-50/50 border border-purple-200 text-xs text-purple-900 space-y-2">
+                    <strong className="block text-sm font-bold">Thông báo từ Giảng viên (TS. Nguyễn Văn A):</strong>
+                    <p className="leading-relaxed">
+                      Chào các em, tuần này chúng ta học về Clean Architecture và RESTful API. Hãy xem trước slide PDF và làm bài trắc nghiệm cuối tuần 1 để kịp mở khóa nội dung tuần 2 nhé!
+                    </p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <h4 className="font-bold text-slate-900 text-sm">Gửi câu hỏi hoặc ý kiến thảo luận:</h4>
+                    <textarea
+                      rows={3}
+                      placeholder="Nhập nội dung câu hỏi của bạn..."
+                      className="w-full p-4 rounded-2xl border border-slate-200 bg-slate-50 text-xs text-slate-800 focus:outline-blue-600"
+                    ></textarea>
+                    <button className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5">
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Gửi thảo luận</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* 6. LINK / OVERVIEW DEDICATED PAGE */}
+              {(selectedActivity.type === 'LINK' || selectedActivity.type === 'OVERVIEW') && (
+                <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-2xs space-y-6">
+                  <div>
+                    <span className="text-xs font-bold bg-teal-100 text-teal-800 px-3 py-1 rounded-full uppercase">
+                      Liên kết & Tài nguyên ngoài
+                    </span>
+                    <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900 mt-2">
+                      {selectedActivity.title}
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Tài nguyên mã nguồn tham khảo được lưu trữ trên kho lưu trữ trực tuyến.
+                    </p>
+                  </div>
+
+                  <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200 space-y-4">
+                    <p className="text-xs text-slate-700 leading-relaxed">
+                      Kho mã nguồn mẫu: <strong>{selectedActivity.contentUrl || 'https://github.com/Tatuan2909/Learning-Management-System'}</strong>
+                    </p>
+                    <a
+                      href={selectedActivity.contentUrl || 'https://github.com/Tatuan2909/Learning-Management-System'}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs transition-all"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      <span>Mở kho lưu trữ GitHub</span>
+                    </a>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* ------------------------------------------------------------------- */
+            /* CASE 2: COURSE OUTLINE PAGE (KHI CHƯA CHỌN HOẠT ĐỘNG HOẶC ẤN VỀ ĐỀ CƯƠNG) */
+            /* ------------------------------------------------------------------- */
+            <div className="space-y-6">
+              {/* Course Banner Card */}
+              <div className="bg-gradient-to-r from-blue-50/80 via-indigo-50/40 to-slate-50 p-6 sm:p-8 rounded-3xl border border-blue-100 text-slate-900 shadow-2xs space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-extrabold uppercase px-3 py-1 bg-blue-600 text-white rounded-full shadow-2xs">
+                    Môn học chính quy
+                  </span>
+                  <span className="text-xs text-blue-700 font-bold">Học kỳ I • Năm học 2024 - 2025</span>
+                </div>
+                <h2 className="text-2xl sm:text-3xl font-black text-slate-900 leading-tight">
+                  Phát triển ứng dụng Mobile & Web đa nền tảng
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-600 max-w-2xl leading-relaxed">
+                  Mã học phần: <strong>INT3306</strong> • Giảng viên: <strong>TS. Nguyễn Văn A</strong> • Chọn từng bài học ở danh mục bên trái hoặc bên dưới để mở giao diện học tập hoặc làm bài trắc nghiệm riêng.
+                </p>
               </div>
-            ))}
-          </div>
-        </div>
+
+              {/* Section Accordion Cards */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between pb-1">
+                  <h3 className="font-extrabold text-slate-900 text-base flex items-center gap-2">
+                    <BookOpen className="w-5 h-5 text-blue-600" />
+                    <span>Nội dung chương trình học theo tuần</span>
+                  </h3>
+                  <button
+                    onClick={handleToggleCollapseAll}
+                    className="text-xs text-blue-600 hover:underline font-bold"
+                  >
+                    {allCollapsed ? 'Mở rộng tất cả' : 'Thu gọn tất cả'}
+                  </button>
+                </div>
+
+                {sections.map((section) => (
+                  <div
+                    key={section.id}
+                    className={`bg-white border rounded-2xl overflow-hidden shadow-2xs transition-colors ${
+                      section.isLocked ? 'border-slate-200 opacity-75' : 'border-slate-200'
+                    }`}
+                  >
+                    {/* Section Header */}
+                    <div className="p-4 bg-white flex items-center justify-between border-b border-slate-100">
+                      <button
+                        onClick={() => toggleSection(section.id)}
+                        className="flex items-center gap-2.5 text-left font-extrabold text-base text-slate-900 hover:text-blue-600 transition-colors"
+                      >
+                        <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-600">
+                          {section.isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                        </div>
+                        <span className="truncate">{section.title}</span>
+                      </button>
+
+                      <div className="flex items-center gap-2">
+                        {section.isLocked && (
+                          <span className="text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                            <Lock className="w-3 h-3" /> Đang khóa (Yêu cầu qua bài trắc nghiệm Tuần 1)
+                          </span>
+                        )}
+                        <span className="text-xs text-slate-400 font-medium">
+                          {section.items.filter((i) => i.isCompleted).length} / {section.items.length} xong
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Section Body */}
+                    {section.isExpanded && (
+                      <div className="p-4 sm:p-5 space-y-4">
+                        {section.description && (
+                          <div className="bg-slate-50 p-4 rounded-xl space-y-1.5 text-xs text-slate-700 border border-slate-200">
+                            <ul className="space-y-1.5 list-disc list-inside leading-relaxed">
+                              {section.description.map((desc, idx) => (
+                                <li key={idx}>{desc}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {/* Activities List */}
+                        <div className="space-y-2">
+                          {section.items.map((item) => {
+                            const isLocked = section.isLocked || item.isLocked;
+
+                            return (
+                              <div
+                                key={item.id}
+                                onClick={() => !isLocked && handleOpenActivity(item)}
+                                className={`p-3.5 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
+                                  isLocked
+                                    ? 'bg-slate-50 border-slate-200 opacity-60 cursor-not-allowed'
+                                    : 'bg-white hover:bg-blue-50/40 border-slate-200 hover:border-blue-300 cursor-pointer shadow-2xs group'
+                                }`}
+                              >
+                                <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                                  {renderActivityIcon(item.type, item.subtitle)}
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-2">
+                                      <h4 className={`font-bold text-xs sm:text-sm truncate ${
+                                        isLocked ? 'text-slate-500' : 'text-slate-900 group-hover:text-blue-700'
+                                      }`}>
+                                        {item.title}
+                                      </h4>
+                                    </div>
+                                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                                      <span className="text-[11px] text-slate-400">
+                                        Loại: {item.type} {item.subtitle ? `• ${item.subtitle}` : ''}
+                                      </span>
+                                      {item.type === 'QUIZ' && !unlockedQuizKeys[getQuizAccessKey(item)] && (
+                                        <span className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-700">
+                                          <KeyRound className="h-3 w-3" />
+                                          Cần mật khẩu
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                  {/* Status Badge */}
+                                  {item.isCompleted ? (
+                                    <button
+                                      onClick={(e) => toggleItemCompletion(item.id, e)}
+                                      className="px-2.5 py-1 bg-emerald-50 text-emerald-800 border border-emerald-300 rounded-lg text-xs font-bold flex items-center gap-1 shadow-2xs hover:bg-emerald-100"
+                                    >
+                                      <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                      <span>Done</span>
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={(e) => toggleItemCompletion(item.id, e)}
+                                      className="px-2.5 py-1 bg-slate-50 text-slate-600 border border-slate-200 rounded-lg text-xs font-medium flex items-center gap-1 hover:bg-slate-100"
+                                    >
+                                      <span>To do</span>
+                                    </button>
+                                  )}
+
+                                  {/* Action to Open Separate Page */}
+                                  {isLocked ? (
+                                    <div className="p-2 text-slate-400">
+                                      <Lock className="w-4 h-4" />
+                                    </div>
+                                  ) : item.type === 'QUIZ' ? (
+                                    <button
+                                      onClick={() => handleOpenActivity(item)}
+                                      className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition-all"
+                                    >
+                                      <HelpCircle className="w-3.5 h-3.5" />
+                                      <span>Làm bài trắc nghiệm</span>
+                                      <ArrowRight className="w-3.5 h-3.5" />
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={() => handleOpenActivity(item)}
+                                      className="p-2 text-slate-400 group-hover:text-blue-600 transition-colors"
+                                      title="Mở bài học"
+                                    >
+                                      <ArrowRight className="w-4 h-4" />
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </main>
       </div>
     </div>
   );

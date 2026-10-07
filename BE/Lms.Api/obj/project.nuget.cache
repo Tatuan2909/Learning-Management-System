@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "iFdNf4DO6m0=",
+  "dgSpecHash": "Br2mRYC9Wd0=",
   "success": true,
   "projectFilePath": "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\BE\\Lms.Api\\Lms.Api.csproj",
   "expectedPackageFiles": [
@@ -42,10 +42,10 @@
     "C:\\Users\\ACXSAB\\.nuget\\packages\\swashbuckle.aspnetcore.swaggerui\\6.6.2\\swashbuckle.aspnetcore.swaggerui.6.6.2.nupkg.sha512",
     "C:\\Users\\ACXSAB\\.nuget\\packages\\system.identitymodel.tokens.jwt\\8.0.1\\system.identitymodel.tokens.jwt.8.0.1.nupkg.sha512",
     "C:\\Users\\ACXSAB\\.nuget\\packages\\system.memory\\4.5.3\\system.memory.4.5.3.nupkg.sha512",
-    "C:\\Users\\ACXSAB\\.nuget\\packages\\microsoft.netcore.app.ref\\8.0.26\\microsoft.netcore.app.ref.8.0.26.nupkg.sha512",
-    "C:\\Users\\ACXSAB\\.nuget\\packages\\microsoft.windowsdesktop.app.ref\\8.0.26\\microsoft.windowsdesktop.app.ref.8.0.26.nupkg.sha512",
-    "C:\\Users\\ACXSAB\\.nuget\\packages\\microsoft.aspnetcore.app.ref\\8.0.26\\microsoft.aspnetcore.app.ref.8.0.26.nupkg.sha512",
-    "C:\\Users\\ACXSAB\\.nuget\\packages\\microsoft.netcore.app.host.win-x64\\8.0.26\\microsoft.netcore.app.host.win-x64.8.0.26.nupkg.sha512"
+    "C:\\Users\\ACXSAB\\.nuget\\packages\\microsoft.netcore.app.ref\\8.0.31\\microsoft.netcore.app.ref.8.0.31.nupkg.sha512",
+    "C:\\Users\\ACXSAB\\.nuget\\packages\\microsoft.windowsdesktop.app.ref\\8.0.31\\microsoft.windowsdesktop.app.ref.8.0.31.nupkg.sha512",
+    "C:\\Users\\ACXSAB\\.nuget\\packages\\microsoft.aspnetcore.app.ref\\8.0.31\\microsoft.aspnetcore.app.ref.8.0.31.nupkg.sha512",
+    "C:\\Users\\ACXSAB\\.nuget\\packages\\microsoft.netcore.app.host.win-x64\\8.0.31\\microsoft.netcore.app.host.win-x64.8.0.31.nupkg.sha512"
   ],
   "logs": []
 }

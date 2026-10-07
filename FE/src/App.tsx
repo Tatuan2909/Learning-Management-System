@@ -461,14 +461,14 @@ export const App: React.FC = () => {
         {activeTab === 'my-courses' && (
           <CoursesPage
             initialFilter="ENROLLED"
-            onSelectLessonForQuiz={(lessonId, quizId) => handleOpenStudyPage('44444444-4444-4444-4444-444444444444')}
+            onSelectLessonForQuiz={(courseId, activityId) => handleOpenStudyPage(courseId, activityId)}
           />
         )}
 
         {activeTab === 'courses' && (
           <CoursesPage
             initialFilter="ALL"
-            onSelectLessonForQuiz={(lessonId, quizId) => handleOpenStudyPage('44444444-4444-4444-4444-444444444444')}
+            onSelectLessonForQuiz={(courseId, activityId) => handleOpenStudyPage(courseId, activityId)}
           />
         )}
 

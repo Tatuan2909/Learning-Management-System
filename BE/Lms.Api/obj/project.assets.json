@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "targets": {
     "net8.0": {
       "FluentValidation/11.9.2": {
@@ -1937,6 +1937,7 @@
       },
       "frameworks": {
         "net8.0": {
+          "framework": "net8.0",
           "targetAlias": "net8.0",
           "projectReferences": {
             "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\BE\\Lms.Application\\Lms.Application.csproj": {
@@ -1958,10 +1959,11 @@
         "auditLevel": "low",
         "auditMode": "direct"
       },
-      "SdkAnalysisLevel": "10.0.200"
+      "SdkAnalysisLevel": "10.0.400"
     },
     "frameworks": {
       "net8.0": {
+        "framework": "net8.0",
         "targetAlias": "net8.0",
         "dependencies": {
           "Microsoft.AspNetCore.Authentication.JwtBearer": {
@@ -1987,19 +1989,19 @@
         "downloadDependencies": [
           {
             "name": "Microsoft.AspNetCore.App.Ref",
-            "version": "[8.0.26, 8.0.26]"
+            "version": "[8.0.31, 8.0.31]"
           },
           {
             "name": "Microsoft.NETCore.App.Host.win-x64",
-            "version": "[8.0.26, 8.0.26]"
+            "version": "[8.0.31, 8.0.31]"
           },
           {
             "name": "Microsoft.NETCore.App.Ref",
-            "version": "[8.0.26, 8.0.26]"
+            "version": "[8.0.31, 8.0.31]"
           },
           {
             "name": "Microsoft.WindowsDesktop.App.Ref",
-            "version": "[8.0.26, 8.0.26]"
+            "version": "[8.0.31, 8.0.31]"
           }
         ],
         "frameworkReferences": {
@@ -2010,7 +2012,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.203/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.401/PortableRuntimeIdentifierGraph.json"
       }
     }
   }

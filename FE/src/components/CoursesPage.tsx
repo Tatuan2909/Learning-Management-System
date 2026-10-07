@@ -1,23 +1,55 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, CheckCircle, Lock, PlayCircle, FileText, Search, UserCheck, ArrowRight, Award, PlusCircle, Sparkles, Filter, CheckSquare } from 'lucide-react';
+import { BookOpen, CheckCircle, Lock, PlayCircle, FileText, Search, UserCheck, ArrowRight, Award, PlusCircle, Sparkles, Filter, CheckSquare, KeyRound, ShieldCheck, AlertCircle } from 'lucide-react';
 import { CourseItem, LessonItem } from '../types';
 
 interface Props {
   initialFilter?: 'ALL' | 'ENROLLED' | 'AVAILABLE';
-  onSelectLessonForQuiz?: (lessonId: string, quizId: string) => void;
+  onSelectLessonForQuiz?: (courseId: string, activityId?: string) => void;
 }
+
+type CoursePasswordAction = 'enroll' | 'study' | 'lesson';
+
+const DEFAULT_COURSE_PASSWORD = 'course123';
+const ENROLLED_COURSES_STORAGE_KEY = 'lms_enrolled_course_ids';
+const getCoursePasswordStorageKey = (courseCode: string) => `lms_course_password_${courseCode}`;
+const readStoredCoursePassword = (courseCode: string, fallback?: string) => {
+  const storedPassword = localStorage.getItem(getCoursePasswordStorageKey(courseCode));
+  return storedPassword !== null ? storedPassword : fallback;
+};
+const readStoredEnrollmentIds = () => {
+  try {
+    return JSON.parse(localStorage.getItem(ENROLLED_COURSES_STORAGE_KEY) || '[]') as string[];
+  } catch {
+    return [];
+  }
+};
+const writeStoredEnrollmentId = (courseId: string) => {
+  const enrolledIds = new Set(readStoredEnrollmentIds());
+  enrolledIds.add(courseId);
+  localStorage.setItem(ENROLLED_COURSES_STORAGE_KEY, JSON.stringify(Array.from(enrolledIds)));
+};
+const hasCoursePassword = (course: CourseItem) => Boolean((course.accessPassword || '').trim());
 
 export const CoursesPage: React.FC<Props> = ({ initialFilter = 'ALL', onSelectLessonForQuiz }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'ALL' | 'ENROLLED' | 'AVAILABLE'>(initialFilter);
   const [selectedCourse, setSelectedCourse] = useState<CourseItem | null>(null);
+  const [passwordDialog, setPasswordDialog] = useState<{
+    course: CourseItem;
+    action: CoursePasswordAction;
+    lessonId?: string;
+  } | null>(null);
+  const [coursePasswordInput, setCoursePasswordInput] = useState('');
+  const [coursePasswordError, setCoursePasswordError] = useState('');
 
   useEffect(() => {
     setFilterType(initialFilter);
   }, [initialFilter]);
 
   // Mock list of Courses matching database structure
-  const [courses, setCourses] = useState<CourseItem[]>([
+  const [courses, setCourses] = useState<CourseItem[]>(() => {
+    const enrolledIds = readStoredEnrollmentIds();
+    return ([
     {
       id: '44444444-4444-4444-4444-444444444444',
       courseCode: 'INT3306',
@@ -26,6 +58,7 @@ export const CoursesPage: React.FC<Props> = ({ initialFilter = 'ALL', onSelectLe
       teacherName: 'TS. Nguyễn Văn A',
       progressPercentage: 50.0,
       isEnrolled: true,
+      accessPassword: DEFAULT_COURSE_PASSWORD,
       lessonsCount: 4,
       lessons: [
         {
@@ -103,13 +136,68 @@ export const CoursesPage: React.FC<Props> = ({ initialFilter = 'ALL', onSelectLe
       isEnrolled: true,
       lessonsCount: 4
     }
-  ]);
+    ] as CourseItem[]).map((course) => ({
+      ...course,
+      isEnrolled: course.isEnrolled || enrolledIds.includes(course.id),
+      accessPassword: readStoredCoursePassword(course.courseCode, course.accessPassword)
+    }));
+  });
 
-  const handleEnroll = (courseId: string) => {
+  const openPasswordDialog = (course: CourseItem, action: CoursePasswordAction, lessonId?: string) => {
+    if (action !== 'enroll' || course.isEnrolled) {
+      openCourseForStudy(course, lessonId);
+      return;
+    }
+
+    if (!hasCoursePassword(course)) {
+      enrollCourse(course);
+      return;
+    }
+
+    setPasswordDialog({ course, action, lessonId });
+    setCoursePasswordInput('');
+    setCoursePasswordError('');
+  };
+
+  const closePasswordDialog = () => {
+    setPasswordDialog(null);
+    setCoursePasswordInput('');
+    setCoursePasswordError('');
+  };
+
+  const enrollCourse = (course: CourseItem) => {
+    writeStoredEnrollmentId(course.id);
+    const enrolledCourse = { ...course, isEnrolled: true };
     setCourses((prev) =>
-      prev.map((c) => (c.id === courseId ? { ...c, isEnrolled: true } : c))
+      prev.map((c) => (c.id === course.id ? enrolledCourse : c))
     );
-    alert('Chúc mừng! Bạn đã ghi danh thành công vào khóa học.');
+    setSelectedCourse((prev) => (prev?.id === course.id ? enrolledCourse : prev));
+    alert(
+      hasCoursePassword(course)
+        ? 'Chúc mừng! Bạn đã nhập đúng mật khẩu và ghi danh thành công vào khóa học.'
+        : 'Chúc mừng! Bạn đã ghi danh thành công vào khóa học.'
+    );
+  };
+
+  const openCourseForStudy = (course: CourseItem, lessonId?: string) => {
+    setSelectedCourse(null);
+    if (onSelectLessonForQuiz) {
+      onSelectLessonForQuiz(course.id, lessonId);
+    }
+  };
+
+  const handleCoursePasswordSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!passwordDialog) return;
+
+    const expectedPassword = (passwordDialog.course.accessPassword || '').trim();
+    if (coursePasswordInput.trim() !== expectedPassword) {
+      setCoursePasswordError('Mật khẩu khóa học chưa đúng. Vui lòng kiểm tra lại.');
+      return;
+    }
+
+    enrollCourse(passwordDialog.course);
+    closePasswordDialog();
   };
 
   const filteredCourses = courses.filter((course) => {
@@ -265,22 +353,19 @@ export const CoursesPage: React.FC<Props> = ({ initialFilter = 'ALL', onSelectLe
 
               {course.isEnrolled ? (
                 <button
-                  onClick={() => {
-                    if (onSelectLessonForQuiz) {
-                      onSelectLessonForQuiz(course.id, '66666666-6666-6666-6666-666666666666');
-                    }
-                  }}
+                  onClick={() => openPasswordDialog(course, 'study')}
                   className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl shadow-2xs flex items-center gap-1.5 transition-all"
                 >
+                  <KeyRound className="w-3.5 h-3.5" />
                   <span>Vào Trang Học</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               ) : (
                 <button
-                  onClick={() => handleEnroll(course.id)}
+                  onClick={() => openPasswordDialog(course, 'enroll')}
                   className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-2xs flex items-center gap-1.5 transition-all"
                 >
-                  <PlusCircle className="w-3.5 h-3.5" />
+                  <KeyRound className="w-3.5 h-3.5" />
                   <span>Ghi danh học</span>
                 </button>
               )}
@@ -322,10 +407,8 @@ export const CoursesPage: React.FC<Props> = ({ initialFilter = 'ALL', onSelectLe
                     <div
                       key={lesson.id}
                       onClick={() => {
-                        if (!lesson.isLocked && selectedCourse.isEnrolled && onSelectLessonForQuiz) {
-                          const cid = selectedCourse.id;
-                          setSelectedCourse(null);
-                          onSelectLessonForQuiz(cid, lesson.id);
+                        if (!lesson.isLocked && selectedCourse.isEnrolled) {
+                          openPasswordDialog(selectedCourse, 'lesson', lesson.id);
                         }
                       }}
                       className={`p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs transition-colors ${
@@ -370,21 +453,96 @@ export const CoursesPage: React.FC<Props> = ({ initialFilter = 'ALL', onSelectLe
 
               {selectedCourse.isEnrolled && (
                 <button
-                  onClick={() => {
-                    const cid = selectedCourse.id;
-                    setSelectedCourse(null);
-                    if (onSelectLessonForQuiz) {
-                      onSelectLessonForQuiz(cid, '66666666-6666-6666-6666-666666666666');
-                    }
-                  }}
+                  onClick={() => openPasswordDialog(selectedCourse, 'study')}
                   className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition-all"
                 >
-                  <BookOpen className="w-3.5 h-3.5" />
+                  <KeyRound className="w-3.5 h-3.5" />
                   <span>Vào học khóa học này</span>
                 </button>
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {passwordDialog && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/45 backdrop-blur-sm">
+          <form
+            onSubmit={handleCoursePasswordSubmit}
+            className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl space-y-5"
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-4">
+              <div className="flex items-start gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-700 border border-blue-100">
+                  <ShieldCheck className="h-5 w-5" />
+                </div>
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-blue-700">
+                    {passwordDialog.course.courseCode}
+                  </span>
+                  <h3 className="mt-0.5 text-lg font-extrabold text-slate-900">
+                    {passwordDialog.action === 'enroll' ? 'Nhập mật khẩu để ghi danh' : 'Nhập mật khẩu để vào khóa học'}
+                  </h3>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                    Khóa học này được bảo vệ. Vui lòng nhập mật khẩu do giảng viên hoặc quản trị viên cung cấp.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={closePasswordDialog}
+                className="rounded-xl p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                aria-label="Đóng hộp nhập mật khẩu"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="course-access-password" className="text-xs font-bold text-slate-700">
+                Mật khẩu khóa học
+              </label>
+              <div className="relative">
+                <KeyRound className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  id="course-access-password"
+                  type="password"
+                  value={coursePasswordInput}
+                  onChange={(event) => {
+                    setCoursePasswordInput(event.target.value);
+                    setCoursePasswordError('');
+                  }}
+                  autoFocus
+                  placeholder="Nhập mật khẩu"
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm font-semibold text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
+                />
+              </div>
+
+              {coursePasswordError && (
+                <div className="flex items-start gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">
+                  <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                  <span>{coursePasswordError}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
+              <button
+                type="button"
+                onClick={closePasswordDialog}
+                className="rounded-xl bg-slate-100 px-4 py-2.5 text-xs font-bold text-slate-700 transition-all hover:bg-slate-200"
+              >
+                Hủy
+              </button>
+              <button
+                type="submit"
+                className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-extrabold text-white shadow-xs transition-all hover:bg-blue-700"
+              >
+                <KeyRound className="h-3.5 w-3.5" />
+                <span>{passwordDialog.action === 'enroll' ? 'Xác nhận ghi danh' : 'Vào khóa học'}</span>
+              </button>
+            </div>
+          </form>
         </div>
       )}
     </div>
