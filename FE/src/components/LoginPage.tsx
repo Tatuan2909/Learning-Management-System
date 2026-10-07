@@ -46,51 +46,8 @@ export const LoginPage: React.FC<Props> = ({ onLoginSuccess }) => {
 
       onLoginSuccess(user);
     } catch (err: any) {
-      console.warn('Backend API login error or offline, fallback demo login:', err);
-
-      // Demo fallback evaluation if API isn't running yet
-      let user: AuthUser | null = null;
-
-      if (email === 'student@lms.edu.vn' || email.includes('student')) {
-        user = {
-          userId: '33333333-3333-3333-3333-333333333333',
-          email: 'student@lms.edu.vn',
-          fullName: 'Trần Thị B',
-          role: 'STUDENT',
-          studentCode: 'SV2024001',
-          token: 'demo-student-token',
-          refreshToken: 'demo-student-refresh'
-        };
-      } else if (email === 'teacher@lms.edu.vn' || email.includes('teacher')) {
-        user = {
-          userId: '22222222-2222-2222-2222-222222222222',
-          email: 'teacher@lms.edu.vn',
-          fullName: 'TS. Nguyễn Văn A',
-          role: 'TEACHER',
-          teacherCode: 'GV001',
-          department: 'Khoa Công nghệ Thông tin',
-          token: 'demo-teacher-token',
-          refreshToken: 'demo-teacher-refresh'
-        };
-      } else if (email === 'admin@lms.edu.vn' || email.includes('admin')) {
-        user = {
-          userId: '11111111-1111-1111-1111-111111111111',
-          email: 'admin@lms.edu.vn',
-          fullName: 'Hệ thống Quản trị viên',
-          role: 'ADMIN',
-          token: 'demo-admin-token',
-          refreshToken: 'demo-admin-refresh'
-        };
-      }
-
-      if (user && (password === 'admin123' || password === 'teacher123' || password === 'student123' || password.length > 0)) {
-        localStorage.setItem('access_token', user.token);
-        localStorage.setItem('refresh_token', user.refreshToken);
-        localStorage.setItem('user_info', JSON.stringify(user));
-        onLoginSuccess(user);
-      } else {
-        setError(err.response?.data?.message || 'Email hoặc mật khẩu không chính xác.');
-      }
+      console.error('Lỗi đăng nhập backend API:', err);
+      setError(err.response?.data?.message || 'Email hoặc mật khẩu không chính xác hoặc máy chủ không phản hồi.');
     } finally {
       setLoading(false);
     }

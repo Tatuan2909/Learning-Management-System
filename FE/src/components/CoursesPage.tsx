@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BookOpen, CheckCircle, Lock, PlayCircle, FileText, Search, UserCheck, ArrowRight, Award, PlusCircle, Sparkles, Filter, CheckSquare, KeyRound, ShieldCheck, AlertCircle } from 'lucide-react';
-import { CourseItem, LessonItem } from '../types';
+import { CourseItem, CourseDetail } from '../types';
+import api from '../api/axios';
 
 interface Props {
   initialFilter?: 'ALL' | 'ENROLLED' | 'AVAILABLE';
@@ -34,6 +35,8 @@ export const CoursesPage: React.FC<Props> = ({ initialFilter = 'ALL', onSelectLe
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'ALL' | 'ENROLLED' | 'AVAILABLE'>(initialFilter);
   const [selectedCourse, setSelectedCourse] = useState<CourseItem | null>(null);
+  const [selectedCourseDetail, setSelectedCourseDetail] = useState<CourseDetail | null>(null);
+  const [loadingDetail, setLoadingDetail] = useState<boolean>(false);
   const [passwordDialog, setPasswordDialog] = useState<{
     course: CourseItem;
     action: CoursePasswordAction;
@@ -42,106 +45,58 @@ export const CoursesPage: React.FC<Props> = ({ initialFilter = 'ALL', onSelectLe
   const [coursePasswordInput, setCoursePasswordInput] = useState('');
   const [coursePasswordError, setCoursePasswordError] = useState('');
 
+  const handleOpenCourseDetail = async (course: CourseItem) => {
+    setSelectedCourse(course);
+    setLoadingDetail(true);
+    try {
+      const studentId = getStudentId();
+      const res = await api.get<CourseDetail>(`/courses/${course.id}?studentId=${studentId}`);
+      setSelectedCourseDetail(res.data);
+    } catch {
+      setSelectedCourseDetail(null);
+    } finally {
+      setLoadingDetail(false);
+    }
+  };
+
   useEffect(() => {
     setFilterType(initialFilter);
   }, [initialFilter]);
 
-  // Mock list of Courses matching database structure
-  const [courses, setCourses] = useState<CourseItem[]>(() => {
-    const enrolledIds = readStoredEnrollmentIds();
-    return ([
-    {
-      id: '44444444-4444-4444-4444-444444444444',
-      courseCode: 'INT3306',
-      title: 'Lập trình Web C# .NET 8 & ReactJS',
-      description: 'Xây dựng ứng dụng Web Fullstack chuẩn Clean Architecture, N-Tier với EF Core & PostgreSQL.',
-      teacherName: 'TS. Nguyễn Văn A',
-      progressPercentage: 50.0,
-      isEnrolled: true,
-      accessPassword: DEFAULT_COURSE_PASSWORD,
-      lessonsCount: 4,
-      lessons: [
-        {
-          id: '55555555-5555-5555-5555-555555555555',
-          title: 'Bài 1: Giới thiệu Clean Architecture & RESTful API',
-          orderIndex: 1,
-          contentType: 'VIDEO',
-          contentUrl: 'https://www.youtube.com/embed/d95475151',
-          isLocked: false,
-          isCompleted: true,
-          quizPassed: true
-        },
-        {
-          id: '99999999-9999-9999-9999-999999999999',
-          title: 'Bài 2: Tích hợp JWT Auth & Role Authorization',
-          orderIndex: 2,
-          contentType: 'PDF',
-          contentUrl: 'https://example.com/slides/jwt-guide.pdf',
-          isLocked: false,
-          isCompleted: false,
-          quizPassed: false
-        },
-        {
-          id: 'l3',
-          title: 'Bài 3: Thiết kế Database Schema PostgreSQL & EF Core',
-          orderIndex: 3,
-          contentType: 'TEXT',
-          isLocked: true,
-          isCompleted: false,
-          quizPassed: false
-        },
-        {
-          id: 'l4',
-          title: 'Bài 4: Xây dựng UI Widget Deadlines với React & Tailwind',
-          orderIndex: 4,
-          contentType: 'VIDEO',
-          isLocked: true,
-          isCompleted: false,
-          quizPassed: false
-        }
-      ]
-    },
-    {
-      id: 'c2',
-      courseCode: 'CS101',
-      title: 'Nhập môn Khoa học Máy tính & Thuật toán',
-      description: 'Nền tảng cấu trúc dữ liệu, thuật toán sắp xếp và tư duy giải quyết vấn đề bằng máy tính.',
-      teacherName: 'PGS. TS. Lê Văn C',
-      progressPercentage: 100.0,
-      isEnrolled: true,
-      lessonsCount: 3,
-      lessons: [
-        { id: 'cs1', title: 'Bài 1: Tổng quan về Khoa học Máy tính', orderIndex: 1, contentType: 'VIDEO', isLocked: false, isCompleted: true, quizPassed: true },
-        { id: 'cs2', title: 'Bài 2: Thuật toán Tìm kiếm & Sắp xếp', orderIndex: 2, contentType: 'VIDEO', isLocked: false, isCompleted: true, quizPassed: true },
-        { id: 'cs3', title: 'Bài 3: Độ phức tạp thuật toán O(n)', orderIndex: 3, contentType: 'PDF', isLocked: false, isCompleted: true, quizPassed: true }
-      ]
-    },
-    {
-      id: 'c3',
-      courseCode: 'DB201',
-      title: 'Cơ sở Dữ liệu Quan hệ & PostgreSQL Advanced',
-      description: 'Thiết kế cơ sở dữ liệu chuẩn hóa 3NF, Indexing, Partitioning, SQL Query Optimization.',
-      teacherName: 'ThS. Phạm Thị D',
-      progressPercentage: 0.0,
-      isEnrolled: false,
-      lessonsCount: 5
-    },
-    {
-      id: 'c4',
-      courseCode: 'SE302',
-      title: 'Kiến trúc Phần mềm & Microservices',
-      description: 'Tìm hiểu các mẫu kiến trúc Microservices, Event-Driven Architecture, Docker & Kubernetes.',
-      teacherName: 'TS. Nguyễn Văn A',
-      progressPercentage: 25.0,
-      isEnrolled: true,
-      lessonsCount: 4
+  const getStudentId = () => {
+    try {
+      const userStr = localStorage.getItem('user_info');
+      if (userStr) return JSON.parse(userStr).userId;
+    } catch { }
+    return '33333333-3333-3333-3333-333333333333';
+  };
+
+  const [courses, setCourses] = useState<CourseItem[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchCourses = async () => {
+    try {
+      setLoading(true);
+      const studentId = getStudentId();
+      const endpoint = filterType === 'ENROLLED'
+        ? `/courses/my-courses?studentId=${studentId}`
+        : `/courses?studentId=${studentId}`;
+      const response = await api.get<CourseItem[]>(endpoint);
+      setCourses(response.data || []);
+      setError(null);
+    } catch (err: any) {
+      console.error('Lỗi tải khóa học từ CSDL:', err);
+      setError('Không thể kết nối CSDL hoặc tải danh sách khóa học.');
+      setCourses([]);
+    } finally {
+      setLoading(false);
     }
-    ] as CourseItem[]).map((course) => ({
-      ...course,
-      isEnrolled: course.isEnrolled || enrolledIds.includes(course.id),
-      accessPassword: readStoredCoursePassword(course.courseCode, course.accessPassword)
-    }));
-  });
+  };
+
+  useEffect(() => {
+    fetchCourses();
+  }, [filterType]);
 
   const openPasswordDialog = (course: CourseItem, action: CoursePasswordAction, lessonId?: string) => {
     if (action !== 'enroll' || course.isEnrolled) {
@@ -165,18 +120,20 @@ export const CoursesPage: React.FC<Props> = ({ initialFilter = 'ALL', onSelectLe
     setCoursePasswordError('');
   };
 
-  const enrollCourse = (course: CourseItem) => {
-    writeStoredEnrollmentId(course.id);
-    const enrolledCourse = { ...course, isEnrolled: true };
-    setCourses((prev) =>
-      prev.map((c) => (c.id === course.id ? enrolledCourse : c))
-    );
-    setSelectedCourse((prev) => (prev?.id === course.id ? enrolledCourse : prev));
-    alert(
-      hasCoursePassword(course)
-        ? 'Chúc mừng! Bạn đã nhập đúng mật khẩu và ghi danh thành công vào khóa học.'
-        : 'Chúc mừng! Bạn đã ghi danh thành công vào khóa học.'
-    );
+  const enrollCourse = async (course: CourseItem) => {
+    try {
+      const studentId = getStudentId();
+      await api.post(`/courses/${course.id}/enroll`, { studentId });
+      alert(
+        hasCoursePassword(course)
+          ? 'Chúc mừng! Bạn đã nhập đúng mật khẩu và ghi danh thành công vào khóa học.'
+          : 'Chúc mừng! Bạn đã ghi danh thành công vào khóa học.'
+      );
+      fetchCourses();
+    } catch (err: any) {
+      console.error('Lỗi ghi danh:', err);
+      alert('Lỗi ghi danh: ' + (err.response?.data?.message || err.message));
+    }
   };
 
   const openCourseForStudy = (course: CourseItem, lessonId?: string) => {
@@ -344,7 +301,7 @@ export const CoursesPage: React.FC<Props> = ({ initialFilter = 'ALL', onSelectLe
             {/* Card Footer Actions */}
             <div className="bg-slate-50 px-6 py-4 border-t border-slate-100 flex items-center justify-between">
               <button
-                onClick={() => setSelectedCourse(course)}
+                onClick={() => handleOpenCourseDetail(course)}
                 className="text-xs font-bold text-slate-700 hover:text-blue-600 flex items-center gap-1.5 transition-colors"
               >
                 <BookOpen className="w-4 h-4" />
@@ -388,7 +345,10 @@ export const CoursesPage: React.FC<Props> = ({ initialFilter = 'ALL', onSelectLe
                 </h3>
               </div>
               <button
-                onClick={() => setSelectedCourse(null)}
+                onClick={() => {
+                  setSelectedCourse(null);
+                  setSelectedCourseDetail(null);
+                }}
                 className="text-slate-400 hover:text-slate-600 font-bold p-1 rounded-lg"
               >
                 ✕
@@ -402,8 +362,10 @@ export const CoursesPage: React.FC<Props> = ({ initialFilter = 'ALL', onSelectLe
               </h4>
 
               <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                {selectedCourse.lessons && selectedCourse.lessons.length > 0 ? (
-                  selectedCourse.lessons.map((lesson) => (
+                {loadingDetail ? (
+                  <p className="text-xs text-slate-500 italic text-center py-4">Đang tải dữ liệu từ CSDL...</p>
+                ) : (selectedCourseDetail?.sections?.flatMap(s => s.items) || []).length > 0 ? (
+                  (selectedCourseDetail?.sections?.flatMap(s => s.items) || []).map((lesson) => (
                     <div
                       key={lesson.id}
                       onClick={() => {
@@ -445,7 +407,10 @@ export const CoursesPage: React.FC<Props> = ({ initialFilter = 'ALL', onSelectLe
 
             <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
               <button
-                onClick={() => setSelectedCourse(null)}
+                onClick={() => {
+                  setSelectedCourse(null);
+                  setSelectedCourseDetail(null);
+                }}
                 className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all"
               >
                 Đóng cửa sổ

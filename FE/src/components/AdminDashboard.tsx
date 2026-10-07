@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ShieldCheck,
   Users,
@@ -23,6 +23,7 @@ import {
   KeyRound
 } from 'lucide-react';
 import { AuthUser } from '../types';
+import api from '../api/axios';
 
 interface Props {
   user: AuthUser;
@@ -98,209 +99,86 @@ export const AdminDashboard: React.FC<Props> = ({ user, activeTab: propActiveTab
   const [semester, setSemester] = useState('Học kỳ I');
   const [maintenanceMode, setMaintenanceMode] = useState(false);
 
-  // Mock Managed Users List
-  const [usersList, setUsersList] = useState<ManagedUser[]>([
-    {
-      id: 'u-1',
-      fullName: 'Trần Thị B',
-      email: 'student@lms.edu.vn',
-      role: 'STUDENT',
-      code: 'SV2024001',
-      departmentOrClass: 'CNTT-K65',
-      status: 'ACTIVE',
-      createdAt: '2024-08-15'
-    },
-    {
-      id: 'u-2',
-      fullName: 'TS. Nguyễn Văn A',
-      email: 'teacher@lms.edu.vn',
-      role: 'TEACHER',
-      code: 'GV001',
-      departmentOrClass: 'Khoa Công nghệ Thông tin',
-      status: 'ACTIVE',
-      createdAt: '2023-01-10'
-    },
-    {
-      id: 'u-3',
-      fullName: 'Hệ thống Quản trị viên',
-      email: 'admin@lms.edu.vn',
-      role: 'ADMIN',
-      code: 'ADM001',
-      departmentOrClass: 'Phòng Quản trị Mạng',
-      status: 'ACTIVE',
-      createdAt: '2022-05-01'
-    },
-    {
-      id: 'u-4',
-      fullName: 'Nguyễn Văn C',
-      email: 'student2@lms.edu.vn',
-      role: 'STUDENT',
-      code: 'SV2024002',
-      departmentOrClass: 'CNTT-K65',
-      status: 'ACTIVE',
-      createdAt: '2024-08-16'
-    },
-    {
-      id: 'u-5',
-      fullName: 'PGS. TS. Lê Văn C',
-      email: 'teacher2@lms.edu.vn',
-      role: 'TEACHER',
-      code: 'GV002',
-      departmentOrClass: 'Khoa Khoa học Máy tính',
-      status: 'LOCKED',
-      createdAt: '2023-06-20'
-    }
-  ]);
+  // Dynamic state loaded from real database
+  const [usersList, setUsersList] = useState<ManagedUser[]>([]);
+  const [coursesList, setCoursesList] = useState<AdminCourse[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [overviewMetrics, setOverviewMetrics] = useState<{
+    totalUsers: number;
+    totalCourses: number;
+    totalEnrollments: number;
+    totalSubmissions: number;
+  } | null>(null);
+  const [loadingData, setLoadingData] = useState<boolean>(false);
 
-  // Mock Admin Courses
-  const [coursesList, setCoursesList] = useState<AdminCourse[]>([
-    {
-      id: 'c-1',
-      courseCode: 'INT3306',
-      title: 'Lập trình Web C# .NET 8 & ReactJS',
-      department: 'Khoa Công nghệ Thông tin',
-      teacherName: 'TS. Nguyễn Văn A',
-      studentsCount: 45,
-      status: 'ACTIVE'
-    },
-    {
-      id: 'c-2',
-      courseCode: 'CS101',
-      title: 'Nhập môn Khoa học Máy tính & Thuật toán',
-      department: 'Khoa Khoa học Máy tính',
-      teacherName: 'PGS. TS. Lê Văn C',
-      studentsCount: 60,
-      status: 'ACTIVE'
-    },
-    {
-      id: 'c-3',
-      courseCode: 'DB201',
-      title: 'Cơ sở Dữ liệu Quan hệ & PostgreSQL Advanced',
-      department: 'Khoa Hệ thống Thông tin',
-      teacherName: 'ThS. Phạm Thị D',
-      studentsCount: 38,
-      status: 'ACTIVE'
-    },
-    {
-      id: 'c-4',
-      courseCode: 'SE302',
-      title: 'Kiến trúc Phần mềm & Microservices',
-      department: 'Khoa Công nghệ Phần mềm',
-      teacherName: 'TS. Nguyễn Văn A',
-      studentsCount: 40,
-      status: 'ACTIVE'
-    }
-  ]);
+  // Fetch admin overview and datasets from real SQL database
+  const fetchAdminData = async () => {
+    try {
+      setLoadingData(true);
+      const [overviewRes, usersRes, coursesRes, logsRes] = await Promise.all([
+        api.get('/admin/overview'),
+        api.get<ManagedUser[]>('/admin/users'),
+        api.get<AdminCourse[]>('/admin/courses'),
+        api.get<AuditLog[]>('/admin/logs')
+      ]);
 
-  // Mock Audit Logs
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([
-    {
-      id: 'log-1',
-      timestamp: '2026-09-22 23:55:12',
-      actor: 'admin@lms.edu.vn',
-      role: 'ADMIN',
-      action: 'LOGIN_SUCCESS',
-      details: 'Đăng nhập thành công từ IP quản trị viên',
-      ipAddress: '192.168.1.10',
-      severity: 'INFO'
-    },
-    {
-      id: 'log-2',
-      timestamp: '2026-09-22 22:30:45',
-      actor: 'teacher@lms.edu.vn',
-      role: 'TEACHER',
-      action: 'GRADE_SUBMITTED',
-      details: 'Chấm điểm Bài tập 1 cho sinh viên SV2024001: 9.5đ',
-      ipAddress: '192.168.1.25',
-      severity: 'INFO'
-    },
-    {
-      id: 'log-3',
-      timestamp: '2026-09-22 21:15:00',
-      actor: 'student@lms.edu.vn',
-      role: 'STUDENT',
-      action: 'QUIZ_SUBMITTED',
-      details: 'Hoàn thành bài trắc nghiệm bài 1 với điểm số 80%',
-      ipAddress: '192.168.1.104',
-      severity: 'INFO'
-    },
-    {
-      id: 'log-4',
-      timestamp: '2026-09-22 18:40:22',
-      actor: 'System',
-      role: 'SYSTEM',
-      action: 'TOKEN_REFRESHED',
-      details: 'Cấp mới JWT token qua Refresh Token rotation',
-      ipAddress: '127.0.0.1',
-      severity: 'INFO'
-    },
-    {
-      id: 'log-5',
-      timestamp: '2026-09-22 16:10:05',
-      actor: 'unknown_client',
-      role: 'GUEST',
-      action: 'LOGIN_FAILED',
-      details: 'Đăng nhập thất bại quá 3 lần với tài khoản guest@lms.edu.vn',
-      ipAddress: '118.69.12.8',
-      severity: 'WARNING'
+      setOverviewMetrics(overviewRes.data);
+      setUsersList(usersRes.data || []);
+      setCoursesList(coursesRes.data || []);
+      setAuditLogs(logsRes.data || []);
+    } catch (err) {
+      console.error('Lỗi tải dữ liệu Quản trị từ CSDL:', err);
+    } finally {
+      setLoadingData(false);
     }
-  ]);
+  };
 
-  // Handle Add User
-  const handleAddUser = (e: React.FormEvent) => {
+  useEffect(() => {
+    fetchAdminData();
+  }, []);
+
+  // Handle Add User into database
+  const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUserName || !newUserEmail || !newUserCode) {
       alert('Vui lòng điền đầy đủ Họ tên, Email và Mã định danh!');
       return;
     }
 
-    const newUser: ManagedUser = {
-      id: `u-${Date.now()}`,
-      fullName: newUserName,
-      email: newUserEmail,
-      role: newUserRole,
-      code: newUserCode,
-      departmentOrClass: newUserClass || (newUserRole === 'STUDENT' ? 'CNTT-K65' : 'Khoa CNTT'),
-      status: 'ACTIVE',
-      createdAt: new Date().toISOString().split('T')[0]
-    };
+    try {
+      const res = await api.post<ManagedUser>('/admin/users', {
+        fullName: newUserName,
+        email: newUserEmail,
+        role: newUserRole,
+        code: newUserCode,
+        departmentOrClass: newUserClass || (newUserRole === 'STUDENT' ? 'CNTT-K65' : 'Khoa CNTT')
+      });
 
-    setUsersList([newUser, ...usersList]);
-    setShowAddUserModal(false);
-    setNewUserName('');
-    setNewUserEmail('');
-    setNewUserCode('');
-    setNewUserClass('');
+      setUsersList([res.data, ...usersList]);
+      setShowAddUserModal(false);
+      setNewUserName('');
+      setNewUserEmail('');
+      setNewUserCode('');
+      setNewUserClass('');
 
-    // Append to audit log
-    setAuditLogs([
-      {
-        id: `log-${Date.now()}`,
-        timestamp: new Date().toLocaleString(),
-        actor: user.email,
-        role: 'ADMIN',
-        action: 'USER_CREATED',
-        details: `Tạo tài khoản mới: ${newUser.fullName} (${newUser.email}) - Vai trò: ${newUser.role}`,
-        ipAddress: '127.0.0.1',
-        severity: 'INFO'
-      },
-      ...auditLogs
-    ]);
-
-    alert('Tạo người dùng mới thành công!');
+      alert(`Tạo người dùng ${res.data.fullName} vào CSDL thành công!`);
+    } catch (err: any) {
+      alert('Lỗi tạo người dùng: ' + (err.response?.data?.message || err.message));
+    }
   };
 
-  // Toggle User Lock
-  const toggleUserLock = (userId: string) => {
-    setUsersList((prev) =>
-      prev.map((u) => {
-        if (u.id === userId) {
-          const nextStatus = u.status === 'ACTIVE' ? 'LOCKED' : 'ACTIVE';
-          return { ...u, status: nextStatus };
-        }
-        return u;
-      })
-    );
+  // Toggle User Lock in database
+  const toggleUserLock = async (userId: string) => {
+    try {
+      const res = await api.post<{ id: string; status: 'ACTIVE' | 'LOCKED' }>(
+        `/admin/users/${userId}/toggle-status`
+      );
+      setUsersList((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, status: res.data.status } : u))
+      );
+    } catch (err) {
+      console.error('Lỗi thay đổi trạng thái người dùng:', err);
+    }
   };
 
   // Reset User Password Simulator
@@ -308,26 +186,27 @@ export const AdminDashboard: React.FC<Props> = ({ user, activeTab: propActiveTab
     alert(`Đã gửi liên kết đặt lại mật khẩu tạm thời đến email: ${targetUser.email}`);
   };
 
-  // Handle Add Course
-  const handleAddCourse = (e: React.FormEvent) => {
+  // Handle Add Course into database
+  const handleAddCourse = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCourseCode || !newCourseTitle) return;
 
-    const newCourse: AdminCourse = {
-      id: `c-${Date.now()}`,
-      courseCode: newCourseCode.toUpperCase(),
-      title: newCourseTitle,
-      department: newCourseDept,
-      teacherName: newCourseTeacher,
-      studentsCount: 0,
-      status: 'ACTIVE'
-    };
+    try {
+      const res = await api.post<AdminCourse>('/admin/courses', {
+        courseCode: newCourseCode.toUpperCase(),
+        title: newCourseTitle,
+        department: newCourseDept,
+        teacherName: newCourseTeacher
+      });
 
-    setCoursesList([newCourse, ...coursesList]);
-    setShowAddCourseModal(false);
-    setNewCourseCode('');
-    setNewCourseTitle('');
-    alert('Thêm khóa học mới thành công!');
+      setCoursesList([res.data, ...coursesList]);
+      setShowAddCourseModal(false);
+      setNewCourseCode('');
+      setNewCourseTitle('');
+      alert(`Thêm khóa học ${res.data.courseCode} vào CSDL thành công!`);
+    } catch (err: any) {
+      alert('Lỗi thêm khóa học: ' + (err.response?.data?.message || err.message));
+    }
   };
 
   // Filtered Users
@@ -456,7 +335,7 @@ export const AdminDashboard: React.FC<Props> = ({ user, activeTab: propActiveTab
               <div>
                 <span className="text-xs text-slate-500 font-medium">Máy chủ Backend API</span>
                 <h3 className="font-extrabold text-2xl text-emerald-600 mt-0.5">Online</h3>
-                <span className="text-[11px] text-slate-500 mt-0.5 block">.NET 8 & PostgreSQL</span>
+                <span className="text-[11px] text-slate-500 mt-0.5 block">.NET 8 & SQL Server</span>
               </div>
             </div>
 
@@ -498,9 +377,9 @@ export const AdminDashboard: React.FC<Props> = ({ user, activeTab: propActiveTab
                 <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                    <span className="font-bold text-slate-800">PostgreSQL Database Engine</span>
+                    <span className="font-bold text-slate-800">Microsoft SQL Server Database (lms_db)</span>
                   </div>
-                  <span className="text-slate-500 font-mono">15 Tables • Connected Pool: 12/50</span>
+                  <span className="text-slate-500 font-mono">20 Tables • Connected Pool: Active</span>
                 </div>
 
                 <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">

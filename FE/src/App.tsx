@@ -8,7 +8,8 @@ import { ProfileDropdown } from './components/ProfileDropdown';
 import { ProfilePage } from './components/ProfilePage';
 import { TeacherDashboard } from './components/TeacherDashboard';
 import { AdminDashboard } from './components/AdminDashboard';
-import { UpcomingDeadline, AuthUser } from './types';
+import { UpcomingDeadline, AuthUser, CourseItem } from './types';
+import api from './api/axios';
 
 export const App: React.FC = () => {
   const [user, setUser] = useState<AuthUser | null>(() => {
@@ -27,10 +28,33 @@ export const App: React.FC = () => {
   const [teacherTab, setTeacherTab] = useState<'overview' | 'courses'>('overview');
   const [adminTab, setAdminTab] = useState<'overview' | 'users' | 'courses' | 'logs' | 'settings'>('overview');
   const [studyCourseId, setStudyCourseId] = useState<string>('44444444-4444-4444-4444-444444444444');
+  const [currentCourse, setCurrentCourse] = useState<CourseItem | null>(null);
   const [selectedActivityId, setSelectedActivityId] = useState<string | undefined>(undefined);
   const [selectedDeadline, setSelectedDeadline] = useState<UpcomingDeadline | null>(null);
   const [activeLesson, setActiveLesson] = useState<number>(1);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [courseAnnouncements, setCourseAnnouncements] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (user && user.role === 'STUDENT') {
+      api.get<CourseItem[]>('/courses/my-courses?studentId=' + user.userId)
+        .then((res) => {
+          if (res.data && res.data.length > 0) {
+            setCurrentCourse(res.data[0]);
+            setStudyCourseId(res.data[0].id);
+          }
+        })
+        .catch((err) => console.error('Lỗi tải khóa học người dùng:', err));
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (currentCourse) {
+      api.get(`/courses/${currentCourse.id}/announcements`)
+        .then((res) => setCourseAnnouncements(res.data || []))
+        .catch(() => setCourseAnnouncements([]));
+    }
+  }, [currentCourse]);
 
   // Force permanent clean Light Mode
   useEffect(() => {
@@ -389,9 +413,10 @@ export const App: React.FC = () => {
                 {/* Left Column (2 Cols): Widget Deadlines */}
                 <div className="xl:col-span-2 space-y-6">
                   <UpcomingDeadlinesWidget
+                    studentId={user.userId}
                     onSelectDeadline={(deadline) => {
                       setSelectedDeadline(deadline);
-                      handleOpenStudyPage('44444444-4444-4444-4444-444444444444', 'item-week1-quiz');
+                      handleOpenStudyPage(currentCourse?.id || '44444444-4444-4444-4444-444444444444');
                     }}
                   />
                 </div>
@@ -403,10 +428,14 @@ export const App: React.FC = () => {
                     <span className="text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-100 px-2.5 py-0.5 rounded-full uppercase">
                       Khóa học đang học
                     </span>
-                    <h4 className="font-extrabold text-base text-slate-900">INT3306 - Lập trình Web C# .NET 8 & ReactJS</h4>
-                    <p className="text-xs text-slate-500">Giảng viên: TS. Nguyễn Văn A • Tiến độ: 50%</p>
+                    <h4 className="font-extrabold text-base text-slate-900">
+                      {currentCourse ? `${currentCourse.courseCode} - ${currentCourse.title}` : 'INT3306 - Lập trình Web C# .NET 8'}
+                    </h4>
+                    <p className="text-xs text-slate-500">
+                      Giảng viên: {currentCourse?.teacherName || 'TS. Nguyễn Văn A'} • Tiến độ: {currentCourse?.progressPercentage ?? 0}%
+                    </p>
                     <button
-                      onClick={() => handleOpenStudyPage('44444444-4444-4444-4444-444444444444')}
+                      onClick={() => handleOpenStudyPage(currentCourse?.id || '44444444-4444-4444-4444-444444444444')}
                       className="w-full mt-2 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-2xs"
                     >
                       <BookOpen className="w-3.5 h-3.5" />
@@ -421,34 +450,45 @@ export const App: React.FC = () => {
                         <Bell className="w-5 h-5 text-blue-600" />
                         <h3>Thông báo lớp học</h3>
                       </div>
-                      <span className="bg-blue-50 text-blue-700 text-xs px-2.5 py-0.5 rounded-full font-bold border border-blue-100">Ghim</span>
+                      <span className="bg-blue-50 text-blue-700 text-xs px-2.5 py-0.5 rounded-full font-bold border border-blue-100">Mới nhất</span>
                     </div>
 
-                    <div className="p-4 rounded-xl bg-amber-50/60 border border-amber-200/80 text-sm space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-amber-900">📌 Lịch nộp Bài tập lớn</span>
-                        <span className="text-xs text-amber-700 font-semibold">Hôm nay</span>
+                    {courseAnnouncements && courseAnnouncements.length > 0 ? (
+                      <div className="space-y-3">
+                        {courseAnnouncements.slice(0, 2).map((ann: any) => (
+                          <div key={ann.id} className="p-4 rounded-xl bg-amber-50/60 border border-amber-200/80 text-sm space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-amber-900">{ann.title}</span>
+                              <span className="text-[11px] text-amber-700 font-semibold">{ann.createdAt}</span>
+                            </div>
+                            <p className="text-xs text-slate-700 leading-relaxed">
+                              {ann.content}
+                            </p>
+                          </div>
+                        ))}
                       </div>
-                      <p className="text-xs text-slate-700 leading-relaxed">
-                        Các em sinh viên chú ý hoàn thành bài tập theo đúng hạn nộp hiển thị ở Widget.
-                      </p>
-                    </div>
+                    ) : (
+                      <p className="text-xs text-slate-500 italic py-2 text-center">Chưa có thông báo mới từ giảng viên.</p>
+                    )}
                   </div>
 
                   {/* Progress Overview Card */}
                   <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
                     <h3 className="font-bold text-slate-900 flex items-center gap-2">
                       <Award className="w-5 h-5 text-indigo-600" />
-                      Tiến độ môn học INT3306
+                      Tiến độ môn học {currentCourse?.courseCode || 'INT3306'}
                     </h3>
 
                     <div>
                       <div className="flex justify-between text-xs font-semibold mb-1">
-                        <span className="text-slate-600">Lập trình Web C# .NET 8</span>
-                        <span className="text-blue-600 font-bold">50% Hoàn thành</span>
+                        <span className="text-slate-600">{currentCourse?.title || 'Lập trình Web C# .NET 8'}</span>
+                        <span className="text-blue-600 font-bold">{currentCourse?.progressPercentage ?? 0}% Hoàn thành</span>
                       </div>
                       <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden border border-slate-200">
-                        <div className="bg-blue-600 h-full w-1/2 rounded-full"></div>
+                        <div
+                          className="bg-blue-600 h-full rounded-full transition-all"
+                          style={{ width: `${currentCourse?.progressPercentage ?? 0}%` }}
+                        ></div>
                       </div>
                     </div>
                   </div>

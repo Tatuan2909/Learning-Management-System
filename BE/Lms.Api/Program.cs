@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -9,10 +10,10 @@ using Lms.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Add DbContext (SQLite)
+// 1. Add DbContext (Microsoft SQL Server)
 builder.Services.AddDbContext<LmsDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection") 
-                      ?? "Data Source=lms.db"));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection") 
+                         ?? "Server=localhost;Database=lms_db;Trusted_Connection=True;TrustServerCertificate=True;"));
 
 // 2. Register Services & Interfaces
 builder.Services.AddScoped<IJwtService, JwtService>();
@@ -52,7 +53,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:5173", "http://127.0.0.1:5173")
+        policy.SetIsOriginAllowed(origin => true)
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
@@ -92,14 +93,7 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// 6. Database Auto-Migration & Seeding
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<LmsDbContext>();
-    DbInitializer.Seed(db);
-}
-
-// 7. Configure HTTP Pipeline
+// 6. Configure HTTP Pipeline
 app.UseSwagger();
 app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "LMS Web API v1"));
 

@@ -15,7 +15,7 @@ import {
   RotateCcw,
   Check
 } from 'lucide-react';
-import { QuizDetail, SubmitQuizResponse, QuestionAnswer } from '../types';
+import { QuizDetail, QuizQuestion, QuizOption, SubmitQuizResponse, QuestionAnswer } from '../types';
 import api from '../api/axios';
 
 interface Props {
@@ -24,15 +24,6 @@ interface Props {
   onBack?: () => void;
 }
 
-interface RichQuizQuestion {
-  questionId: string;
-  questionText: string;
-  questionType: 'SINGLE_CHOICE' | 'MULTIPLE_CHOICE';
-  points: number;
-  options: { optionId: string; optionText: string }[];
-  correctOptionId: string;
-  explanation: string;
-}
 
 export const PostLessonQuiz: React.FC<Props> = ({ quizId, onNextLesson, onBack }) => {
   const [loading, setLoading] = useState<boolean>(false);
@@ -46,153 +37,36 @@ export const PostLessonQuiz: React.FC<Props> = ({ quizId, onNextLesson, onBack }
   const [timeLeft, setTimeLeft] = useState<number>(15 * 60);
   const [timeSpentSeconds, setTimeSpentSeconds] = useState<number>(0);
 
-  // Rich Bank of 10 Realistic LMS Questions
-  const [questions, setQuestions] = useState<RichQuizQuestion[]>([
-    {
-      questionId: 'q1',
-      questionText: 'Thành phần nào dưới đây thuộc tầng Domain trong mô hình Clean Architecture .NET 8?',
-      questionType: 'SINGLE_CHOICE',
-      points: 10,
-      options: [
-        { optionId: 'opt1_1', optionText: 'Entities, Value Objects và Domain Exceptions' },
-        { optionId: 'opt1_2', optionText: 'DbContext và Entity Framework Migrations' },
-        { optionId: 'opt1_3', optionText: 'API Controllers, Filters và Swagger UI' },
-        { optionId: 'opt1_4', optionText: 'Appsettings.json và Logging Middleware' }
-      ],
-      correctOptionId: 'opt1_1',
-      explanation: 'Tầng Domain là hạt nhân trung tâm của hệ thống, chỉ chứa các Entity nghiệp vụ, Enums và Domain Exceptions thuần túy, không phụ thuộc vào công nghệ cơ sở dữ liệu hay giao diện.'
-    },
-    {
-      questionId: 'q2',
-      questionText: 'HTTP Method nào theo chuẩn RESTful được khuyến nghị sử dụng khi tạo mới một tài nguyên?',
-      questionType: 'SINGLE_CHOICE',
-      points: 10,
-      options: [
-        { optionId: 'opt2_1', optionText: 'GET' },
-        { optionId: 'opt2_2', optionText: 'POST' },
-        { optionId: 'opt2_3', optionText: 'PUT' },
-        { optionId: 'opt2_4', optionText: 'DELETE' }
-      ],
-      correctOptionId: 'opt2_2',
-      explanation: 'POST được sử dụng để tạo mới tài nguyên trên máy chủ và thường trả về HTTP Status Code 201 Created cùng với URL của tài nguyên mới.'
-    },
-    {
-      questionId: 'q3',
-      questionText: 'Trong Entity Framework Core, lệnh nào được dùng để thực thi và áp dụng các Migration vào database PostgreSQL?',
-      questionType: 'SINGLE_CHOICE',
-      points: 10,
-      options: [
-        { optionId: 'opt3_1', optionText: 'context.Database.MigrateAsync()' },
-        { optionId: 'opt3_2', optionText: 'context.Database.EnsureCreatedAsync()' },
-        { optionId: 'opt3_3', optionText: 'context.SaveChangesAsync()' },
-        { optionId: 'opt3_4', optionText: 'context.Database.OpenConnection()' }
-      ],
-      correctOptionId: 'opt3_1',
-      explanation: 'MigrateAsync() tự động kiểm tra bảng lịch sử __EFMigrationsHistory và áp dụng các file migration chưa được chạy lên máy chủ database.'
-    },
-    {
-      questionId: 'q4',
-      questionText: 'Trong ASP.NET Core, Service Lifetime nào đảm bảo mỗi HTTP Request chỉ có duy nhất một instance của service được tạo?',
-      questionType: 'SINGLE_CHOICE',
-      points: 10,
-      options: [
-        { optionId: 'opt4_1', optionText: 'Transient (AddTransient)' },
-        { optionId: 'opt4_2', optionText: 'Scoped (AddScoped)' },
-        { optionId: 'opt4_3', optionText: 'Singleton (AddSingleton)' },
-        { optionId: 'opt4_4', optionText: 'Pooled (AddPooled)' }
-      ],
-      correctOptionId: 'opt4_2',
-      explanation: 'Scoped Lifetime (AddScoped) tạo một đối tượng duy nhất cho toàn bộ vòng đời của một HTTP Request và chia sẻ giữa các controller/service trong request đó.'
-    },
-    {
-      questionId: 'q5',
-      questionText: 'Mã phản hồi HTTP Status Code nào biểu thị yêu cầu đã được xử lý thành công nhưng không có dữ liệu trả về trong body?',
-      questionType: 'SINGLE_CHOICE',
-      points: 10,
-      options: [
-        { optionId: 'opt5_1', optionText: '200 OK' },
-        { optionId: 'opt5_2', optionText: '201 Created' },
-        { optionId: 'opt5_3', optionText: '204 No Content' },
-        { optionId: 'opt5_4', optionText: '400 Bad Request' }
-      ],
-      correctOptionId: 'opt5_3',
-      explanation: '204 No Content thường được dùng trong các phương thức DELETE hoặc PUT khi thao tác thành công và không cần trả về thêm dữ liệu.'
-    },
-    {
-      questionId: 'q6',
-      questionText: 'Cơ chế nào giúp bảo vệ hệ thống xác thực JWT chống lại việc tái sử dụng token khi một Refresh Token bị rò rỉ?',
-      questionType: 'SINGLE_CHOICE',
-      points: 10,
-      options: [
-        { optionId: 'opt6_1', optionText: 'Refresh Token Rotation & Hủy toàn bộ token family khi phát hiện tái sử dụng' },
-        { optionId: 'opt6_2', optionText: 'Kéo dài thời hạn sống của Access Token lên 30 ngày' },
-        { optionId: 'opt6_3', optionText: 'Bỏ qua việc kiểm tra chữ ký bí mật HMAC-SHA256' },
-        { optionId: 'opt6_4', optionText: 'Lưu trữ mật khẩu trực tiếp vào Payload của JWT' }
-      ],
-      correctOptionId: 'opt6_1',
-      explanation: 'Refresh Token Rotation cấp một refresh token mới mỗi lần làm mới, và nếu một token cũ bị kẻ xấu dùng lại, hệ thống sẽ ngay lập tức thu hồi toàn bộ phiên đăng nhập.'
-    },
-    {
-      questionId: 'q7',
-      questionText: 'Mô hình xử lý Middleware Pipeline trong ASP.NET Core hoạt động theo cơ chế nào?',
-      questionType: 'SINGLE_CHOICE',
-      points: 10,
-      options: [
-        { optionId: 'opt7_1', optionText: 'Pipeline hai chiều (Request duyệt xuôi, Response duyệt ngược tuần tự)' },
-        { optionId: 'opt7_2', optionText: 'Thực thi song song ngẫu nhiên không có thứ tự' },
-        { optionId: 'opt7_3', optionText: 'Chỉ cho phép chạy duy nhất 1 middleware cho mỗi request' },
-        { optionId: 'opt7_4', optionText: 'Chạy độc lập trên background worker' }
-      ],
-      correctOptionId: 'opt7_1',
-      explanation: 'Middleware được tổ chức thành chuỗi liên kết (pipeline): request đi qua từng middleware theo thứ tự khai báo, và response quay ngược lại theo chiều ngược lại.'
-    },
-    {
-      questionId: 'q8',
-      questionText: 'Trong React, Hook nào được thiết kế để xử lý các side effects như gọi API, thiết lập timer hoặc tương tác DOM?',
-      questionType: 'SINGLE_CHOICE',
-      points: 10,
-      options: [
-        { optionId: 'opt8_1', optionText: 'useState' },
-        { optionId: 'opt8_2', optionText: 'useEffect' },
-        { optionId: 'opt8_3', optionText: 'useMemo' },
-        { optionId: 'opt8_4', optionText: 'useCallback' }
-      ],
-      correctOptionId: 'opt8_2',
-      explanation: 'useEffect cho phép thực thi các tác vụ side-effect sau khi component render, và nhận dependency array để kiểm soát thời điểm chạy lại.'
-    },
-    {
-      questionId: 'q9',
-      questionText: 'Định dạng dữ liệu nào là chuẩn giao tiếp phổ biến nhất hiện nay giữa Backend RESTful API và Frontend ReactJS?',
-      questionType: 'SINGLE_CHOICE',
-      points: 10,
-      options: [
-        { optionId: 'opt9_1', optionText: 'XML' },
-        { optionId: 'opt9_2', optionText: 'JSON (JavaScript Object Notation)' },
-        { optionId: 'opt9_3', optionText: 'CSV' },
-        { optionId: 'opt9_4', optionText: 'SOAP Payload' }
-      ],
-      correctOptionId: 'opt9_2',
-      explanation: 'JSON nhẹ, dễ đọc, tương thích tự nhiên với JavaScript/TypeScript và là chuẩn mực công nghiệp cho các ứng dụng web hiện đại.'
-    },
-    {
-      questionId: 'q10',
-      questionText: 'Mục đích chính của việc sử dụng DTO (Data Transfer Object) trong kiến trúc Web API là gì?',
-      questionType: 'SINGLE_CHOICE',
-      points: 10,
-      options: [
-        { optionId: 'opt10_1', optionText: 'Ẩn chi tiết cơ sở dữ liệu, lọc bỏ dữ liệu nhạy cảm và tối ưu payload gửi qua mạng' },
-        { optionId: 'opt10_2', optionText: 'Bắt buộc client phải truy cập trực tiếp vào database' },
-        { optionId: 'opt10_3', optionText: 'Tăng kích thước dữ liệu để kiểm thử tải mạng' },
-        { optionId: 'opt10_4', optionText: 'Thay thế hoàn toàn Entity Framework Core' }
-      ],
-      correctOptionId: 'opt10_1',
-      explanation: 'DTO giúp tách biệt mô hình cơ sở dữ liệu nội bộ khỏi hợp đồng dữ liệu công khai (API Contract), ngăn ngừa Over-Posting Attack và giảm lưu lượng mạng.'
-    }
-  ]);
+  const [quizDetail, setQuizDetail] = useState<QuizDetail | null>(null);
+  const [questions, setQuestions] = useState<QuizQuestion[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  const targetQuizId = quizId || '66666666-6666-6666-6666-666666666666';
+
+  useEffect(() => {
+    const fetchQuiz = async () => {
+      try {
+        setLoading(true);
+        const res = await api.get<QuizDetail>(`/quiz/${targetQuizId}`);
+        setQuizDetail(res.data);
+        setQuestions(res.data.questions || []);
+        if (res.data.timeLimitMinutes) {
+          setTimeLeft(res.data.timeLimitMinutes * 60);
+        }
+        setError(null);
+      } catch (err: any) {
+        console.error('Lỗi tải bài kiểm tra trắc nghiệm từ CSDL:', err);
+        setError('Không thể tải bài trắc nghiệm từ cơ sở dữ liệu.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchQuiz();
+  }, [targetQuizId]);
 
   // Countdown Timer
   useEffect(() => {
-    if (result) return;
+    if (result || questions.length === 0) return;
 
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
@@ -207,7 +81,7 @@ export const PostLessonQuiz: React.FC<Props> = ({ quizId, onNextLesson, onBack }
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [result]);
+  }, [result, questions.length]);
 
   const formatTimer = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -240,30 +114,36 @@ export const PostLessonQuiz: React.FC<Props> = ({ quizId, onNextLesson, onBack }
     setShowConfirmModal(false);
     setSubmitting(true);
 
-    let earnedScore = 0;
-    questions.forEach((q) => {
-      const chosen = selectedAnswers[q.questionId]?.[0];
-      if (chosen === q.correctOptionId) {
-        earnedScore += q.points;
-      }
-    });
+    try {
+      const studentId = (() => {
+        try {
+          const userStr = localStorage.getItem('user_info');
+          if (userStr) return JSON.parse(userStr).userId;
+        } catch { }
+        return '33333333-3333-3333-3333-333333333333';
+      })();
 
-    const isPassed = earnedScore >= 70;
+      const answers = Object.entries(selectedAnswers).map(([qId, opts]) => ({
+        questionId: qId,
+        selectedOptionIds: opts
+      }));
 
-    // Simulate short network delay for smooth experience
-    setTimeout(() => {
-      setResult({
-        quizAttemptId: `attempt-${Date.now()}`,
-        score: earnedScore,
-        passingScore: 70,
-        isPassed,
-        lessonProgressUpdated: isPassed,
-        message: isPassed
-          ? `Xuất sắc! Bạn đã đạt ${earnedScore}/100 điểm (Yêu cầu >= 70 điểm). Bạn đã hoàn thành xuất sắc bài kiểm tra trắc nghiệm.`
-          : `Bạn đạt ${earnedScore}/100 điểm. Chưa đủ điểm đạt (Yêu cầu >= 70 điểm). Hãy xem lại phần giải thích bên dưới và thử lại!`
+      const res = await api.post<SubmitQuizResponse>('/quiz/submit', {
+        quizId: targetQuizId,
+        studentId,
+        answers
       });
+
+      setResult(res.data);
+      if (res.data.isPassed) {
+        onNextLesson?.();
+      }
+    } catch (err: any) {
+      console.error('Lỗi nộp bài trắc nghiệm:', err);
+      alert('Lỗi nộp bài trắc nghiệm: ' + (err.response?.data?.message || err.message));
+    } finally {
       setSubmitting(false);
-    }, 400);
+    }
   };
 
   const handleRetake = () => {
@@ -392,55 +272,41 @@ export const PostLessonQuiz: React.FC<Props> = ({ quizId, onNextLesson, onBack }
             <div className="space-y-4">
               {questions.map((q, idx) => {
                 const userChoice = selectedAnswers[q.questionId]?.[0];
-                const isCorrect = userChoice === q.correctOptionId;
 
                 return (
                   <div
                     key={q.questionId}
-                    className={`p-5 rounded-2xl border ${
-                      isCorrect ? 'bg-emerald-50/20 border-emerald-200' : 'bg-rose-50/20 border-rose-200'
-                    }`}
+                    className="p-5 rounded-2xl border bg-slate-50/50 border-slate-200"
                   >
                     <div className="flex items-start justify-between gap-3 mb-3">
                       <div className="flex items-center gap-2">
-                        <span
-                          className={`w-7 h-7 rounded-lg text-xs font-black flex items-center justify-center ${
-                            isCorrect ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
-                          }`}
-                        >
+                        <span className="w-7 h-7 rounded-lg text-xs font-black flex items-center justify-center bg-blue-600 text-white">
                           {idx + 1}
                         </span>
                         <h5 className="font-bold text-slate-900 text-sm">{q.questionText}</h5>
                       </div>
 
-                      <span
-                        className={`text-xs font-bold px-2.5 py-0.5 rounded-full whitespace-nowrap ${
-                          isCorrect ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
-                        }`}
-                      >
-                        {isCorrect ? `+${q.points} điểm` : '0 điểm'}
+                      <span className="text-xs font-bold px-2.5 py-0.5 rounded-full whitespace-nowrap bg-blue-100 text-blue-800">
+                        {q.points} điểm
                       </span>
                     </div>
 
                     {/* Options list in review */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs mb-3">
-                      {q.options.map((opt) => {
+                      {q.options.map((opt: QuizOption) => {
                         const isChosen = userChoice === opt.optionId;
-                        const isTheCorrectOne = q.correctOptionId === opt.optionId;
 
                         return (
                           <div
                             key={opt.optionId}
                             className={`p-3 rounded-xl border flex items-center gap-2.5 ${
-                              isTheCorrectOne
-                                ? 'bg-emerald-100/60 border-emerald-300 font-bold text-emerald-900'
-                                : isChosen && !isTheCorrectOne
-                                ? 'bg-rose-100/60 border-rose-300 font-semibold text-rose-900 line-through'
+                              isChosen
+                                ? 'bg-blue-100/70 border-blue-400 font-bold text-blue-900'
                                 : 'bg-white border-slate-200 text-slate-600'
                             }`}
                           >
                             <span className="w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-bold border border-current">
-                              {isTheCorrectOne ? '✓' : isChosen ? '✗' : '•'}
+                              {isChosen ? '✓' : '•'}
                             </span>
                             <span>{opt.optionText}</span>
                           </div>
@@ -449,10 +315,12 @@ export const PostLessonQuiz: React.FC<Props> = ({ quizId, onNextLesson, onBack }
                     </div>
 
                     {/* Explanation */}
-                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600">
-                      <strong className="text-slate-900">Giải thích: </strong>
-                      <span>{q.explanation}</span>
-                    </div>
+                    {q.explanation && (
+                      <div className="p-3 rounded-xl bg-white border border-slate-200 text-xs text-slate-600">
+                        <strong className="text-slate-900">Giải thích: </strong>
+                        <span>{q.explanation}</span>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -502,7 +370,7 @@ export const PostLessonQuiz: React.FC<Props> = ({ quizId, onNextLesson, onBack }
 
               {/* Options List (A, B, C, D) */}
               <div className="space-y-3">
-                {currentQuestion.options.map((opt, optIdx) => {
+                {currentQuestion.options.map((opt: QuizOption, optIdx: number) => {
                   const letter = String.fromCharCode(65 + optIdx); // A, B, C, D
                   const isSelected = currentAnswer === opt.optionId;
 

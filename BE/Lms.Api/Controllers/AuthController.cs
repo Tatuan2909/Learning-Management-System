@@ -76,4 +76,34 @@ public class AuthController : ControllerBase
             user.Role.ToString()
         ));
     }
+
+    /// <summary>
+    /// Lấy thông tin tài khoản và hồ sơ chi tiết (Student/Teacher Profile)
+    /// </summary>
+    [HttpGet("me")]
+    public async Task<IActionResult> GetProfile([FromQuery] Guid? userId)
+    {
+        var targetId = userId ?? Guid.Parse("33333333-3333-3333-3333-333333333333");
+
+        var user = await _db.Users
+            .Include(u => u.StudentProfile)
+            .Include(u => u.TeacherProfile)
+            .FirstOrDefaultAsync(u => u.Id == targetId);
+
+        if (user == null) return NotFound(new { message = "Không tìm thấy người dùng." });
+
+        return Ok(new UserProfileDto
+        {
+            Id = user.Id,
+            Email = user.Email,
+            FullName = user.FullName,
+            Phone = user.Phone,
+            AvatarUrl = user.AvatarUrl,
+            Role = user.Role.ToString(),
+            Code = user.StudentProfile?.StudentCode ?? user.TeacherProfile?.TeacherCode,
+            DepartmentOrClass = user.StudentProfile?.AdministrativeClass ?? user.TeacherProfile?.Department,
+            AcademicTitleOrMajor = user.StudentProfile?.Major ?? user.TeacherProfile?.AcademicTitle
+        });
+    }
 }
+

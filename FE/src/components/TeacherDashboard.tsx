@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   BookOpen,
   PlusCircle,
@@ -25,6 +25,7 @@ import {
   MessageSquare
 } from 'lucide-react';
 import { AuthUser } from '../types';
+import api from '../api/axios';
 
 interface Props {
   user: AuthUser;
@@ -182,331 +183,63 @@ export const TeacherDashboard: React.FC<Props> = ({
   // 'lessons' | 'students' | 'grading' | 'gradebook' | 'announcements'
   const [courseTab, setCourseTab] = useState<'lessons' | 'students' | 'grading' | 'gradebook' | 'announcements'>('lessons');
 
-  // Courses List
-  const [courses, setCourses] = useState<TeacherCourse[]>([
-    {
-      id: 'c1',
-      courseCode: 'INT3306',
-      title: 'Lập trình Web C# .NET 8 & ReactJS',
-      department: 'Khoa Công nghệ Thông tin',
-      enrolledStudents: 45,
-      lessonsCount: 4,
-      accessPassword: readStoredCoursePassword('INT3306', 'course123'),
-      weightAttendance: 10,
-      weightAssignments: 30,
-      weightFinalExam: 60
-    },
-    {
-      id: 'c2',
-      courseCode: 'SE302',
-      title: 'Kiến trúc Phần mềm & Microservices',
-      department: 'Khoa Công nghệ Phần mềm',
-      enrolledStudents: 38,
-      lessonsCount: 3,
-      accessPassword: readStoredCoursePassword('SE302'),
-      weightAttendance: 10,
-      weightAssignments: 30,
-      weightFinalExam: 60
-    }
-  ]);
+  // Dynamic state loaded from real database
+  const [courses, setCourses] = useState<TeacherCourse[]>([]);
+  const [lessons, setLessons] = useState<TeacherLesson[]>([]);
+  const [studentsList, setStudentsList] = useState<CourseStudent[]>([]);
+  const [submissions, setSubmissions] = useState<TeacherSubmission[]>([]);
+  const [gradebookRows, setGradebookRows] = useState<StudentGradeRow[]>([]);
+  const [announcements, setAnnouncements] = useState<TeacherAnnouncement[]>([]);
+  const [loadingData, setLoadingData] = useState<boolean>(false);
 
-  // Lessons inside Courses
-  const [lessons, setLessons] = useState<TeacherLesson[]>([
-    {
-      id: 'les-1',
-      courseId: 'c1',
-      weekNumber: 1,
-      activityType: 'LECTURE',
-      lessonNumber: 1,
-      title: 'Giới thiệu Clean Architecture & RESTful API .NET 8',
-      durationMinutes: 45,
-      isUnlocked: true
-    },
-    {
-      id: 'les-2',
-      courseId: 'c1',
-      weekNumber: 1,
-      activityType: 'DOCUMENT',
-      lessonNumber: 2,
-      title: 'Entity Framework Core & PostgreSQL Database Migration',
-      durationMinutes: 60,
-      isUnlocked: true
-    },
-    {
-      id: 'les-3',
-      courseId: 'c1',
-      weekNumber: 1,
-      activityType: 'PRACTICE',
-      lessonNumber: 3,
-      title: 'Xác thực JWT Token & Cơ chế Refresh Token Rotation',
-      durationMinutes: 50,
-      isUnlocked: true
-    },
-    {
-      id: 'les-4',
-      courseId: 'c1',
-      weekNumber: 1,
-      activityType: 'QUIZ',
-      lessonNumber: 4,
-      title: 'Tích hợp Frontend React Vite TypeScript & API Client',
-      durationMinutes: 75,
-      isUnlocked: false,
-      password: 'quiz123'
-    },
-    {
-      id: 'les-4-forum',
-      courseId: 'c1',
-      weekNumber: 1,
-      activityType: 'FORUM',
-      lessonNumber: 5,
-      title: 'Diễn đàn hỏi đáp Tuần 1',
-      durationMinutes: 10,
-      isUnlocked: true
-    },
-    {
-      id: 'les-4-week2',
-      courseId: 'c1',
-      weekNumber: 2,
-      activityType: 'LECTURE',
-      lessonNumber: 6,
-      title: 'Bài giảng Tuần 2: JWT Authentication & Role Authorization',
-      durationMinutes: 60,
-      isUnlocked: false
-    },
-    {
-      id: 'les-5',
-      courseId: 'c2',
-      weekNumber: 1,
-      activityType: 'LECTURE',
-      lessonNumber: 1,
-      title: 'Nguyên lý Domain-Driven Design (DDD) & Bounded Context',
-      durationMinutes: 60,
-      isUnlocked: true
-    },
-    {
-      id: 'les-6',
-      courseId: 'c2',
-      weekNumber: 1,
-      activityType: 'DOCUMENT',
-      lessonNumber: 2,
-      title: 'API Gateway Ocelot & Service Discovery Consul',
-      durationMinutes: 55,
-      isUnlocked: true
-    },
-    {
-      id: 'les-7',
-      courseId: 'c2',
-      weekNumber: 1,
-      activityType: 'PRACTICE',
-      lessonNumber: 3,
-      title: 'Message Broker RabbitMQ & Event-Driven Architecture',
-      durationMinutes: 80,
-      isUnlocked: false
-    }
-  ]);
+  const teacherId = user.userId || '22222222-2222-2222-2222-222222222222';
 
-  // Enrolled Students per Course
-  const [studentsList, setStudentsList] = useState<CourseStudent[]>([
-    {
-      id: 'cs-1',
-      courseId: 'c1',
-      studentCode: 'SV2024001',
-      fullName: 'Trần Thị B',
-      email: 'student@lms.edu.vn',
-      className: 'CNTT-K65',
-      enrolledAt: '2024-08-15',
-      progressPercentage: 75,
-      status: 'ACTIVE'
-    },
-    {
-      id: 'cs-2',
-      courseId: 'c1',
-      studentCode: 'SV2024002',
-      fullName: 'Nguyễn Văn C',
-      email: 'student2@lms.edu.vn',
-      className: 'CNTT-K65',
-      enrolledAt: '2024-08-16',
-      progressPercentage: 50,
-      status: 'ACTIVE'
-    },
-    {
-      id: 'cs-3',
-      courseId: 'c1',
-      studentCode: 'SV2024003',
-      fullName: 'Lê Hoàng D',
-      email: 'student3@lms.edu.vn',
-      className: 'CNTT-K65',
-      enrolledAt: '2024-08-18',
-      progressPercentage: 25,
-      status: 'ACTIVE'
-    },
-    {
-      id: 'cs-4',
-      courseId: 'c1',
-      studentCode: 'SV2024006',
-      fullName: 'Phan Thanh N',
-      email: 'student6@lms.edu.vn',
-      className: 'CNTT-K65',
-      enrolledAt: '2024-08-20',
-      progressPercentage: 0,
-      status: 'SUSPENDED'
-    },
-    {
-      id: 'cs-5',
-      courseId: 'c2',
-      studentCode: 'SV2024004',
-      fullName: 'Phạm Quang H',
-      email: 'student4@lms.edu.vn',
-      className: 'CNTT-K65',
-      enrolledAt: '2024-08-15',
-      progressPercentage: 66,
-      status: 'ACTIVE'
-    },
-    {
-      id: 'cs-6',
-      courseId: 'c2',
-      studentCode: 'SV2024005',
-      fullName: 'Vũ Thị M',
-      email: 'student5@lms.edu.vn',
-      className: 'CNTT-K65',
-      enrolledAt: '2024-08-17',
-      progressPercentage: 33,
-      status: 'ACTIVE'
+  // Fetch teacher's courses from database
+  const fetchTeacherCourses = async () => {
+    try {
+      setLoadingData(true);
+      const res = await api.get<TeacherCourse[]>(`/teacher/courses?teacherId=${teacherId}`);
+      setCourses(res.data || []);
+      if (res.data && res.data.length > 0 && !selectedCourseId) {
+        setSelectedCourseId(res.data[0].id);
+      }
+    } catch (err) {
+      console.error('Lỗi tải danh sách khóa học giảng viên từ CSDL:', err);
+    } finally {
+      setLoadingData(false);
     }
-  ]);
+  };
 
-  // Submissions per Course
-  const [submissions, setSubmissions] = useState<TeacherSubmission[]>([
-    {
-      id: 'sub-1',
-      courseId: 'c1',
-      courseCode: 'INT3306',
-      assignmentTitle: 'Bài tập 1: Lập trình API Đăng nhập JWT',
-      studentName: 'Trần Thị B',
-      studentCode: 'SV2024001',
-      submittedAt: '2026-09-22 10:30',
-      fileUrl: 'https://example.com/sub/jwt-auth.zip',
-      submissionText: 'Em đã hoàn thành các endpoint AuthController và đính kèm JWT Bearer Token.',
-      grade: 9.5,
-      feedback: 'Bài làm rất tốt, cấu trúc Clean Architecture chuẩn!',
-      status: 'GRADED'
-    },
-    {
-      id: 'sub-2',
-      courseId: 'c1',
-      courseCode: 'INT3306',
-      assignmentTitle: 'Bài tập 2: Thiết kế Database Schema EF Core',
-      studentName: 'Nguyễn Văn C',
-      studentCode: 'SV2024002',
-      submittedAt: '2026-09-22 15:45',
-      fileUrl: 'https://example.com/sub/db-schema.zip',
-      submissionText: 'Dạ thầy kiểm tra giúp em file DbContext Fluent API.',
-      status: 'SUBMITTED'
-    },
-    {
-      id: 'sub-3',
-      courseId: 'c2',
-      courseCode: 'SE302',
-      assignmentTitle: 'Bài tập: Cấu hình Ocelot Reverse Proxy & Rate Limiting',
-      studentName: 'Lê Hoàng D',
-      studentCode: 'SV2024003',
-      submittedAt: '2026-09-22 17:15',
-      fileUrl: 'https://example.com/sub/ocelot-config.zip',
-      submissionText: 'Em đã định tuyến các downstream services qua port 5000.',
-      status: 'SUBMITTED'
-    }
-  ]);
+  useEffect(() => {
+    fetchTeacherCourses();
+  }, [teacherId]);
 
-  // Gradebook rows per Course
-  const [gradebookRows, setGradebookRows] = useState<StudentGradeRow[]>([
-    {
-      studentId: 's1',
-      courseId: 'c1',
-      studentCode: 'SV2024001',
-      fullName: 'Trần Thị B',
-      className: 'CNTT-K65',
-      attendanceScore: 10.0,
-      assignmentScore: 9.5,
-      examScore: 8.5,
-      totalScore: 8.95,
-      letterGrade: 'A',
-      progressPercentage: 50.0
-    },
-    {
-      studentId: 's2',
-      courseId: 'c1',
-      studentCode: 'SV2024002',
-      fullName: 'Nguyễn Văn C',
-      className: 'CNTT-K65',
-      attendanceScore: 9.0,
-      assignmentScore: 8.0,
-      examScore: 7.0,
-      totalScore: 7.50,
-      letterGrade: 'B',
-      progressPercentage: 75.0
-    },
-    {
-      studentId: 's3',
-      courseId: 'c1',
-      studentCode: 'SV2024003',
-      fullName: 'Lê Hoàng D',
-      className: 'CNTT-K65',
-      attendanceScore: 8.5,
-      assignmentScore: 7.5,
-      examScore: 6.5,
-      totalScore: 7.00,
-      letterGrade: 'B',
-      progressPercentage: 25.0
-    },
-    {
-      studentId: 's4',
-      courseId: 'c2',
-      studentCode: 'SV2024004',
-      fullName: 'Phạm Quang H',
-      className: 'CNTT-K65',
-      attendanceScore: 9.5,
-      assignmentScore: 8.5,
-      examScore: 8.0,
-      totalScore: 8.35,
-      letterGrade: 'A',
-      progressPercentage: 66.0
-    },
-    {
-      studentId: 's5',
-      courseId: 'c2',
-      studentCode: 'SV2024005',
-      fullName: 'Vũ Thị M',
-      className: 'CNTT-K65',
-      attendanceScore: 8.0,
-      assignmentScore: 7.0,
-      examScore: 7.5,
-      totalScore: 7.40,
-      letterGrade: 'B',
-      progressPercentage: 33.0
-    }
-  ]);
+  // Fetch details for the selected course from database
+  const fetchCourseData = async (courseId: string) => {
+    try {
+      const [lesRes, stuRes, subRes, gbRes, annRes] = await Promise.all([
+        api.get<TeacherLesson[]>(`/teacher/courses/${courseId}/lessons`),
+        api.get<CourseStudent[]>(`/teacher/courses/${courseId}/students`),
+        api.get<TeacherSubmission[]>(`/teacher/courses/${courseId}/submissions`),
+        api.get<StudentGradeRow[]>(`/teacher/courses/${courseId}/gradebook`),
+        api.get<TeacherAnnouncement[]>(`/teacher/courses/${courseId}/announcements`)
+      ]);
 
-  // Announcements per Course
-  const [announcements, setAnnouncements] = useState<TeacherAnnouncement[]>([
-    {
-      id: 'ann-1',
-      courseId: 'c1',
-      courseCode: 'INT3306',
-      title: '📌 THÔNG BÁO: Lịch nộp Bài tập lớn học kỳ I môn Lập trình Web C#',
-      content: 'Các em sinh viên chú ý hoàn thành các bài tập đúng hạn để tính điểm chuyên cần.',
-      isPinned: true,
-      createdAt: '2026-09-22 14:00'
-    },
-    {
-      id: 'ann-2',
-      courseId: 'c2',
-      courseCode: 'SE302',
-      title: '📌 THÔNG BÁO: Tài liệu tham khảo đồ án Microservices phân tán',
-      content: 'Tài liệu hướng dẫn triển khai Docker Compose và RabbitMQ đã được đăng tải.',
-      isPinned: true,
-      createdAt: '2026-09-21 09:30'
+      setLessons(lesRes.data || []);
+      setStudentsList(stuRes.data || []);
+      setSubmissions(subRes.data || []);
+      setGradebookRows(gbRes.data || []);
+      setAnnouncements(annRes.data || []);
+    } catch (err) {
+      console.error('Lỗi tải dữ liệu chi tiết môn học từ CSDL:', err);
     }
-  ]);
+  };
+
+  useEffect(() => {
+    if (selectedCourseId) {
+      fetchCourseData(selectedCourseId);
+    }
+  }, [selectedCourseId]);
 
   // Modal States
   const [showAddCourseModal, setShowAddCourseModal] = useState(false);
@@ -619,27 +352,25 @@ export const TeacherDashboard: React.FC<Props> = ({
     );
   };
 
-  const handleCreateCourse = (e: React.FormEvent) => {
+  const handleCreateCourse = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCourseCode || !newCourseTitle) return;
 
-    const newCourse: TeacherCourse = {
-      id: `c-${Date.now()}`,
-      courseCode: newCourseCode.toUpperCase(),
-      title: newCourseTitle,
-      department: newCourseDept,
-      enrolledStudents: 0,
-      lessonsCount: 0,
-      weightAttendance: 10,
-      weightAssignments: 30,
-      weightFinalExam: 60
-    };
-
-    setCourses([newCourse, ...courses]);
-    setShowAddCourseModal(false);
-    setNewCourseCode('');
-    setNewCourseTitle('');
-    alert(`Đã tạo thành công khóa học: ${newCourse.courseCode} - ${newCourse.title}`);
+    try {
+      const res = await api.post<TeacherCourse>(`/teacher/courses?teacherId=${teacherId}`, {
+        courseCode: newCourseCode.toUpperCase(),
+        title: newCourseTitle,
+        description: 'Học phần LMS trực tuyến'
+      });
+      setCourses([res.data, ...courses]);
+      setSelectedCourseId(res.data.id);
+      setShowAddCourseModal(false);
+      setNewCourseCode('');
+      setNewCourseTitle('');
+      alert(`Đã tạo thành công khóa học: ${res.data.courseCode} - ${res.data.title}`);
+    } catch (err: any) {
+      alert('Lỗi tạo khóa học: ' + (err.response?.data?.message || err.message));
+    }
   };
 
   const handleNewLessonTypeChange = (activityType: TeacherActivityType) => {
@@ -663,97 +394,85 @@ export const TeacherDashboard: React.FC<Props> = ({
     setShowAddLessonModal(true);
   };
 
-  const handleCreateLesson = (e: React.FormEvent) => {
+  const handleCreateLesson = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newLessonTitle || !currentCourse) return;
 
-    const newLesson: TeacherLesson = {
-      id: `les-${Date.now()}`,
-      courseId: currentCourse.id,
-      weekNumber: newLessonWeek,
-      activityType: newLessonType,
-      lessonNumber: courseLessons.length + 1,
-      title: newLessonTitle,
-      durationMinutes: newLessonDuration || 45,
-      isUnlocked: true,
-      description: newLessonDescription || undefined,
-      resourceUrl: newLessonUrl || undefined,
-      password: newLessonType === 'QUIZ' ? newLessonPassword || undefined : undefined,
-      dueDate: newLessonDueDate || undefined
-    };
+    try {
+      const res = await api.post<TeacherLesson>(`/teacher/courses/${currentCourse.id}/lessons`, {
+        weekNumber: newLessonWeek,
+        activityType: newLessonType,
+        title: newLessonTitle,
+        durationMinutes: newLessonDuration || 45,
+        description: newLessonDescription || undefined,
+        resourceUrl: newLessonUrl || undefined,
+        password: newLessonType === 'QUIZ' ? newLessonPassword || undefined : undefined
+      });
 
-    setLessons([...lessons, newLesson]);
-    setCourses((prev) =>
-      prev.map((c) => (c.id === currentCourse.id ? { ...c, lessonsCount: c.lessonsCount + 1 } : c))
-    );
-    setShowAddLessonModal(false);
-    setNewLessonTitle('');
-    setNewLessonDuration(45);
-    setNewLessonUrl('');
-    setNewLessonDescription('');
-    setNewLessonPassword('');
-    setNewLessonDueDate('');
-    alert('Đã thêm hoạt động mới vào tuần học!');
+      setLessons([...lessons, res.data]);
+      setCourses((prev) =>
+        prev.map((c) => (c.id === currentCourse.id ? { ...c, lessonsCount: c.lessonsCount + 1 } : c))
+      );
+      setShowAddLessonModal(false);
+      setNewLessonTitle('');
+      setNewLessonDuration(45);
+      setNewLessonUrl('');
+      setNewLessonDescription('');
+      setNewLessonPassword('');
+      setNewLessonDueDate('');
+      alert('Đã thêm hoạt động mới vào tuần học trong CSDL!');
+    } catch (err: any) {
+      alert('Lỗi thêm hoạt động: ' + (err.response?.data?.message || err.message));
+    }
   };
 
-  const handleAddStudentToCourse = (e: React.FormEvent) => {
+  const handleAddStudentToCourse = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newStudentCode || !newStudentName || !newStudentEmail || !currentCourse) {
       alert('Vui lòng nhập đầy đủ MSSV, Họ tên và Email sinh viên!');
       return;
     }
 
-    const newStudent: CourseStudent = {
-      id: `cs-${Date.now()}`,
-      courseId: currentCourse.id,
-      studentCode: newStudentCode.toUpperCase(),
-      fullName: newStudentName,
-      email: newStudentEmail,
-      className: newStudentClass || 'CNTT-K65',
-      enrolledAt: new Date().toISOString().split('T')[0],
-      progressPercentage: 0,
-      status: 'ACTIVE'
-    };
+    try {
+      const res = await api.post<CourseStudent>(`/teacher/courses/${currentCourse.id}/students`, {
+        studentCode: newStudentCode.toUpperCase(),
+        fullName: newStudentName,
+        email: newStudentEmail,
+        className: newStudentClass || 'CNTT-K65'
+      });
 
-    setStudentsList([newStudent, ...studentsList]);
-    setCourses((prev) =>
-      prev.map((c) => (c.id === currentCourse.id ? { ...c, enrolledStudents: c.enrolledStudents + 1 } : c))
-    );
+      setStudentsList([res.data, ...studentsList]);
+      setCourses((prev) =>
+        prev.map((c) => (c.id === currentCourse.id ? { ...c, enrolledStudents: c.enrolledStudents + 1 } : c))
+      );
 
-    // Also add an initial gradebook row
-    const newGradeRow: StudentGradeRow = {
-      studentId: newStudent.id,
-      courseId: currentCourse.id,
-      studentCode: newStudent.studentCode,
-      fullName: newStudent.fullName,
-      className: newStudent.className,
-      attendanceScore: 10.0,
-      assignmentScore: 0,
-      examScore: 0,
-      totalScore: 1.0,
-      letterGrade: 'F',
-      progressPercentage: 0
-    };
-    setGradebookRows([...gradebookRows, newGradeRow]);
+      // Refresh gradebook
+      const gbRes = await api.get<StudentGradeRow[]>(`/teacher/courses/${currentCourse.id}/gradebook`);
+      setGradebookRows(gbRes.data || []);
 
-    setShowAddStudentModal(false);
-    setNewStudentCode('');
-    setNewStudentName('');
-    setNewStudentEmail('');
-    setNewStudentClass('CNTT-K65');
-    alert(`Đã thêm sinh viên ${newStudent.fullName} (${newStudent.studentCode}) vào lớp học phần!`);
+      setShowAddStudentModal(false);
+      setNewStudentCode('');
+      setNewStudentName('');
+      setNewStudentEmail('');
+      setNewStudentClass('CNTT-K65');
+      alert(`Đã thêm sinh viên ${res.data.fullName} (${res.data.studentCode}) vào lớp học phần!`);
+    } catch (err: any) {
+      alert('Lỗi thêm sinh viên: ' + (err.response?.data?.message || err.message));
+    }
   };
 
-  const toggleStudentStatus = (studentId: string) => {
-    setStudentsList((prev) =>
-      prev.map((st) => {
-        if (st.id === studentId) {
-          const nextStatus = st.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
-          return { ...st, status: nextStatus };
-        }
-        return st;
-      })
-    );
+  const toggleStudentStatus = async (studentId: string) => {
+    if (!currentCourse) return;
+    try {
+      const res = await api.post<{ status: 'ACTIVE' | 'SUSPENDED' }>(
+        `/teacher/courses/${currentCourse.id}/students/${studentId}/toggle-status`
+      );
+      setStudentsList((prev) =>
+        prev.map((st) => (st.id === studentId ? { ...st, status: res.data.status } : st))
+      );
+    } catch (err) {
+      console.error('Lỗi đổi trạng thái sinh viên:', err);
+    }
   };
 
   const handleRemoveStudent = (studentId: string, studentName: string) => {
@@ -768,37 +487,49 @@ export const TeacherDashboard: React.FC<Props> = ({
     }
   };
 
-  const handleSaveGrade = (submissionId: string) => {
-    setSubmissions((prev) =>
-      prev.map((s) =>
-        s.id === submissionId
-          ? { ...s, grade: tempGrade, feedback: tempFeedback, status: 'GRADED' }
-          : s
-      )
-    );
-    setEditingSubId(null);
-    alert('Đã lưu điểm số và lời nhận xét của giảng viên!');
+  const handleSaveGrade = async (submissionId: string) => {
+    try {
+      await api.post(`/teacher/submissions/${submissionId}/grade?teacherId=${teacherId}`, {
+        grade: tempGrade,
+        feedback: tempFeedback
+      });
+
+      setSubmissions((prev) =>
+        prev.map((s) =>
+          s.id === submissionId
+            ? { ...s, grade: tempGrade, feedback: tempFeedback, status: 'GRADED' }
+            : s
+        )
+      );
+      setEditingSubId(null);
+      alert('Đã lưu điểm số và lời nhận xét của giảng viên vào CSDL!');
+    } catch (err: any) {
+      alert('Lỗi chấm điểm: ' + (err.response?.data?.message || err.message));
+    }
   };
 
-  const handleCreateAnnouncement = (e: React.FormEvent) => {
+  const handleCreateAnnouncement = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!annTitle || !annContent || !currentCourse) return;
 
-    const newAnn: TeacherAnnouncement = {
-      id: `ann-${Date.now()}`,
-      courseId: currentCourse.id,
-      courseCode: currentCourse.courseCode,
-      title: annPinned ? `📌 ${annTitle}` : annTitle,
-      content: annContent,
-      isPinned: annPinned,
-      createdAt: new Date().toLocaleString()
-    };
+    try {
+      const res = await api.post<TeacherAnnouncement>(
+        `/teacher/courses/${currentCourse.id}/announcements?teacherId=${teacherId}`,
+        {
+          title: annTitle,
+          content: annContent,
+          isPinned: annPinned
+        }
+      );
 
-    setAnnouncements(annPinned ? [newAnn, ...announcements] : [...announcements, newAnn]);
-    setAnnTitle('');
-    setAnnContent('');
-    setAnnPinned(false);
-    alert(`Đã đăng thông báo cho môn học ${currentCourse.courseCode}!`);
+      setAnnouncements(annPinned ? [res.data, ...announcements] : [...announcements, res.data]);
+      setAnnTitle('');
+      setAnnContent('');
+      setAnnPinned(false);
+      alert(`Đã đăng thông báo cho môn học ${currentCourse.courseCode}!`);
+    } catch (err: any) {
+      alert('Lỗi đăng thông báo: ' + (err.response?.data?.message || err.message));
+    }
   };
 
   const handleExportExcel = () => {

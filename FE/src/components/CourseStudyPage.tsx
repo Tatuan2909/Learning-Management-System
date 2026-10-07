@@ -1,4 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import api from '../api/axios';
+import { CourseDetail } from '../types';
 import {
   ArrowLeft,
   ArrowRight,
@@ -53,7 +55,9 @@ export type ActivityType =
   | 'LINK'
   | 'ANNOUNCEMENT'
   | 'PRACTICE'
-  | 'QUIZ';
+  | 'QUIZ'
+  | 'VIDEO'
+  | 'TEXT';
 
 export interface CurriculumItem {
   id: string;
@@ -64,6 +68,7 @@ export interface CurriculumItem {
   isCompleted: boolean;
   isLocked: boolean;
   quizId?: string;
+  assignmentId?: string;
   password?: string;
 }
 
@@ -80,177 +85,6 @@ const DEFAULT_QUIZ_PASSWORD = 'quiz123';
 
 const getQuizAccessKey = (item: CurriculumItem) => item.quizId || item.id;
 
-const defaultSections: Section[] = [
-  {
-    id: 'section-intro',
-    title: 'Giới thiệu học phần',
-    isExpanded: true,
-    isLocked: false,
-    description: [
-      'Trình bày được khái niệm ứng dụng di động và vai trò của ứng dụng đa nền tảng.',
-      'Nhận biết được các công cụ, thư viện và thành phần cơ bản trong React Native / C# .NET API.',
-      'Giải thích được cách hoạt động của JavaScript runtime, bridge, props, state, hooks và APIs.',
-      'Phân biệt được component, style, layout và cơ chế truy cập tài nguyên thiết bị.',
-      'Vận dụng được kiến thức để cài đặt môi trường, xây dựng giao diện, gọi API, lưu trữ dữ liệu và debug ứng dụng.',
-      'Cài đặt và xuất bản được ứng dụng trên Android/iOS theo quy trình chuẩn.',
-      'Hình thành thái độ chủ động học tập, tuân thủ quyền riêng tư, bảo mật dữ liệu và chuẩn mực code sạch.'
-    ],
-    items: [
-      {
-        id: 'item-overview',
-        title: 'Thông tin tổng quan học phần: Phát triển ứng dụng Mobile & Web đa nền tảng',
-        type: 'OVERVIEW',
-        isCompleted: true,
-        isLocked: false
-      },
-      {
-        id: 'item-scorm-intro',
-        title: 'Scorm giới thiệu tổng quan học phần lập trình ứng dụng mobile & web đa nền tảng',
-        type: 'SCORM',
-        contentUrl: 'https://www.youtube.com/embed/d95475151',
-        isCompleted: true,
-        isLocked: false
-      },
-      {
-        id: 'item-de-cuong-pdf',
-        title: 'Đề cương chi tiết học phần',
-        subtitle: 'PDF',
-        type: 'PDF',
-        contentUrl: 'https://example.com/docs/de-cuong.pdf',
-        isCompleted: false,
-        isLocked: false
-      },
-      {
-        id: 'item-tai-lieu-pdf',
-        title: 'Tài liệu học phần (file pdf)',
-        type: 'PDF',
-        contentUrl: 'https://example.com/docs/tai-lieu-hoc-phan.pdf',
-        isCompleted: false,
-        isLocked: false
-      },
-      {
-        id: 'item-huong-dan-pdf',
-        title: 'Hướng dẫn học tập',
-        subtitle: 'PDF',
-        type: 'PDF',
-        contentUrl: 'https://example.com/docs/huong-dan.pdf',
-        isCompleted: false,
-        isLocked: false
-      },
-      {
-        id: 'item-btl-docx',
-        title: 'Danh sách đề tài Bài tập lớn (gợi ý)',
-        subtitle: 'DOCX',
-        type: 'DOCX',
-        contentUrl: 'https://example.com/docs/de-tai-btl.docx',
-        isCompleted: false,
-        isLocked: false
-      },
-      {
-        id: 'item-github-link',
-        title: 'Mẫu phát triển bài tập lớn trên GitHub',
-        type: 'LINK',
-        contentUrl: 'https://github.com/Tatuan2909/Learning-Management-System',
-        isCompleted: false,
-        isLocked: false
-      },
-      {
-        id: 'item-thong-bao',
-        title: 'Các thông báo học tập',
-        type: 'ANNOUNCEMENT',
-        isCompleted: false,
-        isLocked: false
-      }
-    ]
-  },
-  {
-    id: 'section-week1',
-    title: 'Week 1: 24 August - 30 August',
-    isExpanded: true,
-    isLocked: false,
-    items: [
-      {
-        id: 'item-week1-scorm',
-        title: 'Bài 1: Bài giảng SCORM Tổng quan Clean Architecture & Web API',
-        type: 'SCORM',
-        contentUrl: 'https://www.youtube.com/embed/d95475151',
-        isCompleted: true,
-        isLocked: false
-      },
-      {
-        id: 'item-week1-pdf',
-        title: 'Tài liệu (file pdf) cho bài học 1',
-        type: 'PDF',
-        contentUrl: 'https://example.com/docs/week1.pdf',
-        isCompleted: true,
-        isLocked: false
-      },
-      {
-        id: 'item-week1-practice',
-        title: 'Luyện tập 1: Xây dựng Endpoint RESTful API với C# .NET 8',
-        type: 'PRACTICE',
-        isCompleted: false,
-        isLocked: false
-      },
-      {
-        id: 'item-week1-quiz',
-        title: 'Bài trắc nghiệm đánh giá thường xuyên Bài 1',
-        type: 'QUIZ',
-        quizId: '66666666-6666-6666-6666-666666666666',
-        password: DEFAULT_QUIZ_PASSWORD,
-        isCompleted: false,
-        isLocked: false
-      },
-      {
-        id: 'item-week1-forum',
-        title: 'Diễn đàn hỏi đáp thảo luận Tuần 1',
-        type: 'ANNOUNCEMENT',
-        isCompleted: false,
-        isLocked: false
-      }
-    ]
-  },
-  {
-    id: 'section-week2',
-    title: 'Week 2: 31 August - 6 September',
-    isExpanded: false,
-    isLocked: true, // Locked until Week 1 quiz is passed!
-    items: [
-      {
-        id: 'item-week2-scorm',
-        title: 'Bài 2: Tích hợp JWT Authentication & Role-Based Authorization',
-        type: 'SCORM',
-        contentUrl: 'https://www.youtube.com/embed/d95475151',
-        isCompleted: false,
-        isLocked: true
-      },
-      {
-        id: 'item-week2-pdf',
-        title: 'Tài liệu (file pdf) cho bài học 2',
-        type: 'PDF',
-        contentUrl: 'https://example.com/docs/week2.pdf',
-        isCompleted: false,
-        isLocked: true
-      },
-      {
-        id: 'item-week2-practice',
-        title: 'Luyện tập 2: Middleware Pipeline & Refresh Token Rotation',
-        type: 'PRACTICE',
-        isCompleted: false,
-        isLocked: true
-      },
-      {
-        id: 'item-week2-quiz',
-        title: 'Bài trắc nghiệm đánh giá thường xuyên Bài 2',
-        type: 'QUIZ',
-        quizId: 'quiz-2',
-        password: DEFAULT_QUIZ_PASSWORD,
-        isCompleted: false,
-        isLocked: true
-      }
-    ]
-  }
-];
 
 export interface SubmittedFileMeta {
   name: string;
@@ -283,7 +117,66 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
   const [allCollapsed, setAllCollapsed] = useState(false);
 
   // Sections data
-  const [sections, setSections] = useState<Section[]>(defaultSections);
+  const [course, setCourse] = useState<CourseDetail | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [sections, setSections] = useState<Section[]>([]);
+
+  const getStudentId = () => {
+    try {
+      const userStr = localStorage.getItem('user_info');
+      if (userStr) return JSON.parse(userStr).userId;
+    } catch { }
+    return '33333333-3333-3333-3333-333333333333';
+  };
+
+  const targetCourseId = courseId || '44444444-4444-4444-4444-444444444444';
+
+  const fetchCourseData = async () => {
+    try {
+      setLoading(true);
+      const studentId = getStudentId();
+      const res = await api.get<CourseDetail>(`/courses/${targetCourseId}?studentId=${studentId}`);
+      setCourse(res.data);
+
+      const mappedSections: Section[] = (res.data.sections || []).map((s) => ({
+        id: s.id,
+        title: s.title,
+        isExpanded: s.isExpanded,
+        isLocked: s.isLocked,
+        items: (s.items || []).map((i) => ({
+          id: i.id,
+          title: i.title,
+          subtitle: i.subtitle,
+          type: i.contentType,
+          contentUrl: i.contentUrl,
+          isCompleted: i.isCompleted,
+          isLocked: i.isLocked,
+          quizId: i.quizId,
+          assignmentId: i.assignmentId
+        }))
+      }));
+
+      setSections(mappedSections);
+
+      if (initialActivityId) {
+        for (const sec of mappedSections) {
+          const found = sec.items.find((item) => item.id === initialActivityId);
+          if (found) {
+            setSelectedActivity(found);
+            break;
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Lỗi tải dữ liệu khóa học từ CSDL:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCourseData();
+  }, [targetCourseId]);
 
   // Practice Submissions State (persisted to localStorage)
   const [practiceSubmissions, setPracticeSubmissions] = useState<Record<string, PracticeSubmission>>(() => {
@@ -305,15 +198,7 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Selected Activity State: null = viewing course outline, non-null = viewing dedicated page of that activity
-  const [selectedActivity, setSelectedActivity] = useState<CurriculumItem | null>(() => {
-    if (initialActivityId) {
-      for (const sec of defaultSections) {
-        const found = sec.items.find((i) => i.id === initialActivityId);
-        if (found) return found;
-      }
-    }
-    return null;
-  });
+  const [selectedActivity, setSelectedActivity] = useState<CurriculumItem | null>(null);
 
   // Calculate total completed items
   const allItems = sections.flatMap((s) => s.items);
@@ -326,27 +211,33 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
   const nextActivity = currentIndex >= 0 && currentIndex < allItems.length - 1 ? allItems[currentIndex + 1] : null;
 
   // Toggle item completion state (To do <-> Done)
-  const toggleItemCompletion = (itemId: string, e?: React.MouseEvent) => {
+  const toggleItemCompletion = async (itemId: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
 
-    setSections((prevSections) =>
-      prevSections.map((sec) => {
-        let hasChanges = false;
-        const newItems = sec.items.map((item) => {
-          if (item.id === itemId) {
-            hasChanges = true;
-            return { ...item, isCompleted: !item.isCompleted };
-          }
-          return item;
-        });
+    try {
+      const studentId = getStudentId();
+      await api.post(`/lessons/${itemId}/complete`, { studentId });
 
-        return hasChanges ? { ...sec, items: newItems } : sec;
-      })
-    );
+      setSections((prevSections) =>
+        prevSections.map((sec) => {
+          let hasChanges = false;
+          const newItems = sec.items.map((item) => {
+            if (item.id === itemId) {
+              hasChanges = true;
+              return { ...item, isCompleted: true };
+            }
+            return item;
+          });
 
-    // Update selectedActivity if active
-    if (selectedActivity && selectedActivity.id === itemId) {
-      setSelectedActivity((prev) => prev ? { ...prev, isCompleted: !prev.isCompleted } : null);
+          return hasChanges ? { ...sec, items: newItems } : sec;
+        })
+      );
+
+      if (selectedActivity && selectedActivity.id === itemId) {
+        setSelectedActivity((prev) => prev ? { ...prev, isCompleted: true } : null);
+      }
+    } catch (err) {
+      console.error('Lỗi cập nhật hoàn thành bài học:', err);
     }
   };
 
@@ -516,7 +407,7 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
   };
 
   const handleDownloadFile = (fileName: string) => {
-    const content = `Mã nguồn bài tập LMS: ${fileName}\nĐược nộp bởi sinh viên ngày ${new Date().toLocaleDateString('vi-VN')}\nHọc phần: 20241_Phát triển ứng dụng Mobile đa nền tảng (2+1)_12626W.1`;
+    const content = `Mã nguồn bài tập LMS: ${fileName}\nĐược nộp bởi sinh viên ngày ${new Date().toLocaleDateString('vi-VN')}\nHọc phần: {course?.title || 'Đang tải thông tin học phần...'}`;
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

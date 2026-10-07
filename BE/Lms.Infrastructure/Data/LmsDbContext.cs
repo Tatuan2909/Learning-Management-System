@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Lms.Domain.Entities;
 using Lms.Domain.Enums;
@@ -12,6 +13,7 @@ public class LmsDbContext : DbContext
     public DbSet<StudentProfile> StudentProfiles => Set<StudentProfile>();
     public DbSet<TeacherProfile> TeacherProfiles => Set<TeacherProfile>();
     public DbSet<Course> Courses => Set<Course>();
+    public DbSet<CourseSection> CourseSections => Set<CourseSection>();
     public DbSet<Enrollment> Enrollments => Set<Enrollment>();
     public DbSet<Lesson> Lessons => Set<Lesson>();
     public DbSet<LessonProgress> LessonProgresses => Set<LessonProgress>();
@@ -19,20 +21,25 @@ public class LmsDbContext : DbContext
     public DbSet<QuizQuestion> QuizQuestions => Set<QuizQuestion>();
     public DbSet<QuizOption> QuizOptions => Set<QuizOption>();
     public DbSet<QuizAttempt> QuizAttempts => Set<QuizAttempt>();
+    public DbSet<QuizAttemptAnswer> QuizAttemptAnswers => Set<QuizAttemptAnswer>();
     public DbSet<Assignment> Assignments => Set<Assignment>();
     public DbSet<Submission> Submissions => Set<Submission>();
+    public DbSet<SubmissionFile> SubmissionFiles => Set<SubmissionFile>();
     public DbSet<Announcement> Announcements => Set<Announcement>();
+    public DbSet<AnnouncementComment> AnnouncementComments => Set<AnnouncementComment>();
     public DbSet<FinalGrade> FinalGrades => Set<FinalGrade>();
+    public DbSet<Notification> Notifications => Set<Notification>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
-        // Table Mapping (snake_case database names matching schema.sql)
+        // 1. Table Mapping (snake_case database names matching schema.sql)
         modelBuilder.Entity<User>().ToTable("users");
         modelBuilder.Entity<StudentProfile>().ToTable("student_profiles");
         modelBuilder.Entity<TeacherProfile>().ToTable("teacher_profiles");
         modelBuilder.Entity<Course>().ToTable("courses");
+        modelBuilder.Entity<CourseSection>().ToTable("course_sections");
         modelBuilder.Entity<Enrollment>().ToTable("enrollments");
         modelBuilder.Entity<Lesson>().ToTable("lessons");
         modelBuilder.Entity<LessonProgress>().ToTable("lesson_progress");
@@ -40,12 +47,16 @@ public class LmsDbContext : DbContext
         modelBuilder.Entity<QuizQuestion>().ToTable("quiz_questions");
         modelBuilder.Entity<QuizOption>().ToTable("quiz_options");
         modelBuilder.Entity<QuizAttempt>().ToTable("quiz_attempts");
+        modelBuilder.Entity<QuizAttemptAnswer>().ToTable("quiz_attempt_answers");
         modelBuilder.Entity<Assignment>().ToTable("assignments");
         modelBuilder.Entity<Submission>().ToTable("submissions");
+        modelBuilder.Entity<SubmissionFile>().ToTable("submission_files");
         modelBuilder.Entity<Announcement>().ToTable("announcements");
+        modelBuilder.Entity<AnnouncementComment>().ToTable("announcement_comments");
         modelBuilder.Entity<FinalGrade>().ToTable("final_grades");
+        modelBuilder.Entity<Notification>().ToTable("notifications");
 
-        // Primary Keys & One-to-One Relationships
+        // 2. Primary Keys & One-to-One Relationships
         modelBuilder.Entity<StudentProfile>()
             .HasKey(sp => sp.UserId);
 
@@ -64,7 +75,7 @@ public class LmsDbContext : DbContext
             .HasForeignKey<TeacherProfile>(tp => tp.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // Enums stored as strings
+        // 3. Enums stored as strings
         modelBuilder.Entity<User>()
             .Property(u => u.Role)
             .HasConversion<string>();
@@ -81,16 +92,18 @@ public class LmsDbContext : DbContext
             .Property(s => s.Status)
             .HasConversion<string>();
 
-        modelBuilder.Entity<FinalGrade>()
-            .Property(fg => fg.LetterGrade)
-            .HasConversion<string>();
-
-        // Relationships & Foreign Keys
+        // 4. Relationships & Foreign Keys
         modelBuilder.Entity<Course>()
             .HasOne(c => c.Teacher)
             .WithMany()
             .HasForeignKey(c => c.TeacherId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<CourseSection>()
+            .HasOne(cs => cs.Course)
+            .WithMany(c => c.Sections)
+            .HasForeignKey(cs => cs.CourseId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<Enrollment>()
             .HasOne(e => e.Course)
@@ -106,6 +119,12 @@ public class LmsDbContext : DbContext
             .HasOne(l => l.Course)
             .WithMany(c => c.Lessons)
             .HasForeignKey(l => l.CourseId);
+
+        modelBuilder.Entity<Lesson>()
+            .HasOne(l => l.Section)
+            .WithMany(cs => cs.Lessons)
+            .HasForeignKey(l => l.SectionId)
+            .OnDelete(DeleteBehavior.SetNull);
 
         modelBuilder.Entity<LessonProgress>()
             .HasOne(lp => lp.Enrollment)
@@ -142,10 +161,34 @@ public class LmsDbContext : DbContext
             .WithMany(u => u.QuizAttempts)
             .HasForeignKey(qa => qa.StudentId);
 
+        modelBuilder.Entity<QuizAttemptAnswer>()
+            .HasOne(qaa => qaa.Attempt)
+            .WithMany(qa => qa.Answers)
+            .HasForeignKey(qaa => qaa.AttemptId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<QuizAttemptAnswer>()
+            .HasOne(qaa => qaa.Question)
+            .WithMany()
+            .HasForeignKey(qaa => qaa.QuestionId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<QuizAttemptAnswer>()
+            .HasOne(qaa => qaa.SelectedOption)
+            .WithMany()
+            .HasForeignKey(qaa => qaa.SelectedOptionId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         modelBuilder.Entity<Assignment>()
             .HasOne(a => a.Course)
             .WithMany(c => c.Assignments)
             .HasForeignKey(a => a.CourseId);
+
+        modelBuilder.Entity<Assignment>()
+            .HasOne(a => a.Lesson)
+            .WithMany()
+            .HasForeignKey(a => a.LessonId)
+            .OnDelete(DeleteBehavior.SetNull);
 
         modelBuilder.Entity<Submission>()
             .HasOne(sub => sub.Assignment)
@@ -163,6 +206,12 @@ public class LmsDbContext : DbContext
             .HasForeignKey(sub => sub.GradedBy)
             .OnDelete(DeleteBehavior.SetNull);
 
+        modelBuilder.Entity<SubmissionFile>()
+            .HasOne(sf => sf.Submission)
+            .WithMany(s => s.Files)
+            .HasForeignKey(sf => sf.SubmissionId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         modelBuilder.Entity<Announcement>()
             .HasOne(an => an.Course)
             .WithMany(c => c.Announcements)
@@ -173,9 +222,42 @@ public class LmsDbContext : DbContext
             .WithMany()
             .HasForeignKey(an => an.TeacherId);
 
+        modelBuilder.Entity<AnnouncementComment>()
+            .HasOne(ac => ac.Announcement)
+            .WithMany(a => a.Comments)
+            .HasForeignKey(ac => ac.AnnouncementId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<AnnouncementComment>()
+            .HasOne(ac => ac.User)
+            .WithMany()
+            .HasForeignKey(ac => ac.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         modelBuilder.Entity<FinalGrade>()
             .HasOne(fg => fg.Enrollment)
             .WithOne(e => e.FinalGrade)
             .HasForeignKey<FinalGrade>(fg => fg.EnrollmentId);
+
+        modelBuilder.Entity<Notification>()
+            .HasOne(n => n.User)
+            .WithMany(u => u.Notifications)
+            .HasForeignKey(n => n.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // 5. Automatic snake_case column mapping
+        foreach (var entity in modelBuilder.Model.GetEntityTypes())
+        {
+            foreach (var property in entity.GetProperties())
+            {
+                property.SetColumnName(ToSnakeCase(property.Name));
+            }
+        }
+    }
+
+    private static string ToSnakeCase(string input)
+    {
+        if (string.IsNullOrEmpty(input)) return input;
+        return Regex.Replace(input, @"([a-z0-9])([A-Z])", "$1_$2").ToLowerInvariant();
     }
 }

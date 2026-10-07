@@ -4,10 +4,11 @@ import { UpcomingDeadline } from '../types';
 import api from '../api/axios';
 
 interface Props {
+  studentId?: string;
   onSelectDeadline?: (deadline: UpcomingDeadline) => void;
 }
 
-export const UpcomingDeadlinesWidget: React.FC<Props> = ({ onSelectDeadline }) => {
+export const UpcomingDeadlinesWidget: React.FC<Props> = ({ studentId, onSelectDeadline }) => {
   const [deadlines, setDeadlines] = useState<UpcomingDeadline[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -15,51 +16,21 @@ export const UpcomingDeadlinesWidget: React.FC<Props> = ({ onSelectDeadline }) =
   const fetchDeadlines = async () => {
     try {
       setLoading(true);
-      // Demo Student ID
-      const response = await api.get<UpcomingDeadline[]>('/student/upcoming-deadlines?studentId=33333333-3333-3333-3333-333333333333');
-      setDeadlines(response.data);
+      const targetStudentId = studentId || (() => {
+        try {
+          const userStr = localStorage.getItem('user_info');
+          if (userStr) return JSON.parse(userStr).userId;
+        } catch { }
+        return '33333333-3333-3333-3333-333333333333';
+      })();
+
+      const response = await api.get<UpcomingDeadline[]>(`/student/upcoming-deadlines?studentId=${targetStudentId}`);
+      setDeadlines(response.data || []);
       setError(null);
     } catch (err: any) {
-      console.error('Lỗi tải danh sách deadline:', err);
-      // Fallback mock data if server isn't running yet
-      setDeadlines([
-        {
-          id: 'a1',
-          title: 'Bài tập 1: Lập trình API Đăng nhập JWT (Gấp)',
-          courseCode: 'INT3306',
-          courseTitle: 'Lập trình Web C# .NET 8 & ReactJS',
-          type: 'ASSIGNMENT',
-          dueDate: new Date(Date.now() + 14 * 3600 * 1000).toISOString(),
-          remainingSeconds: 14 * 3600,
-          urgency: 'RED',
-          maxScore: 100,
-          targetUrl: '/assignments/1'
-        },
-        {
-          id: 'a2',
-          title: 'Bài tập 2: Thiết kế Database Schema EF Core',
-          courseCode: 'INT3306',
-          courseTitle: 'Lập trình Web C# .NET 8 & ReactJS',
-          type: 'ASSIGNMENT',
-          dueDate: new Date(Date.now() + 48 * 3600 * 1000).toISOString(),
-          remainingSeconds: 48 * 3600,
-          urgency: 'YELLOW',
-          maxScore: 100,
-          targetUrl: '/assignments/2'
-        },
-        {
-          id: 'a3',
-          title: 'Bài tập 3: Xây dựng UI Widget Deadlines với React & Tailwind',
-          courseCode: 'INT3306',
-          courseTitle: 'Lập trình Web C# .NET 8 & ReactJS',
-          type: 'ASSIGNMENT',
-          dueDate: new Date(Date.now() + 120 * 3600 * 1000).toISOString(),
-          remainingSeconds: 120 * 3600,
-          urgency: 'GREEN',
-          maxScore: 100,
-          targetUrl: '/assignments/3'
-        }
-      ]);
+      console.error('Lỗi tải danh sách deadline từ CSDL:', err);
+      setError('Không thể tải danh sách hạn nộp từ cơ sở dữ liệu.');
+      setDeadlines([]);
     } finally {
       setLoading(false);
     }

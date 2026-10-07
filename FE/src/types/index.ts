@@ -23,15 +23,52 @@ export interface UpcomingDeadline {
   targetUrl: string;
 }
 
-export interface LessonItem {
+export type ActivityType =
+  | 'OVERVIEW'
+  | 'SCORM'
+  | 'PDF'
+  | 'DOCX'
+  | 'LINK'
+  | 'ANNOUNCEMENT'
+  | 'PRACTICE'
+  | 'QUIZ'
+  | 'VIDEO'
+  | 'TEXT';
+
+export interface LessonSummary {
   id: string;
   title: string;
   orderIndex: number;
-  contentType: 'VIDEO' | 'PDF' | 'TEXT';
+  contentType: ActivityType;
+  subtitle?: string;
   contentUrl?: string;
+  bodyMarkdown?: string;
   isLocked: boolean;
   isCompleted: boolean;
   quizPassed: boolean;
+  quizId?: string;
+  assignmentId?: string;
+}
+
+export interface SectionSummary {
+  id: string;
+  title: string;
+  orderIndex: number;
+  isLocked: boolean;
+  isExpanded: boolean;
+  items: LessonSummary[];
+}
+
+export interface CourseDetail {
+  id: string;
+  courseCode: string;
+  title: string;
+  description?: string;
+  thumbnailUrl?: string;
+  teacherName: string;
+  progressPercentage: number;
+  isEnrolled: boolean;
+  sections: SectionSummary[];
 }
 
 export interface CourseItem {
@@ -44,7 +81,9 @@ export interface CourseItem {
   isEnrolled: boolean;
   accessPassword?: string;
   lessonsCount: number;
-  lessons?: LessonItem[];
+  weightAttendance?: number;
+  weightAssignments?: number;
+  weightFinalExam?: number;
 }
 
 export interface QuizOption {
@@ -55,8 +94,9 @@ export interface QuizOption {
 export interface QuizQuestion {
   questionId: string;
   questionText: string;
-  questionType: 'SINGLE_CHOICE' | 'MULTIPLE_CHOICE';
+  questionType: 'SINGLE_CHOICE' | 'MULTIPLE_CHOICE' | 'TRUE_FALSE';
   points: number;
+  explanation?: string;
   options: QuizOption[];
 }
 
@@ -87,4 +127,38 @@ export interface SubmitQuizResponse {
   isPassed: boolean;
   lessonProgressUpdated: boolean;
   message: string;
+}
+
+export interface SubmissionFile {
+  id: string;
+  fileName: string;
+  fileUrl: string;
+  fileSize: number;
+  fileType?: string;
+}
+
+export interface SubmissionDetail {
+  id: string;
+  submissionText?: string;
+  gitRepoUrl?: string;
+  fileUrl?: string;
+  status: 'DRAFT' | 'SUBMITTED' | 'LATE' | 'GRADED';
+  grade?: number;
+  feedback?: string;
+  submittedAt: string;
+  files: SubmissionFile[];
+}
+
+export interface AssignmentDetail {
+  id: string;
+  courseId: string;
+  lessonId?: string;
+  title: string;
+  instructions: string;
+  attachmentUrl?: string;
+  dueDate: string;
+  maxScore: number;
+  allowGitRepo: boolean;
+  allowedExtensions?: string;
+  mySubmission?: SubmissionDetail;
 }

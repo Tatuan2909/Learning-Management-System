@@ -1,0 +1,236 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\BE\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{24AB9D98-7955-2539-FDE6-370BAA8E207D}|Lms.Api\\Lms.Api.csproj|c:\\users\\acxsab\\desktop\\learning management system\\be\\lms.api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{24AB9D98-7955-2539-FDE6-370BAA8E207D}|Lms.Api\\Lms.Api.csproj|solutionrelative:lms.api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{24AB9D98-7955-2539-FDE6-370BAA8E207D}|Lms.Api\\Lms.Api.csproj|c:\\users\\acxsab\\desktop\\learning management system\\be\\lms.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{24AB9D98-7955-2539-FDE6-370BAA8E207D}|Lms.Api\\Lms.Api.csproj|solutionrelative:lms.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E372B68B-2A45-856D-3DA6-139165A2CA03}|Lms.Application\\Lms.Application.csproj|c:\\users\\acxsab\\desktop\\learning management system\\be\\lms.application\\dtos\\quiz\\submitquizrequest.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E372B68B-2A45-856D-3DA6-139165A2CA03}|Lms.Application\\Lms.Application.csproj|solutionrelative:lms.application\\dtos\\quiz\\submitquizrequest.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E372B68B-2A45-856D-3DA6-139165A2CA03}|Lms.Application\\Lms.Application.csproj|c:\\users\\acxsab\\desktop\\learning management system\\be\\lms.application\\dtos\\quiz\\submitquizresponse.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E372B68B-2A45-856D-3DA6-139165A2CA03}|Lms.Application\\Lms.Application.csproj|solutionrelative:lms.application\\dtos\\quiz\\submitquizresponse.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E372B68B-2A45-856D-3DA6-139165A2CA03}|Lms.Application\\Lms.Application.csproj|c:\\users\\acxsab\\desktop\\learning management system\\be\\lms.application\\interfaces\\iquizservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E372B68B-2A45-856D-3DA6-139165A2CA03}|Lms.Application\\Lms.Application.csproj|solutionrelative:lms.application\\interfaces\\iquizservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E372B68B-2A45-856D-3DA6-139165A2CA03}|Lms.Application\\Lms.Application.csproj|c:\\users\\acxsab\\desktop\\learning management system\\be\\lms.application\\interfaces\\ijwtservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E372B68B-2A45-856D-3DA6-139165A2CA03}|Lms.Application\\Lms.Application.csproj|solutionrelative:lms.application\\interfaces\\ijwtservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E372B68B-2A45-856D-3DA6-139165A2CA03}|Lms.Application\\Lms.Application.csproj|c:\\users\\acxsab\\desktop\\learning management system\\be\\lms.application\\interfaces\\idashboardservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E372B68B-2A45-856D-3DA6-139165A2CA03}|Lms.Application\\Lms.Application.csproj|solutionrelative:lms.application\\interfaces\\idashboardservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E372B68B-2A45-856D-3DA6-139165A2CA03}|Lms.Application\\Lms.Application.csproj|c:\\users\\acxsab\\desktop\\learning management system\\be\\lms.application\\dtos\\dashboard\\upcomingdeadlinedto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E372B68B-2A45-856D-3DA6-139165A2CA03}|Lms.Application\\Lms.Application.csproj|solutionrelative:lms.application\\dtos\\dashboard\\upcomingdeadlinedto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E372B68B-2A45-856D-3DA6-139165A2CA03}|Lms.Application\\Lms.Application.csproj|c:\\users\\acxsab\\desktop\\learning management system\\be\\lms.application\\dtos\\auth\\loginrequest.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E372B68B-2A45-856D-3DA6-139165A2CA03}|Lms.Application\\Lms.Application.csproj|solutionrelative:lms.application\\dtos\\auth\\loginrequest.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E372B68B-2A45-856D-3DA6-139165A2CA03}|Lms.Application\\Lms.Application.csproj|c:\\users\\acxsab\\desktop\\learning management system\\be\\lms.application\\dtos\\auth\\refreshtokenrequest.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E372B68B-2A45-856D-3DA6-139165A2CA03}|Lms.Application\\Lms.Application.csproj|solutionrelative:lms.application\\dtos\\auth\\refreshtokenrequest.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{175E35EB-29AB-98F3-9B15-2F59F81AAD09}|Lms.Infrastructure\\Lms.Infrastructure.csproj|c:\\users\\acxsab\\desktop\\learning management system\\be\\lms.infrastructure\\services\\jwtservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{175E35EB-29AB-98F3-9B15-2F59F81AAD09}|Lms.Infrastructure\\Lms.Infrastructure.csproj|solutionrelative:lms.infrastructure\\services\\jwtservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{175E35EB-29AB-98F3-9B15-2F59F81AAD09}|Lms.Infrastructure\\Lms.Infrastructure.csproj|c:\\users\\acxsab\\desktop\\learning management system\\be\\lms.infrastructure\\data\\lmsdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{175E35EB-29AB-98F3-9B15-2F59F81AAD09}|Lms.Infrastructure\\Lms.Infrastructure.csproj|solutionrelative:lms.infrastructure\\data\\lmsdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 5,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{d78612c7-9962-4b83-95d9-268046dad23a}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:128:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "SubmitQuizRequest.cs",
+              "DocumentMoniker": "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\BE\\Lms.Application\\DTOs\\Quiz\\SubmitQuizRequest.cs",
+              "RelativeDocumentMoniker": "Lms.Application\\DTOs\\Quiz\\SubmitQuizRequest.cs",
+              "ToolTip": "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\BE\\Lms.Application\\DTOs\\Quiz\\SubmitQuizRequest.cs",
+              "RelativeToolTip": "Lms.Application\\DTOs\\Quiz\\SubmitQuizRequest.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-10-07T09:23:18.349Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "SubmitQuizResponse.cs",
+              "DocumentMoniker": "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\BE\\Lms.Application\\DTOs\\Quiz\\SubmitQuizResponse.cs",
+              "RelativeDocumentMoniker": "Lms.Application\\DTOs\\Quiz\\SubmitQuizResponse.cs",
+              "ToolTip": "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\BE\\Lms.Application\\DTOs\\Quiz\\SubmitQuizResponse.cs",
+              "RelativeToolTip": "Lms.Application\\DTOs\\Quiz\\SubmitQuizResponse.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-10-07T09:23:17.569Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "appsettings.json",
+              "DocumentMoniker": "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\BE\\Lms.Api\\appsettings.json",
+              "RelativeDocumentMoniker": "Lms.Api\\appsettings.json",
+              "ToolTip": "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\BE\\Lms.Api\\appsettings.json",
+              "RelativeToolTip": "Lms.Api\\appsettings.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA0AAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2026-10-07T08:49:17.586Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "Program.cs",
+              "DocumentMoniker": "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\BE\\Lms.Api\\Program.cs",
+              "RelativeDocumentMoniker": "Lms.Api\\Program.cs",
+              "ToolTip": "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\BE\\Lms.Api\\Program.cs",
+              "RelativeToolTip": "Lms.Api\\Program.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-10-07T08:48:59.739Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "IQuizService.cs",
+              "DocumentMoniker": "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\BE\\Lms.Application\\Interfaces\\IQuizService.cs",
+              "RelativeDocumentMoniker": "Lms.Application\\Interfaces\\IQuizService.cs",
+              "ToolTip": "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\BE\\Lms.Application\\Interfaces\\IQuizService.cs",
+              "RelativeToolTip": "Lms.Application\\Interfaces\\IQuizService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-10-07T08:48:23.726Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "IJwtService.cs",
+              "DocumentMoniker": "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\BE\\Lms.Application\\Interfaces\\IJwtService.cs",
+              "RelativeDocumentMoniker": "Lms.Application\\Interfaces\\IJwtService.cs",
+              "ToolTip": "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\BE\\Lms.Application\\Interfaces\\IJwtService.cs",
+              "RelativeToolTip": "Lms.Application\\Interfaces\\IJwtService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-10-07T08:48:22.994Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "IDashboardService.cs",
+              "DocumentMoniker": "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\BE\\Lms.Application\\Interfaces\\IDashboardService.cs",
+              "RelativeDocumentMoniker": "Lms.Application\\Interfaces\\IDashboardService.cs",
+              "ToolTip": "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\BE\\Lms.Application\\Interfaces\\IDashboardService.cs",
+              "RelativeToolTip": "Lms.Application\\Interfaces\\IDashboardService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-10-07T08:48:21.964Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "UpcomingDeadlineDto.cs",
+              "DocumentMoniker": "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\BE\\Lms.Application\\DTOs\\Dashboard\\UpcomingDeadlineDto.cs",
+              "RelativeDocumentMoniker": "Lms.Application\\DTOs\\Dashboard\\UpcomingDeadlineDto.cs",
+              "ToolTip": "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\BE\\Lms.Application\\DTOs\\Dashboard\\UpcomingDeadlineDto.cs",
+              "RelativeToolTip": "Lms.Application\\DTOs\\Dashboard\\UpcomingDeadlineDto.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-10-07T08:48:11.218Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "LoginRequest.cs",
+              "DocumentMoniker": "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\BE\\Lms.Application\\DTOs\\Auth\\LoginRequest.cs",
+              "RelativeDocumentMoniker": "Lms.Application\\DTOs\\Auth\\LoginRequest.cs",
+              "ToolTip": "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\BE\\Lms.Application\\DTOs\\Auth\\LoginRequest.cs",
+              "RelativeToolTip": "Lms.Application\\DTOs\\Auth\\LoginRequest.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-10-07T08:48:09.919Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "RefreshTokenRequest.cs",
+              "DocumentMoniker": "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\BE\\Lms.Application\\DTOs\\Auth\\RefreshTokenRequest.cs",
+              "RelativeDocumentMoniker": "Lms.Application\\DTOs\\Auth\\RefreshTokenRequest.cs",
+              "ToolTip": "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\BE\\Lms.Application\\DTOs\\Auth\\RefreshTokenRequest.cs",
+              "RelativeToolTip": "Lms.Application\\DTOs\\Auth\\RefreshTokenRequest.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-10-07T08:48:09.036Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
+              "Title": "JwtService.cs",
+              "DocumentMoniker": "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\BE\\Lms.Infrastructure\\Services\\JwtService.cs",
+              "RelativeDocumentMoniker": "Lms.Infrastructure\\Services\\JwtService.cs",
+              "ToolTip": "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\BE\\Lms.Infrastructure\\Services\\JwtService.cs",
+              "RelativeToolTip": "Lms.Infrastructure\\Services\\JwtService.cs",
+              "ViewState": "AgIAABIAAAAAAAAAAAAowAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-10-07T08:45:13.786Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 11,
+              "Title": "LmsDbContext.cs",
+              "DocumentMoniker": "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\BE\\Lms.Infrastructure\\Data\\LmsDbContext.cs",
+              "RelativeDocumentMoniker": "Lms.Infrastructure\\Data\\LmsDbContext.cs",
+              "ToolTip": "C:\\Users\\ACXSAB\\Desktop\\Learning Management System\\BE\\Lms.Infrastructure\\Data\\LmsDbContext.cs",
+              "RelativeToolTip": "Lms.Infrastructure\\Data\\LmsDbContext.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-10-07T08:44:57.897Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

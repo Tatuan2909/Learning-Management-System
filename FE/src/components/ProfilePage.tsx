@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, Lock, Key, ShieldCheck, Mail, GraduationCap, CheckCircle2, AlertCircle, Save, Eye, EyeOff } from 'lucide-react';
 import { AuthUser } from '../types';
+import api from '../api/axios';
 
 interface Props {
   user: AuthUser;
 }
 
 export const ProfilePage: React.FC<Props> = ({ user }) => {
+  const [profile, setProfile] = useState<any>(null);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -15,6 +17,18 @@ export const ProfilePage: React.FC<Props> = ({ user }) => {
 
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const res = await api.get(`/auth/me?userId=${user.userId}`);
+        setProfile(res.data);
+      } catch (e) {
+        console.error('Lỗi tải thông tin hồ sơ:', e);
+      }
+    };
+    fetchProfile();
+  }, [user.userId]);
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();

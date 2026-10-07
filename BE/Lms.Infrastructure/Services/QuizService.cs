@@ -41,6 +41,7 @@ public class QuizService : IQuizService
                 QuestionText = q.QuestionText,
                 QuestionType = q.QuestionType.ToString(),
                 Points = (double)q.Points,
+                Explanation = q.Explanation,
                 Options = q.Options.Select(o => new QuizOptionDto
                 {
                     OptionId = o.Id,
