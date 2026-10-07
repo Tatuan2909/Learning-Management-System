@@ -94,6 +94,7 @@ builder.Services.AddSwaggerGen(c =>
 var app = builder.Build();
 
 // 6. Configure HTTP Pipeline
+app.UseStaticFiles();
 app.UseSwagger();
 app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "LMS Web API v1"));
 

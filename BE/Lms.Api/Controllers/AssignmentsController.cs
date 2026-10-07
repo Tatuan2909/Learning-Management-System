@@ -191,4 +191,196 @@ public class AssignmentsController : ControllerBase
             submittedAt = submission.SubmittedAt
         });
     }
+
+    /// <summary>
+    /// Nộp bài tập thực hành kèm tệp tin đính kèm thực tế (multipart/form-data)
+    /// </summary>
+    [HttpPost("{id}/submit-files")]
+    public async Task<IActionResult> SubmitAssignmentFiles(
+        Guid id,
+        [FromForm] Guid studentId,
+        [FromForm] string? submissionText,
+        [FromForm] string? gitRepoUrl,
+        [FromForm] List<IFormFile>? files)
+    {
+        var assignment = await _db.Assignments.FindAsync(id);
+        if (assignment == null)
+            return NotFound(new { message = "Không tìm thấy bài tập." });
+
+        var submission = await _db.Submissions
+            .Include(s => s.Files)
+            .FirstOrDefaultAsync(s => s.AssignmentId == id && s.StudentId == studentId);
+
+        var isLate = DateTime.UtcNow > assignment.DueDate;
+
+        if (submission == null)
+        {
+            submission = new Submission
+            {
+                AssignmentId = id,
+                StudentId = studentId,
+                SubmissionText = submissionText,
+                GitRepoUrl = gitRepoUrl,
+                Status = isLate ? SubmissionStatus.LATE : SubmissionStatus.SUBMITTED,
+                SubmittedAt = DateTime.UtcNow
+            };
+            _db.Submissions.Add(submission);
+        }
+        else
+        {
+            submission.SubmissionText = submissionText;
+            submission.GitRepoUrl = gitRepoUrl;
+            submission.Status = isLate ? SubmissionStatus.LATE : SubmissionStatus.SUBMITTED;
+            submission.SubmittedAt = DateTime.UtcNow;
+        }
+
+        // Process uploaded physical files
+        if (files != null && files.Count > 0)
+        {
+            var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "submissions");
+            if (!Directory.Exists(uploadsFolder))
+            {
+                Directory.CreateDirectory(uploadsFolder);
+            }
+
+            foreach (var file in files)
+            {
+                if (file.Length > 0)
+                {
+                    var originalFileName = Path.GetFileName(file.FileName);
+                    var extension = Path.GetExtension(originalFileName);
+                    var safeFileName = $"{Guid.NewGuid():N}{extension}";
+                    var filePath = Path.Combine(uploadsFolder, safeFileName);
+
+                    using (var stream = new FileStream(filePath, FileMode.Create))
+                    {
+                        await file.CopyToAsync(stream);
+                    }
+
+                    var relativeUrl = $"/uploads/submissions/{safeFileName}";
+                    submission.FileUrl = relativeUrl;
+
+                    var subFile = new SubmissionFile
+                    {
+                        Submission = submission,
+                        FileName = originalFileName,
+                        FileUrl = relativeUrl,
+                        FileSize = file.Length,
+                        FileType = file.ContentType ?? "application/octet-stream",
+                        UploadedAt = DateTime.UtcNow
+                    };
+                    _db.SubmissionFiles.Add(subFile);
+                }
+            }
+        }
+
+        // Also mark linked lesson as completed if applicable
+        if (assignment.LessonId.HasValue)
+        {
+            var enrollment = await _db.Enrollments
+                .FirstOrDefaultAsync(e => e.CourseId == assignment.CourseId && e.StudentId == studentId);
+
+            if (enrollment != null)
+            {
+                var progress = await _db.LessonProgresses
+                    .FirstOrDefaultAsync(lp => lp.EnrollmentId == enrollment.Id && lp.LessonId == assignment.LessonId.Value);
+
+                if (progress == null)
+                {
+                    progress = new LessonProgress
+                    {
+                        EnrollmentId = enrollment.Id,
+                        LessonId = assignment.LessonId.Value,
+                        IsCompleted = true,
+                        CompletedAt = DateTime.UtcNow
+                    };
+                    _db.LessonProgresses.Add(progress);
+                }
+                else
+                {
+                    progress.IsCompleted = true;
+                    progress.CompletedAt = DateTime.UtcNow;
+                }
+            }
+        }
+
+        await _db.SaveChangesAsync();
+
+        return Ok(new
+        {
+            message = isLate ? "Đã nộp bài tập (Nộp muộn) thành công!" : "Đã nộp bài tập thành công!",
+            submissionId = submission.Id,
+            status = submission.Status.ToString(),
+            submittedAt = submission.SubmittedAt,
+            fileUrl = submission.FileUrl,
+            gitRepoUrl = submission.GitRepoUrl
+        });
+    }
+
+    /// <summary>
+    /// Nộp bài tập thực hành theo Lesson ID (multipart/form-data)
+    /// </summary>
+    [HttpPost("by-lesson/{lessonId}/submit-files")]
+    public async Task<IActionResult> SubmitAssignmentByLessonFiles(
+        Guid lessonId,
+        [FromForm] Guid studentId,
+        [FromForm] string? submissionText,
+        [FromForm] string? gitRepoUrl,
+        [FromForm] List<IFormFile>? files)
+    {
+        var assignment = await _db.Assignments
+            .FirstOrDefaultAsync(a => a.LessonId == lessonId);
+
+        if (assignment == null)
+        {
+            var lesson = await _db.Lessons.FindAsync(lessonId);
+            if (lesson == null) return NotFound(new { message = "Không tìm thấy bài học." });
+
+            assignment = new Assignment
+            {
+                CourseId = lesson.CourseId,
+                LessonId = lesson.Id,
+                Title = lesson.Title,
+                Instructions = "Nộp bài tập thực hành theo yêu cầu của bài học.",
+                DueDate = DateTime.UtcNow.AddDays(7),
+                MaxScore = 10,
+                AllowGitRepo = true
+            };
+            _db.Assignments.Add(assignment);
+            await _db.SaveChangesAsync();
+        }
+
+        return await SubmitAssignmentFiles(assignment.Id, studentId, submissionText, gitRepoUrl, files);
+    }
+
+    /// <summary>
+    /// Nộp bài tập thực hành theo Lesson ID (JSON)
+    /// </summary>
+    [HttpPost("by-lesson/{lessonId}/submit")]
+    public async Task<IActionResult> SubmitAssignmentByLesson(Guid lessonId, [FromBody] SubmitAssignmentRequest request)
+    {
+        var assignment = await _db.Assignments
+            .FirstOrDefaultAsync(a => a.LessonId == lessonId);
+
+        if (assignment == null)
+        {
+            var lesson = await _db.Lessons.FindAsync(lessonId);
+            if (lesson == null) return NotFound(new { message = "Không tìm thấy bài học." });
+
+            assignment = new Assignment
+            {
+                CourseId = lesson.CourseId,
+                LessonId = lesson.Id,
+                Title = lesson.Title,
+                Instructions = "Nộp bài tập thực hành theo yêu cầu của bài học.",
+                DueDate = DateTime.UtcNow.AddDays(7),
+                MaxScore = 10,
+                AllowGitRepo = true
+            };
+            _db.Assignments.Add(assignment);
+            await _db.SaveChangesAsync();
+        }
+
+        return await SubmitAssignment(assignment.Id, request);
+    }
 }

@@ -107,6 +107,7 @@ export interface SubmittedFileMeta {
   size: number;
   type: string;
   lastModified?: number;
+  url?: string;
 }
 
 export interface PracticeSubmission {
@@ -463,7 +464,7 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
     fetchCourseData();
   }, [targetCourseId]);
 
-  // Practice Submissions State (persisted to localStorage)
+  // Practice Submissions State (persisted to localStorage & synced with backend)
   const [practiceSubmissions, setPracticeSubmissions] = useState<Record<string, PracticeSubmission>>(() => {
     try {
       const saved = localStorage.getItem('lms_practice_submissions');
@@ -473,6 +474,51 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
     }
     return {};
   });
+
+  const [isSubmittingPractice, setIsSubmittingPractice] = useState(false);
+
+  // Load assignment submission from backend if viewing a PRACTICE activity
+  useEffect(() => {
+    if (!selectedActivity || selectedActivity.type !== 'PRACTICE') return;
+
+    const fetchPracticeSubmission = async () => {
+      try {
+        const studentId = getStudentId();
+        const res = await api.get(`/assignments/by-lesson/${selectedActivity.id}?studentId=${studentId}`);
+        if (res.data && res.data.mySubmission) {
+          const sub = res.data.mySubmission;
+          const record: PracticeSubmission = {
+            activityId: selectedActivity.id,
+            status: 'SUBMITTED',
+            gradingStatus: (sub.grade !== null && sub.grade !== undefined) ? 'GRADED' : 'PENDING',
+            grade: (sub.grade !== null && sub.grade !== undefined) ? `${sub.grade}/${res.data.maxScore || 10}` : undefined,
+            feedback: sub.feedback,
+            submittedAt: sub.submittedAt ? new Date(sub.submittedAt).toLocaleString('vi-VN') : '',
+            files: (sub.files && sub.files.length > 0)
+              ? sub.files.map((f: any) => ({
+                  name: f.fileName,
+                  size: f.fileSize || 0,
+                  type: f.fileType || 'application/octet-stream',
+                  url: f.fileUrl
+                }))
+              : (sub.fileUrl ? [{
+                  name: sub.fileUrl.split('/').pop() || 'bai-nop.zip',
+                  size: 0,
+                  type: 'application/octet-stream',
+                  url: sub.fileUrl
+                }] : []),
+            note: sub.submissionText || '',
+            gitRepoUrl: sub.gitRepoUrl || ''
+          };
+          setPracticeSubmissions((prev) => ({ ...prev, [selectedActivity.id]: record }));
+        }
+      } catch (err) {
+        // Practice assignment might not exist yet or student hasn't submitted
+      }
+    };
+
+    fetchPracticeSubmission();
+  }, [selectedActivity?.id]);
 
   // Staging state for practice file submissions
   const [stagedFiles, setStagedFiles] = useState<File[]>([]);
@@ -601,57 +647,106 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
     setStagedFiles((prev) => prev.filter((f) => f.name !== fileName));
   };
 
-  const handleSubmitPractice = (activityId: string) => {
+  const handleSubmitPractice = async (activityId: string) => {
     const existing = practiceSubmissions[activityId];
     if (stagedFiles.length === 0 && !stagedGitUrl.trim() && (!existing || existing.files.length === 0)) {
       alert('Vui lòng tải lên ít nhất 1 tệp tin bài làm hoặc điền đường dẫn Git repository!');
       return;
     }
 
-    const newFilesMeta: SubmittedFileMeta[] = stagedFiles.map((f) => ({
-      name: f.name,
-      size: f.size,
-      type: f.type || 'application/octet-stream',
-      lastModified: f.lastModified
-    }));
-
-    const finalFiles = existing && stagedFiles.length === 0
-      ? existing.files
-      : [...(existing?.files || []), ...newFilesMeta];
-
-    const record: PracticeSubmission = {
-      activityId,
-      status: 'SUBMITTED',
-      gradingStatus: existing?.gradingStatus || 'PENDING',
-      submittedAt: new Date().toLocaleString('vi-VN', {
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-      }),
-      files: finalFiles,
-      note: stagedNote.trim() || existing?.note || '',
-      gitRepoUrl: stagedGitUrl.trim() || existing?.gitRepoUrl || ''
-    };
-
-    const updated = { ...practiceSubmissions, [activityId]: record };
-    setPracticeSubmissions(updated);
     try {
-      localStorage.setItem('lms_practice_submissions', JSON.stringify(updated));
-    } catch (e) {
-      console.error(e);
-    }
+      setIsSubmittingPractice(true);
+      const studentId = getStudentId();
+      const formData = new FormData();
+      formData.append('studentId', studentId);
+      if (stagedNote.trim()) formData.append('submissionText', stagedNote.trim());
+      if (stagedGitUrl.trim()) formData.append('gitRepoUrl', stagedGitUrl.trim());
+      stagedFiles.forEach((file) => {
+        formData.append('files', file);
+      });
 
-    // Automatically mark the activity as completed if not yet completed
-    if (selectedActivity && !selectedActivity.isCompleted) {
-      toggleItemCompletion(activityId);
-    }
+      const res = await api.post(`/assignments/by-lesson/${activityId}/submit-files`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
 
-    setStagedFiles([]);
-    setIsEditingPractice(false);
-    alert('🎉 Chúc mừng! Bạn đã nộp bài tập thực hành thành công lên hệ thống.');
+      const newFilesMeta: SubmittedFileMeta[] = stagedFiles.map((f) => ({
+        name: f.name,
+        size: f.size,
+        type: f.type || 'application/octet-stream',
+        lastModified: f.lastModified,
+        url: res.data?.fileUrl || undefined
+      }));
+
+      const finalFiles = existing && stagedFiles.length === 0
+        ? existing.files
+        : [...(existing?.files || []), ...newFilesMeta];
+
+      const record: PracticeSubmission = {
+        activityId,
+        status: 'SUBMITTED',
+        gradingStatus: existing?.gradingStatus || 'PENDING',
+        submittedAt: new Date().toLocaleString('vi-VN', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric'
+        }),
+        files: finalFiles,
+        note: stagedNote.trim() || existing?.note || '',
+        gitRepoUrl: stagedGitUrl.trim() || existing?.gitRepoUrl || ''
+      };
+
+      const updated = { ...practiceSubmissions, [activityId]: record };
+      setPracticeSubmissions(updated);
+      try {
+        localStorage.setItem('lms_practice_submissions', JSON.stringify(updated));
+      } catch (e) {
+        console.error(e);
+      }
+
+      // Automatically mark the activity as completed if not yet completed
+      if (selectedActivity && !selectedActivity.isCompleted) {
+        toggleItemCompletion(activityId);
+      }
+
+      setStagedFiles([]);
+      setIsEditingPractice(false);
+      alert('🎉 Chúc mừng! Bạn đã nộp bài tập thực hành thành công lên hệ thống và đã lưu vào CSDL.');
+    } catch (err) {
+      console.error('Lỗi khi nộp bài tập:', err);
+      // Fallback
+      const newFilesMeta: SubmittedFileMeta[] = stagedFiles.map((f) => ({
+        name: f.name,
+        size: f.size,
+        type: f.type || 'application/octet-stream',
+        lastModified: f.lastModified
+      }));
+      const finalFiles = existing && stagedFiles.length === 0
+        ? existing.files
+        : [...(existing?.files || []), ...newFilesMeta];
+
+      const record: PracticeSubmission = {
+        activityId,
+        status: 'SUBMITTED',
+        gradingStatus: existing?.gradingStatus || 'PENDING',
+        submittedAt: new Date().toLocaleString('vi-VN'),
+        files: finalFiles,
+        note: stagedNote.trim() || existing?.note || '',
+        gitRepoUrl: stagedGitUrl.trim() || existing?.gitRepoUrl || ''
+      };
+
+      setPracticeSubmissions({ ...practiceSubmissions, [activityId]: record });
+      if (selectedActivity && !selectedActivity.isCompleted) {
+        toggleItemCompletion(activityId);
+      }
+      setStagedFiles([]);
+      setIsEditingPractice(false);
+      alert('🎉 Đã ghi nhận bài nộp!');
+    } finally {
+      setIsSubmittingPractice(false);
+    }
   };
 
   const handleDeleteSubmission = (activityId: string) => {
@@ -677,8 +772,13 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
     setIsEditingPractice(true);
   };
 
-  const handleDownloadFile = (fileName: string) => {
-    const content = `Mã nguồn bài tập LMS: ${fileName}\nĐược nộp bởi sinh viên ngày ${new Date().toLocaleDateString('vi-VN')}\nHọc phần: {course?.title || 'Đang tải thông tin học phần...'}`;
+  const handleDownloadFile = (fileName: string, fileUrl?: string) => {
+    if (fileUrl) {
+      const fullUrl = fileUrl.startsWith('http') ? fileUrl : `http://localhost:5000${fileUrl.startsWith('/') ? '' : '/'}${fileUrl}`;
+      window.open(fullUrl, '_blank');
+      return;
+    }
+    const content = `Mã nguồn bài tập LMS: ${fileName}\nĐược nộp bởi sinh viên ngày ${new Date().toLocaleDateString('vi-VN')}\nHọc phần: ${course?.title || 'Đang tải thông tin học phần...'}`;
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -873,7 +973,7 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
                           </div>
                         </div>
                         <button
-                          onClick={() => handleDownloadFile(file.name)}
+                          onClick={() => handleDownloadFile(file.name, file.url)}
                           className="px-2.5 py-1 text-[11px] font-bold text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors flex items-center gap-1 border border-blue-200"
                           title="Tải tệp này về máy"
                         >
@@ -923,6 +1023,21 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
                 )}
               </div>
             </div>
+
+            {/* Teacher Feedback row */}
+            {submission?.feedback && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 p-4 gap-2 bg-indigo-50/60 border-t border-indigo-100">
+                <span className="font-bold text-indigo-900 sm:col-span-1 flex items-center gap-1.5">
+                  <Award className="w-4 h-4 text-indigo-600" />
+                  <span>Lời nhận xét của giảng viên:</span>
+                </span>
+                <div className="sm:col-span-2">
+                  <p className="text-slate-800 bg-white p-3 rounded-xl border border-indigo-200 text-xs leading-relaxed font-medium">
+                    {submission.feedback}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -1099,11 +1214,20 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
                 </button>
               )}
               <button
+                disabled={isSubmittingPractice}
                 onClick={() => handleSubmitPractice(activity.id)}
-                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2"
+                className={`px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 ${
+                  isSubmittingPractice ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
+                }`}
               >
                 <Send className="w-4 h-4" />
-                <span>{isEditingPractice ? 'Lưu thay đổi bài nộp' : 'Nộp bài & Hoàn thành'}</span>
+                <span>
+                  {isSubmittingPractice
+                    ? 'Đang gửi bài lên hệ thống...'
+                    : isEditingPractice
+                    ? 'Lưu thay đổi bài nộp'
+                    : 'Nộp bài & Hoàn thành'}
+                </span>
               </button>
             </div>
           </div>

@@ -524,6 +524,7 @@ public class TeacherController : ControllerBase
                 .ThenInclude(a => a.Course)
             .Include(s => s.Student)
                 .ThenInclude(st => st.StudentProfile)
+            .Include(s => s.Files)
             .Where(s => s.Assignment.CourseId == courseId)
             .OrderByDescending(s => s.SubmittedAt)
             .ToListAsync();
@@ -537,8 +538,17 @@ public class TeacherController : ControllerBase
             studentName = s.Student.FullName,
             studentCode = s.Student.StudentProfile?.StudentCode ?? "SV2024",
             submittedAt = s.SubmittedAt.ToString("yyyy-MM-dd HH:mm"),
-            fileUrl = s.FileUrl ?? s.GitRepoUrl ?? "",
+            fileUrl = s.FileUrl ?? "",
+            gitRepoUrl = s.GitRepoUrl ?? "",
             submissionText = s.SubmissionText ?? "",
+            files = s.Files.Select(f => new
+            {
+                id = f.Id.ToString(),
+                fileName = f.FileName,
+                fileUrl = f.FileUrl,
+                fileSize = f.FileSize,
+                fileType = f.FileType
+            }).ToList(),
             grade = s.Grade.HasValue ? (double?)s.Grade.Value : null,
             feedback = s.Feedback,
             status = s.Status.ToString()

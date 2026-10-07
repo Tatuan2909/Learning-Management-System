@@ -25,7 +25,8 @@ import {
   MessageSquare,
   PlayCircle,
   Video,
-  ExternalLink
+  ExternalLink,
+  Github
 } from 'lucide-react';
 import { AuthUser } from '../types';
 import api from '../api/axios';
@@ -93,6 +94,14 @@ export interface StudentGradeRow {
   progressPercentage: number;
 }
 
+export interface TeacherSubmissionFile {
+  id: string;
+  fileName: string;
+  fileUrl: string;
+  fileSize: number;
+  fileType?: string;
+}
+
 export interface TeacherSubmission {
   id: string;
   courseId: string;
@@ -102,7 +111,9 @@ export interface TeacherSubmission {
   studentCode: string;
   submittedAt: string;
   fileUrl: string;
+  gitRepoUrl?: string;
   submissionText: string;
+  files?: TeacherSubmissionFile[];
   grade?: number;
   feedback?: string;
   status: 'SUBMITTED' | 'GRADED';
@@ -1569,20 +1580,80 @@ export const TeacherDashboard: React.FC<Props> = ({
                             </span>
                           </div>
 
-                          <div className="p-4 rounded-xl bg-slate-50 text-xs space-y-2 border border-slate-200">
-                            <span className="font-bold text-slate-700">Ghi chú / Nội dung bài nộp của Sinh viên:</span>
-                            <p className="text-slate-600 leading-relaxed italic">"{sub.submissionText}"</p>
-                            {sub.fileUrl && (
-                              <a
-                                href={sub.fileUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="inline-flex items-center gap-1.5 text-blue-600 font-bold hover:underline pt-1"
-                              >
-                                <FileText className="w-4 h-4" />
-                                <span>Tải file bài nộp: {sub.fileUrl}</span>
-                              </a>
+                          <div className="p-4 rounded-xl bg-slate-50 text-xs space-y-3 border border-slate-200">
+                            <div>
+                              <span className="font-bold text-slate-700 block mb-1">Ghi chú / Lời nhắn của Sinh viên:</span>
+                              <p className="text-slate-600 leading-relaxed italic bg-white p-3 rounded-xl border border-slate-200">
+                                "{sub.submissionText || 'Không có ghi chú thêm.'}"
+                              </p>
+                            </div>
+
+                            {/* Git repository */}
+                            {sub.gitRepoUrl && (
+                              <div className="flex items-center gap-2 pt-1">
+                                <a
+                                  href={sub.gitRepoUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center gap-2 px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl transition-all shadow-xs"
+                                >
+                                  <Github className="w-4 h-4" />
+                                  <span>Xem mã nguồn GitHub: {sub.gitRepoUrl}</span>
+                                  <ExternalLink className="w-3.5 h-3.5" />
+                                </a>
+                              </div>
                             )}
+
+                            {/* Files */}
+                            {sub.files && sub.files.length > 0 ? (
+                              <div className="space-y-1.5 pt-1">
+                                <span className="font-bold text-slate-700 block">Danh sách tệp tin đính kèm ({sub.files.length} tệp):</span>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  {sub.files.map((file) => {
+                                    const fullUrl = file.fileUrl.startsWith('http') ? file.fileUrl : `http://localhost:5000${file.fileUrl}`;
+                                    return (
+                                      <a
+                                        key={file.id}
+                                        href={fullUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        download
+                                        className="p-3 rounded-xl bg-white border border-slate-200 hover:border-blue-300 hover:bg-blue-50/40 flex items-center justify-between gap-3 transition-all group shadow-2xs"
+                                      >
+                                        <div className="flex items-center gap-2.5 min-w-0">
+                                          <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
+                                            <FileText className="w-4 h-4" />
+                                          </div>
+                                          <div className="min-w-0">
+                                            <p className="font-bold text-slate-800 group-hover:text-blue-700 truncate">{file.fileName}</p>
+                                            <span className="text-[10px] text-slate-400">
+                                              {file.fileSize > 0 ? `${(file.fileSize / 1024).toFixed(1)} KB` : 'Tệp bài làm'}
+                                            </span>
+                                          </div>
+                                        </div>
+                                        <div className="flex items-center gap-1 text-blue-600 text-xs font-bold flex-shrink-0">
+                                          <Download className="w-4 h-4" />
+                                          <span className="hidden sm:inline">Tải về</span>
+                                        </div>
+                                      </a>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            ) : sub.fileUrl ? (
+                              <div className="pt-1">
+                                <a
+                                  href={sub.fileUrl.startsWith('http') ? sub.fileUrl : `http://localhost:5000${sub.fileUrl}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  download
+                                  className="inline-flex items-center gap-2 px-3.5 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 font-bold rounded-xl transition-all shadow-2xs"
+                                >
+                                  <Download className="w-4 h-4" />
+                                  <span>Tải file bài nộp: {sub.fileUrl}</span>
+                                </a>
+                              </div>
+                            ) : null}
                           </div>
 
                           {/* Grading Form / View */}
