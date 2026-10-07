@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
   PlayCircle,
   FileText,
   CheckCircle,
+  CheckCircle2,
   Lock,
   ChevronDown,
   ChevronRight,
@@ -28,7 +29,13 @@ import {
   Download,
   LayoutGrid,
   KeyRound,
-  AlertCircle
+  AlertCircle,
+  Trash2,
+  Paperclip,
+  FolderUp,
+  FileArchive,
+  Github,
+  Calendar
 } from 'lucide-react';
 import { PostLessonQuiz } from './PostLessonQuiz';
 
@@ -245,6 +252,25 @@ const defaultSections: Section[] = [
   }
 ];
 
+export interface SubmittedFileMeta {
+  name: string;
+  size: number;
+  type: string;
+  lastModified?: number;
+}
+
+export interface PracticeSubmission {
+  activityId: string;
+  status: 'SUBMITTED';
+  gradingStatus: 'PENDING' | 'GRADED';
+  grade?: string;
+  feedback?: string;
+  submittedAt: string;
+  files: SubmittedFileMeta[];
+  note?: string;
+  gitRepoUrl?: string;
+}
+
 export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, onBack }) => {
   const [quizPasswordInput, setQuizPasswordInput] = useState('');
   const [quizPasswordError, setQuizPasswordError] = useState('');
@@ -258,6 +284,25 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
 
   // Sections data
   const [sections, setSections] = useState<Section[]>(defaultSections);
+
+  // Practice Submissions State (persisted to localStorage)
+  const [practiceSubmissions, setPracticeSubmissions] = useState<Record<string, PracticeSubmission>>(() => {
+    try {
+      const saved = localStorage.getItem('lms_practice_submissions');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.error('Error reading submissions from localStorage', e);
+    }
+    return {};
+  });
+
+  // Staging state for practice file submissions
+  const [stagedFiles, setStagedFiles] = useState<File[]>([]);
+  const [stagedGitUrl, setStagedGitUrl] = useState('');
+  const [stagedNote, setStagedNote] = useState('');
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [isEditingPractice, setIsEditingPractice] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Selected Activity State: null = viewing course outline, non-null = viewing dedicated page of that activity
   const [selectedActivity, setSelectedActivity] = useState<CurriculumItem | null>(() => {
@@ -371,6 +416,118 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
     alert('🎉 Chúc mừng! Bạn đã hoàn thành xuất sắc bài trắc nghiệm. Tuần 2 (Week 2) đã được mở khóa thành công!');
   };
 
+  // Practice helper functions
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const handleFilesAdded = (filesList: FileList | null) => {
+    if (!filesList || filesList.length === 0) return;
+    const newFiles = Array.from(filesList);
+    setStagedFiles((prev) => {
+      const existingNames = new Set(prev.map((f) => f.name));
+      const filtered = newFiles.filter((f) => !existingNames.has(f.name));
+      return [...prev, ...filtered];
+    });
+  };
+
+  const handleRemoveStagedFile = (fileName: string) => {
+    setStagedFiles((prev) => prev.filter((f) => f.name !== fileName));
+  };
+
+  const handleSubmitPractice = (activityId: string) => {
+    const existing = practiceSubmissions[activityId];
+    if (stagedFiles.length === 0 && !stagedGitUrl.trim() && (!existing || existing.files.length === 0)) {
+      alert('Vui lòng tải lên ít nhất 1 tệp tin bài làm hoặc điền đường dẫn Git repository!');
+      return;
+    }
+
+    const newFilesMeta: SubmittedFileMeta[] = stagedFiles.map((f) => ({
+      name: f.name,
+      size: f.size,
+      type: f.type || 'application/octet-stream',
+      lastModified: f.lastModified
+    }));
+
+    const finalFiles = existing && stagedFiles.length === 0
+      ? existing.files
+      : [...(existing?.files || []), ...newFilesMeta];
+
+    const record: PracticeSubmission = {
+      activityId,
+      status: 'SUBMITTED',
+      gradingStatus: existing?.gradingStatus || 'PENDING',
+      submittedAt: new Date().toLocaleString('vi-VN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      }),
+      files: finalFiles,
+      note: stagedNote.trim() || existing?.note || '',
+      gitRepoUrl: stagedGitUrl.trim() || existing?.gitRepoUrl || ''
+    };
+
+    const updated = { ...practiceSubmissions, [activityId]: record };
+    setPracticeSubmissions(updated);
+    try {
+      localStorage.setItem('lms_practice_submissions', JSON.stringify(updated));
+    } catch (e) {
+      console.error(e);
+    }
+
+    // Automatically mark the activity as completed if not yet completed
+    if (selectedActivity && !selectedActivity.isCompleted) {
+      toggleItemCompletion(activityId);
+    }
+
+    setStagedFiles([]);
+    setIsEditingPractice(false);
+    alert('🎉 Chúc mừng! Bạn đã nộp bài tập thực hành thành công lên hệ thống.');
+  };
+
+  const handleDeleteSubmission = (activityId: string) => {
+    if (!window.confirm('Bạn có chắc chắn muốn hủy / xóa bài nộp này? Trạng thái sẽ quay về Chưa nộp bài.')) {
+      return;
+    }
+    const updated = { ...practiceSubmissions };
+    delete updated[activityId];
+    setPracticeSubmissions(updated);
+    try {
+      localStorage.setItem('lms_practice_submissions', JSON.stringify(updated));
+    } catch (e) {}
+    setStagedFiles([]);
+    setStagedGitUrl('');
+    setStagedNote('');
+    setIsEditingPractice(false);
+  };
+
+  const handleStartEditSubmission = (submission: PracticeSubmission) => {
+    setStagedGitUrl(submission.gitRepoUrl || '');
+    setStagedNote(submission.note || '');
+    setStagedFiles([]);
+    setIsEditingPractice(true);
+  };
+
+  const handleDownloadFile = (fileName: string) => {
+    const content = `Mã nguồn bài tập LMS: ${fileName}\nĐược nộp bởi sinh viên ngày ${new Date().toLocaleDateString('vi-VN')}\nHọc phần: 20241_Phát triển ứng dụng Mobile đa nền tảng (2+1)_12626W.1`;
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   // Helper to render activity icon
   const renderActivityIcon = (type: ActivityType, subtitle?: string) => {
     switch (type) {
@@ -429,6 +586,370 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
     }
   };
 
+  // Dedicated Practice Activity View with Assignment File Upload & Status
+  const renderPracticeSection = (activity: CurriculumItem) => {
+    const submission = practiceSubmissions[activity.id];
+
+    return (
+      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-2xs space-y-6">
+        {/* Practice Title and Badges */}
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-bold bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full uppercase tracking-wider">
+              Bài luyện tập thực hành & Nộp bài
+            </span>
+            <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-full flex items-center gap-1 border border-slate-200">
+              <Calendar className="w-3 h-3 text-slate-400" />
+              <span>Hạn chót: 23:59 Chủ Nhật (Tuần này)</span>
+            </span>
+          </div>
+          <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900 mt-2">
+            {activity.title}
+          </h3>
+          <p className="text-xs text-slate-500 mt-1">
+            Thực hành viết mã nguồn và đóng gói mã nguồn (.zip, .rar...) hoặc gửi liên kết Git repository để nộp bài đánh giá.
+          </p>
+        </div>
+
+        {/* Requirements Card */}
+        <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3 text-xs leading-relaxed text-slate-700">
+          <div className="flex items-center gap-2 font-bold text-slate-900 text-sm">
+            <FileText className="w-4 h-4 text-blue-600" />
+            <h4>Yêu cầu thực hành:</h4>
+          </div>
+          <ul className="list-disc list-inside space-y-1.5 pl-1">
+            <li>Khởi tạo Web API project với .NET 8 SDK sử dụng kiến trúc Clean Architecture.</li>
+            <li>Triển khai tầng Domain với Entity Course, Student và Lesson.</li>
+            <li>Sử dụng Entity Framework Core với PostgreSQL Migration.</li>
+            <li>Đảm bảo các Endpoint tuân thủ quy chuẩn RESTful và phản hồi đúng HTTP Status Code.</li>
+            <li>Đóng gói mã nguồn thành tệp nén (.ZIP / .RAR) hoặc đính kèm link GitHub / GitLab cá nhân.</li>
+          </ul>
+        </div>
+
+        {/* Submission Status Table */}
+        <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
+          <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+            <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-700 flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-blue-600" />
+              <span>Bảng trạng thái bài nộp</span>
+            </h4>
+            {submission && (
+              <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3" />
+                Đã ghi nhận bài nộp
+              </span>
+            )}
+          </div>
+
+          <div className="divide-y divide-slate-100 text-xs">
+            {/* Status row */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 p-4 gap-2 bg-white">
+              <span className="font-bold text-slate-600 sm:col-span-1">Trạng thái nộp bài:</span>
+              <div className="sm:col-span-2">
+                {submission ? (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    Đã nộp bài để chấm điểm
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                    <Clock className="w-3.5 h-3.5 text-amber-600" />
+                    Chưa nộp bài
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Grading row */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 p-4 gap-2 bg-slate-50/50">
+              <span className="font-bold text-slate-600 sm:col-span-1">Trạng thái chấm điểm:</span>
+              <div className="sm:col-span-2">
+                {submission?.gradingStatus === 'GRADED' ? (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                    <Award className="w-3.5 h-3.5" />
+                    Đã chấm: {submission.grade || '10/10'}
+                  </span>
+                ) : (
+                  <span className="text-slate-500 font-medium">Chưa chấm điểm (Đang chờ giảng viên chấm)</span>
+                )}
+              </div>
+            </div>
+
+            {/* Submission Time row */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 p-4 gap-2 bg-white">
+              <span className="font-bold text-slate-600 sm:col-span-1">Thời gian nộp lần cuối:</span>
+              <span className="sm:col-span-2 text-slate-800 font-medium">
+                {submission ? submission.submittedAt : '—'}
+              </span>
+            </div>
+
+            {/* Submitted Files row */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 p-4 gap-2 bg-slate-50/50">
+              <span className="font-bold text-slate-600 sm:col-span-1">Tệp bài nộp đã gửi:</span>
+              <div className="sm:col-span-2">
+                {submission && submission.files && submission.files.length > 0 ? (
+                  <div className="space-y-2">
+                    {submission.files.map((file, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-2xs"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="p-1.5 bg-blue-50 text-blue-600 rounded-lg">
+                            <FileArchive className="w-4 h-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-bold text-slate-800 truncate text-xs">{file.name}</p>
+                            <span className="text-[10px] text-slate-400">{formatFileSize(file.size)}</span>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleDownloadFile(file.name)}
+                          className="px-2.5 py-1 text-[11px] font-bold text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors flex items-center gap-1 border border-blue-200"
+                          title="Tải tệp này về máy"
+                        >
+                          <Download className="w-3 h-3" />
+                          <span>Tải xuống</span>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="text-slate-400 italic">Chưa có tệp tin nào được gửi</span>
+                )}
+              </div>
+            </div>
+
+            {/* Git Repository link row */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 p-4 gap-2 bg-white">
+              <span className="font-bold text-slate-600 sm:col-span-1">Kho lưu trữ Git:</span>
+              <div className="sm:col-span-2">
+                {submission?.gitRepoUrl ? (
+                  <a
+                    href={submission.gitRepoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline bg-blue-50/60 px-3 py-1.5 rounded-xl border border-blue-200"
+                  >
+                    <Github className="w-3.5 h-3.5" />
+                    <span className="truncate max-w-xs">{submission.gitRepoUrl}</span>
+                    <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                  </a>
+                ) : (
+                  <span className="text-slate-400 italic">—</span>
+                )}
+              </div>
+            </div>
+
+            {/* Student Note row */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 p-4 gap-2 bg-slate-50/50">
+              <span className="font-bold text-slate-600 sm:col-span-1">Ghi chú của sinh viên:</span>
+              <div className="sm:col-span-2">
+                {submission?.note ? (
+                  <p className="text-slate-700 bg-white p-3 rounded-xl border border-slate-200 italic">
+                    "{submission.note}"
+                  </p>
+                ) : (
+                  <span className="text-slate-400 italic">—</span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Existing Submission Action Buttons (When already submitted and not in edit mode) */}
+        {submission && !isEditingPractice && (
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-200">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handleStartEditSubmission(submission)}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition-all shadow-xs flex items-center gap-1.5"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                <span>Chỉnh sửa bài nộp</span>
+              </button>
+              <button
+                onClick={() => handleDeleteSubmission(activity.id)}
+                className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Hủy / Xóa bài nộp</span>
+              </button>
+            </div>
+
+            <button
+              onClick={() => toggleItemCompletion(activity.id)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 ${
+                activity.isCompleted
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              <Check className="w-3.5 h-3.5" />
+              <span>{activity.isCompleted ? 'Đã hoàn thành' : 'Đánh dấu hoàn thành'}</span>
+            </button>
+          </div>
+        )}
+
+        {/* Upload / Submission Form (When not submitted OR in editing mode) */}
+        {(!submission || isEditingPractice) && (
+          <div className="bg-slate-50/70 p-6 rounded-2xl border border-slate-200 space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+              <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <FolderUp className="w-4.5 h-4.5 text-blue-600" />
+                <span>{isEditingPractice ? 'Chỉnh sửa và cập nhật bài nộp' : 'Tải lên bài tập thực hành'}</span>
+              </h4>
+              {isEditingPractice && (
+                <button
+                  onClick={() => {
+                    setIsEditingPractice(false);
+                    setStagedFiles([]);
+                  }}
+                  className="text-xs text-slate-500 hover:text-slate-800 font-medium px-2 py-1 rounded-lg hover:bg-slate-200 transition-colors"
+                >
+                  Hủy chỉnh sửa
+                </button>
+              )}
+            </div>
+
+            {/* Drag & Drop File Zone */}
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsDragOver(true);
+              }}
+              onDragLeave={() => setIsDragOver(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setIsDragOver(false);
+                handleFilesAdded(e.dataTransfer.files);
+              }}
+              onClick={() => fileInputRef.current?.click()}
+              className={`border-2 border-dashed rounded-2xl p-6 sm:p-8 text-center transition-all cursor-pointer ${
+                isDragOver
+                  ? 'border-blue-500 bg-blue-50/70 scale-[0.99]'
+                  : 'border-slate-300 hover:border-blue-400 bg-white hover:bg-blue-50/20'
+              }`}
+            >
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={(e) => {
+                  handleFilesAdded(e.target.files);
+                  if (e.target) e.target.value = '';
+                }}
+                multiple
+                className="hidden"
+                accept=".zip,.rar,.7z,.pdf,.docx,.doc,.txt,.tar,.gz,.cs,.ts,.js,.json,.png,.jpg"
+              />
+              <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-2xs">
+                <Upload className="w-6 h-6" />
+              </div>
+              <h5 className="font-bold text-sm text-slate-800">
+                Kéo và thả tệp tin bài làm vào đây, hoặc <span className="text-blue-600 underline">chọn từ máy tính</span>
+              </h5>
+              <p className="text-[11px] text-slate-400 mt-1">
+                Hỗ trợ tệp nén mã nguồn (.ZIP, .RAR, .7Z), tài liệu (.PDF, .DOCX) - Tối đa 50MB/file
+              </p>
+            </div>
+
+            {/* Staged Files Preview List */}
+            {stagedFiles.length > 0 && (
+              <div className="space-y-2">
+                <div className="text-xs font-bold text-slate-700 flex items-center justify-between">
+                  <span>Tệp mới đã chọn để tải lên ({stagedFiles.length}):</span>
+                  <button
+                    onClick={() => setStagedFiles([])}
+                    className="text-[11px] text-rose-600 hover:underline font-semibold"
+                  >
+                    Xóa tất cả tệp đã chọn
+                  </button>
+                </div>
+                <div className="space-y-1.5">
+                  {stagedFiles.map((file) => (
+                    <div
+                      key={file.name}
+                      className="flex items-center justify-between bg-white px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs shadow-2xs"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="p-1.5 bg-blue-50 text-blue-600 rounded-lg">
+                          <Paperclip className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-bold text-slate-800 truncate max-w-xs">{file.name}</p>
+                          <p className="text-[10px] text-slate-400">{formatFileSize(file.size)}</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleRemoveStagedFile(file.name)}
+                        className="p-1 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg transition-colors"
+                        title="Gỡ tệp này"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Git Repository Link Input */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                <Github className="w-3.5 h-3.5 text-slate-700" />
+                <span>Liên kết Git Repository (Tùy chọn)</span>
+              </label>
+              <input
+                type="url"
+                value={stagedGitUrl}
+                onChange={(e) => setStagedGitUrl(e.target.value)}
+                placeholder="https://github.com/username/project-dotnet-api"
+                className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
+              />
+            </div>
+
+            {/* Student Notes / Ghi chú */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                <MessageSquare className="w-3.5 h-3.5 text-slate-700" />
+                <span>Ghi chú / Nhận xét thêm của sinh viên (Tùy chọn)</span>
+              </label>
+              <textarea
+                rows={3}
+                value={stagedNote}
+                onChange={(e) => setStagedNote(e.target.value)}
+                placeholder="Mô tả tóm tắt quá trình thực hiện bài tập, cấu hình chạy thử hoặc lưu ý cho giảng viên..."
+                className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white resize-none"
+              />
+            </div>
+
+            {/* Form Action Buttons */}
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200">
+              {isEditingPractice && (
+                <button
+                  onClick={() => {
+                    setIsEditingPractice(false);
+                    setStagedFiles([]);
+                  }}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all"
+                >
+                  Hủy bỏ
+                </button>
+              )}
+              <button
+                onClick={() => handleSubmitPractice(activity.id)}
+                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2"
+              >
+                <Send className="w-4 h-4" />
+                <span>{isEditingPractice ? 'Lưu thay đổi bài nộp' : 'Nộp bài & Hoàn thành'}</span>
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // Reusable Sidebar Tree Component - Always available both on outline and on dedicated activity page!
   const renderSidebarTree = () => (
     <div className="space-y-3">
@@ -446,18 +967,9 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
           </div>
         </div>
 
-        <button
-          onClick={() => setSelectedActivity(null)}
-          className={`text-[10px] font-bold px-2 py-1 rounded-lg border transition-all flex items-center gap-1 ${
-            selectedActivity === null
-              ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
-              : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-900'
-          }`}
-          title="Xem trang đề cương tổng quan"
-        >
-          <LayoutGrid className="w-3 h-3" />
-          <span>Đề cương</span>
-        </button>
+        <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
+          {completedCount}/{allItems.length}
+        </span>
       </div>
 
       {/* Sections and Items List */}
@@ -565,25 +1077,14 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
       <header className="bg-white text-slate-900 border-b border-slate-200 px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-3 shadow-2xs sticky top-0 z-40">
         <div className="flex items-center gap-3 min-w-0">
           {/* Back button */}
-          {selectedActivity ? (
-            <button
-              onClick={() => setSelectedActivity(null)}
-              className="p-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-800 transition-all flex items-center gap-1.5 text-xs font-bold border border-slate-200 flex-shrink-0"
-              title="Quay lại Đề cương khóa học"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span className="hidden sm:inline">Về Đề cương Khóa học</span>
-            </button>
-          ) : (
-            <button
-              onClick={onBack}
-              className="p-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-800 transition-all flex items-center gap-1.5 text-xs font-bold border border-slate-200 flex-shrink-0"
-              title="Quay lại danh sách Khóa học"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span className="hidden sm:inline">Quay lại Khóa học</span>
-            </button>
-          )}
+          <button
+            onClick={onBack}
+            className="p-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-800 transition-all flex items-center gap-1.5 text-xs font-bold border border-slate-200 flex-shrink-0"
+            title="Quay lại danh sách Khóa học"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span className="hidden sm:inline">Quay lại Khóa học</span>
+          </button>
 
           {/* Mobile Drawer Trigger Button */}
           <button
@@ -594,7 +1095,7 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
             <span>Danh mục học phần ({completedCount}/{allItems.length})</span>
           </button>
 
-          {/* Course and Activity Title / Breadcrumb */}
+          {/* Course Title Navbar Header (Permanent Course Name, does NOT change by category) */}
           <div className="min-w-0 border-l border-slate-200 pl-3">
             <div className="flex items-center gap-2">
               <span className="bg-blue-100 text-blue-700 text-[10px] font-black uppercase px-2 py-0.5 rounded-md">
@@ -606,7 +1107,7 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
             </div>
 
             <h1 className="font-extrabold text-xs sm:text-sm text-slate-900 leading-tight truncate max-w-[200px] sm:max-w-md lg:max-w-lg mt-0.5">
-              {selectedActivity ? selectedActivity.title : '20241_Phát triển ứng dụng Mobile đa nền tảng (2+1)_12626W.1'}
+              20241_Phát triển ứng dụng Mobile đa nền tảng (2+1)_12626W.1
             </h1>
           </div>
         </div>
@@ -725,13 +1226,27 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
                   </div>
                 </div>
 
-                <button
-                  onClick={() => setSelectedActivity(null)}
-                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 border border-slate-200"
-                >
-                  <LayoutGrid className="w-3.5 h-3.5" />
-                  <span>Xem Đề cương khóa học</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`text-xs font-bold px-3 py-1.5 rounded-xl border flex items-center gap-1.5 ${
+                      selectedActivity.isCompleted
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : 'bg-slate-50 text-slate-600 border-slate-200'
+                    }`}
+                  >
+                    {selectedActivity.isCompleted ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Đã hoàn thành</span>
+                      </>
+                    ) : (
+                      <>
+                        <Clock className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Chưa hoàn thành</span>
+                      </>
+                    )}
+                  </span>
+                </div>
               </div>
 
               {/* 1. QUIZ DEDICATED PAGE */}
@@ -925,57 +1440,7 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
               )}
 
               {/* 4. PRACTICE DEDICATED PAGE */}
-              {selectedActivity.type === 'PRACTICE' && (
-                <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-2xs space-y-6">
-                  <div>
-                    <span className="text-xs font-bold bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full uppercase">
-                      Bài luyện tập thực hành & Nộp bài
-                    </span>
-                    <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900 mt-2">
-                      {selectedActivity.title}
-                    </h3>
-                    <p className="text-xs text-slate-500 mt-1">
-                      Thực hành viết mã nguồn và đóng gói mã nguồn (.zip) hoặc link Git repository để nộp bài đánh giá.
-                    </p>
-                  </div>
-
-                  {/* Requirements Card */}
-                  <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3 text-xs leading-relaxed text-slate-700">
-                    <h4 className="font-bold text-slate-900 text-sm">Yêu cầu thực hành:</h4>
-                    <ul className="list-disc list-inside space-y-1">
-                      <li>Khởi tạo Web API project với .NET 8 SDK sử dụng kiến trúc Clean Architecture.</li>
-                      <li>Triển khai tầng Domain với Entity Course, Student và Lesson.</li>
-                      <li>Sử dụng Entity Framework Core với PostgreSQL Migration.</li>
-                      <li>Đảm bảo các Endpoint tuân thủ quy chuẩn RESTful và phản hồi đúng HTTP Status Code.</li>
-                    </ul>
-                  </div>
-
-                  {/* Submission Dropzone */}
-                  <div className="border-2 border-dashed border-slate-300 rounded-3xl p-8 text-center space-y-3 hover:border-blue-500 transition-colors bg-slate-50/50">
-                    <Upload className="w-10 h-10 text-slate-400 mx-auto" />
-                    <div>
-                      <h5 className="font-bold text-sm text-slate-800">Kéo thả file bài làm tại đây hoặc duyệt file</h5>
-                      <p className="text-xs text-slate-400 mt-0.5">Hỗ trợ file nén .ZIP, .RAR hoặc .PDF (tối đa 25MB)</p>
-                    </div>
-                    <button className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all">
-                      Chọn file bài nộp
-                    </button>
-                  </div>
-
-                  <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
-                    <button
-                      onClick={() => {
-                        toggleItemCompletion(selectedActivity.id);
-                        alert('Bạn đã nộp bài tập thực hành thành công!');
-                      }}
-                      className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2"
-                    >
-                      <Send className="w-4 h-4" />
-                      <span>Nộp bài & Hoàn thành</span>
-                    </button>
-                  </div>
-                </div>
-              )}
+              {selectedActivity.type === 'PRACTICE' && renderPracticeSection(selectedActivity)}
 
               {/* 5. ANNOUNCEMENT DEDICATED PAGE */}
               {selectedActivity.type === 'ANNOUNCEMENT' && (
