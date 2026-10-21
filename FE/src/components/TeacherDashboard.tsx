@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   BookOpen,
   PlusCircle,
@@ -25,7 +25,18 @@ import {
   PlayCircle,
   Video,
   ExternalLink,
-  Github
+  Github,
+  Upload,
+  Paperclip,
+  Loader2,
+  Plus,
+  Check,
+  Sparkles,
+  AlertCircle,
+  Shuffle,
+  Database,
+  RefreshCw,
+  FolderUp
 } from 'lucide-react';
 import { AuthUser } from '../types';
 import api from '../api/axios';
@@ -36,6 +47,14 @@ const getSubmissionFileDownloadUrl = (file: TeacherSubmissionFile) =>
   file.fileUrl.startsWith('http') ? file.fileUrl : `${API_ORIGIN}/api/teacher/submission-files/${file.id}/download`;
 const getUploadedFileUrl = (fileUrl: string) =>
   fileUrl.startsWith('http') ? fileUrl : `${API_ORIGIN}${fileUrl.startsWith('/') ? '' : '/'}${fileUrl}`;
+
+const formatFileSize = (bytes: number) => {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+};
 
 interface Props {
   user: AuthUser;
@@ -65,6 +84,7 @@ export interface TeacherLesson {
   activityType: TeacherActivityType;
   lessonNumber: number;
   title: string;
+  subtitle?: string;
   durationMinutes: number;
   isUnlocked: boolean;
   description?: string;
@@ -183,6 +203,22 @@ const getActivityMeta = (type: TeacherActivityType) => {
   }
 };
 
+export interface TeacherQuizOption {
+  id?: string;
+  optionText: string;
+  isCorrect: boolean;
+  explanation?: string;
+}
+
+export interface TeacherQuizQuestion {
+  id?: string;
+  questionText: string;
+  points: number;
+  explanation?: string;
+  options: TeacherQuizOption[];
+}
+
+
 export const TeacherDashboard: React.FC<Props> = ({
   user,
   activeTab: propActiveTab,
@@ -214,8 +250,31 @@ export const TeacherDashboard: React.FC<Props> = ({
   const [gradebookRows, setGradebookRows] = useState<StudentGradeRow[]>([]);
   const [announcements, setAnnouncements] = useState<TeacherAnnouncement[]>([]);
   const [loadingData, setLoadingData] = useState<boolean>(false);
+  const [overviewData, setOverviewData] = useState<{
+    totalCourses: number;
+    totalStudents: number;
+    pendingSubmissions: number;
+    averageProgress: number;
+    recentSubmissions: TeacherSubmission[];
+  } | null>(null);
 
   const teacherId = user.userId || '22222222-2222-2222-2222-222222222222';
+
+  // Fetch teacher overview metrics from database
+  const fetchTeacherOverview = async () => {
+    try {
+      const res = await api.get<{
+        totalCourses: number;
+        totalStudents: number;
+        pendingSubmissions: number;
+        averageProgress: number;
+        recentSubmissions: TeacherSubmission[];
+      }>(`/teacher/overview?teacherId=${teacherId}`);
+      setOverviewData(res.data);
+    } catch (err) {
+      console.error('Lỗi tải tổng quan số liệu giảng viên từ CSDL:', err);
+    }
+  };
 
   // Fetch teacher's courses from database
   const fetchTeacherCourses = async () => {
@@ -235,6 +294,7 @@ export const TeacherDashboard: React.FC<Props> = ({
 
   useEffect(() => {
     fetchTeacherCourses();
+    fetchTeacherOverview();
   }, [teacherId]);
 
   // Fetch details for the selected course from database
@@ -282,6 +342,11 @@ export const TeacherDashboard: React.FC<Props> = ({
   const [newLessonDescription, setNewLessonDescription] = useState('');
   const [newLessonPassword, setNewLessonPassword] = useState('');
   const [newLessonDueDate, setNewLessonDueDate] = useState('');
+  const [newLessonIsUnlocked, setNewLessonIsUnlocked] = useState(true);
+  const [newLessonFile, setNewLessonFile] = useState<File | null>(null);
+  const [isNewLessonDragOver, setIsNewLessonDragOver] = useState(false);
+  const [isUploadingDocument, setIsUploadingDocument] = useState(false);
+  const newLessonFileInputRef = useRef<HTMLInputElement>(null);
 
   // Edit Lesson Modal State
   const [showEditLessonModal, setShowEditLessonModal] = useState(false);
@@ -294,6 +359,10 @@ export const TeacherDashboard: React.FC<Props> = ({
   const [editLessonDescription, setEditLessonDescription] = useState('');
   const [editLessonPassword, setEditLessonPassword] = useState('');
   const [editLessonDueDate, setEditLessonDueDate] = useState('');
+  const [editLessonIsUnlocked, setEditLessonIsUnlocked] = useState(true);
+  const [editLessonFile, setEditLessonFile] = useState<File | null>(null);
+  const [isEditLessonDragOver, setIsEditLessonDragOver] = useState(false);
+  const editLessonFileInputRef = useRef<HTMLInputElement>(null);
 
   // Video Preview Modal State
   const [previewVideoLesson, setPreviewVideoLesson] = useState<TeacherLesson | null>(null);
@@ -304,6 +373,18 @@ export const TeacherDashboard: React.FC<Props> = ({
   const [newStudentName, setNewStudentName] = useState('');
   const [newStudentEmail, setNewStudentEmail] = useState('');
   const [newStudentClass, setNewStudentClass] = useState('CNTT-K65');
+
+  // Gradebook Editing State
+  const [editingGradeRow, setEditingGradeRow] = useState<StudentGradeRow | null>(null);
+  const [editAttScore, setEditAttScore] = useState<number>(0);
+  const [editAssScore, setEditAssScore] = useState<number>(0);
+  const [editExamScore, setEditExamScore] = useState<number>(0);
+  const [savingGrade, setSavingGrade] = useState<boolean>(false);
+
+  // Import Students State
+  const [showImportStudentsModal, setShowImportStudentsModal] = useState<boolean>(false);
+  const [importCsvText, setImportCsvText] = useState<string>('');
+  const [importingStudents, setImportingStudents] = useState<boolean>(false);
 
   // Search & Filter for Students in Course
   const [studentSearchTerm, setStudentSearchTerm] = useState('');
@@ -408,6 +489,7 @@ export const TeacherDashboard: React.FC<Props> = ({
       setShowAddCourseModal(false);
       setNewCourseCode('');
       setNewCourseTitle('');
+      fetchTeacherOverview();
       alert(`Đã tạo thành công khóa học: ${res.data.courseCode} - ${res.data.title}`);
     } catch (err: any) {
       alert('Lỗi tạo khóa học: ' + (err.response?.data?.message || err.message));
@@ -424,7 +506,8 @@ export const TeacherDashboard: React.FC<Props> = ({
 
   const openAddActivityModal = (weekNumber?: number, activityType?: TeacherActivityType) => {
     const selectedType = activityType && addableTeacherActivityTypes.includes(activityType) ? activityType : 'LECTURE';
-    setNewLessonWeek(weekNumber || Math.max(...courseWeekNumbers, 1));
+    const targetWeek = weekNumber || Math.max(...courseWeekNumbers, 1);
+    setNewLessonWeek(targetWeek);
     setNewLessonType(selectedType);
     setNewLessonTitle('');
     setNewLessonDuration(selectedType === 'QUIZ' ? 15 : 45);
@@ -432,22 +515,60 @@ export const TeacherDashboard: React.FC<Props> = ({
     setNewLessonDescription('');
     setNewLessonPassword('');
     setNewLessonDueDate('');
+    setNewLessonIsUnlocked(true);
+    setNewLessonFile(null);
+    setIsNewLessonDragOver(false);
     setShowAddLessonModal(true);
   };
 
   const handleCreateLesson = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newLessonTitle || !currentCourse) return;
+    if (!currentCourse) return;
+
+    if (newLessonType === 'DOCUMENT' && !newLessonFile && !newLessonUrl) {
+      alert('Vui lòng chọn tệp tài liệu (PDF, Word, Excel...) để tải lên!');
+      return;
+    }
+
+    const finalTitle = newLessonTitle.trim() || (newLessonFile ? newLessonFile.name.replace(/\.[^/.]+$/, '') : (newLessonType === 'QUIZ' ? `Bài trắc nghiệm đánh giá kiến thức Tuần ${newLessonWeek}` : ''));
+    if (!finalTitle) {
+      alert('Vui lòng nhập tiêu đề hoạt động hoặc chọn tệp tài liệu!');
+      return;
+    }
 
     try {
+      setIsUploadingDocument(true);
+      let uploadedFileUrl = newLessonUrl;
+      let uploadedFileName = '';
+
+      if (newLessonType === 'DOCUMENT' && newLessonFile) {
+        const formData = new FormData();
+        formData.append('file', newLessonFile);
+        const uploadRes = await api.post('/teacher/upload-document', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        uploadedFileUrl = uploadRes.data.fileUrl;
+        uploadedFileName = uploadRes.data.fileName;
+      }
+
       const res = await api.post<TeacherLesson>(`/teacher/courses/${currentCourse.id}/lessons`, {
         weekNumber: newLessonWeek,
         activityType: newLessonType,
-        title: newLessonTitle,
-        durationMinutes: newLessonDuration || 45,
+        title: finalTitle,
+        durationMinutes: newLessonDuration || (newLessonType === 'QUIZ' ? 15 : 45),
         description: newLessonDescription || undefined,
-        resourceUrl: newLessonUrl || undefined,
-        password: newLessonType === 'QUIZ' ? newLessonPassword || undefined : undefined
+        resourceUrl: uploadedFileUrl || undefined,
+        subtitle: uploadedFileName || undefined,
+        fileName: uploadedFileName || undefined,
+        password: newLessonType === 'QUIZ' ? newLessonPassword || undefined : undefined,
+        dueDate: newLessonDueDate || undefined,
+        isLocked: !newLessonIsUnlocked,
+        quizData: newLessonType === 'QUIZ' ? {
+          passingScore: 7.0,
+          maxScore: 10.0,
+          timeLimitMinutes: newLessonDuration || 15,
+          password: newLessonPassword || undefined
+        } : undefined
       });
 
       setLessons([...lessons, res.data]);
@@ -461,38 +582,76 @@ export const TeacherDashboard: React.FC<Props> = ({
       setNewLessonDescription('');
       setNewLessonPassword('');
       setNewLessonDueDate('');
+      setNewLessonIsUnlocked(true);
+      setNewLessonFile(null);
+      setIsNewLessonDragOver(false);
       alert('Đã thêm hoạt động mới vào tuần học trong CSDL!');
     } catch (err: any) {
       alert('Lỗi thêm hoạt động: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setIsUploadingDocument(false);
     }
   };
 
   const openEditActivityModal = (lesson: TeacherLesson) => {
     setEditingLesson(lesson);
     setEditLessonWeek(lesson.weekNumber);
-    setEditLessonType(mapToActivityCategory(lesson.activityType));
+    const categoryType = mapToActivityCategory(lesson.activityType);
+    setEditLessonType(categoryType);
     setEditLessonTitle(lesson.title);
-    setEditLessonDuration(lesson.durationMinutes || 45);
+    setEditLessonDuration(lesson.durationMinutes || (categoryType === 'QUIZ' ? 15 : 45));
     setEditLessonUrl(lesson.resourceUrl || '');
     setEditLessonDescription(lesson.description || '');
     setEditLessonPassword(lesson.password || '');
     setEditLessonDueDate(lesson.dueDate || '');
+    setEditLessonIsUnlocked(lesson.isUnlocked);
+    setEditLessonFile(null);
+    setIsEditLessonDragOver(false);
     setShowEditLessonModal(true);
   };
 
   const handleUpdateLesson = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingLesson || !editLessonTitle.trim() || !currentCourse) return;
+    if (!editingLesson || !currentCourse) return;
+    const finalTitle = editLessonTitle.trim() || editingLesson.title;
+    if (!finalTitle) {
+      alert('Vui lòng nhập tiêu đề bài học!');
+      return;
+    }
 
     try {
+      setIsUploadingDocument(true);
+      let uploadedFileUrl = editLessonUrl.trim();
+      let uploadedFileName = editingLesson.subtitle || '';
+
+      if (editLessonType === 'DOCUMENT' && editLessonFile) {
+        const formData = new FormData();
+        formData.append('file', editLessonFile);
+        const uploadRes = await api.post('/teacher/upload-document', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        uploadedFileUrl = uploadRes.data.fileUrl;
+        uploadedFileName = uploadRes.data.fileName;
+      }
+
       const res = await api.put<TeacherLesson>(`/teacher/lessons/${editingLesson.id}`, {
         weekNumber: editLessonWeek,
         activityType: editLessonType,
-        title: editLessonTitle.trim(),
-        durationMinutes: editLessonDuration || 45,
+        title: finalTitle,
+        durationMinutes: editLessonDuration || (editLessonType === 'QUIZ' ? 15 : 45),
         description: editLessonDescription.trim() || undefined,
-        resourceUrl: editLessonUrl.trim() || undefined,
-        password: editLessonType === 'QUIZ' ? editLessonPassword.trim() || undefined : undefined
+        resourceUrl: uploadedFileUrl || undefined,
+        subtitle: uploadedFileName || undefined,
+        fileName: uploadedFileName || undefined,
+        password: editLessonType === 'QUIZ' ? editLessonPassword.trim() || undefined : undefined,
+        dueDate: editLessonDueDate || undefined,
+        isLocked: !editLessonIsUnlocked,
+        quizData: editLessonType === 'QUIZ' ? {
+          passingScore: 7.0,
+          maxScore: 10.0,
+          timeLimitMinutes: editLessonDuration || 15,
+          password: editLessonPassword.trim() || undefined
+        } : undefined
       });
 
       setLessons((prev) =>
@@ -500,9 +659,13 @@ export const TeacherDashboard: React.FC<Props> = ({
       );
       setShowEditLessonModal(false);
       setEditingLesson(null);
+      setEditLessonFile(null);
+      setIsEditLessonDragOver(false);
       alert('Đã cập nhật hoạt động thành công trong CSDL!');
     } catch (err: any) {
       alert('Lỗi cập nhật hoạt động: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setIsUploadingDocument(false);
     }
   };
 
@@ -567,6 +730,7 @@ export const TeacherDashboard: React.FC<Props> = ({
       setNewStudentName('');
       setNewStudentEmail('');
       setNewStudentClass('CNTT-K65');
+      fetchTeacherOverview();
       alert(`Đã thêm sinh viên ${res.data.fullName} (${res.data.studentCode}) vào lớp học phần!`);
     } catch (err: any) {
       alert('Lỗi thêm sinh viên: ' + (err.response?.data?.message || err.message));
@@ -602,7 +766,88 @@ export const TeacherDashboard: React.FC<Props> = ({
           prev.map((c) => (c.id === currentCourse.id ? { ...c, enrolledStudents: Math.max(0, c.enrolledStudents - 1) } : c))
         );
       }
+      fetchTeacherOverview();
       alert(`Đã xóa sinh viên khỏi lớp học phần.`);
+    }
+  };
+
+  const handleSaveStudentGrade = async () => {
+    if (!currentCourse || !editingGradeRow) return;
+    try {
+      setSavingGrade(true);
+      await api.post(`/teacher/courses/${currentCourse.id}/gradebook/${editingGradeRow.studentId}`, {
+        attendanceScore: editAttScore,
+        assignmentScore: editAssScore,
+        examScore: editExamScore
+      });
+
+      // Refresh gradebook
+      const gbRes = await api.get<StudentGradeRow[]>(`/teacher/courses/${currentCourse.id}/gradebook`);
+      setGradebookRows(gbRes.data || []);
+      setEditingGradeRow(null);
+      alert('Đã lưu điểm sinh viên thành công vào CSDL!');
+    } catch (err: any) {
+      alert('Lỗi lưu điểm: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setSavingGrade(false);
+    }
+  };
+
+  const handleImportStudents = async () => {
+    if (!currentCourse || !importCsvText.trim()) {
+      alert('Vui lòng nhập hoặc tải lên danh sách sinh viên.');
+      return;
+    }
+
+    try {
+      setImportingStudents(true);
+      const lines = importCsvText.split('\n').map((l) => l.trim()).filter(Boolean);
+      const parsedStudents: { studentCode: string; fullName: string; email: string; className: string }[] = [];
+
+      for (const line of lines) {
+        if (line.toLowerCase().includes('mssv') || line.toLowerCase().includes('email')) continue;
+
+        const parts = line.split(/[,;\t]/).map((p) => p.trim());
+        if (parts.length >= 3) {
+          parsedStudents.push({
+            studentCode: parts[0],
+            fullName: parts[1],
+            email: parts[2],
+            className: parts[3] || 'CNTT-K65'
+          });
+        }
+      }
+
+      if (parsedStudents.length === 0) {
+        alert('Không tìm thấy dòng dữ liệu sinh viên hợp lệ. Định dạng yêu cầu: MSSV, Họ và tên, Email, Lớp');
+        return;
+      }
+
+      const res = await api.post(`/teacher/courses/${currentCourse.id}/students/import`, {
+        students: parsedStudents
+      });
+
+      // Refresh students list & gradebook
+      const stRes = await api.get<CourseStudent[]>(`/teacher/courses/${currentCourse.id}/students`);
+      setStudentsList(stRes.data || []);
+
+      const gbRes = await api.get<StudentGradeRow[]>(`/teacher/courses/${currentCourse.id}/gradebook`);
+      setGradebookRows(gbRes.data || []);
+
+      setCourses((prev) =>
+        prev.map((c) =>
+          c.id === currentCourse.id ? { ...c, enrolledStudents: c.enrolledStudents + res.data.importedCount } : c
+        )
+      );
+
+      fetchTeacherOverview();
+      setShowImportStudentsModal(false);
+      setImportCsvText('');
+      alert(res.data.message || `Đã import thành công ${res.data.importedCount} sinh viên!`);
+    } catch (err: any) {
+      alert('Lỗi import sinh viên: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setImportingStudents(false);
     }
   };
 
@@ -621,6 +866,7 @@ export const TeacherDashboard: React.FC<Props> = ({
         )
       );
       setEditingSubId(null);
+      fetchTeacherOverview();
       alert('Đã lưu điểm số và lời nhận xét của giảng viên vào CSDL!');
     } catch (err: any) {
       alert('Lỗi chấm điểm: ' + (err.response?.data?.message || err.message));
@@ -704,7 +950,9 @@ export const TeacherDashboard: React.FC<Props> = ({
               </div>
               <div>
                 <span className="text-xs text-slate-500 font-medium">Khóa học phụ trách</span>
-                <h3 className="font-extrabold text-2xl text-slate-900 mt-0.5">{courses.length} môn</h3>
+                <h3 className="font-extrabold text-2xl text-slate-900 mt-0.5">
+                  {overviewData ? overviewData.totalCourses : courses.length} môn
+                </h3>
                 <span className="text-[11px] text-blue-600 font-semibold mt-0.5 block">Đang giảng dạy</span>
               </div>
             </div>
@@ -716,7 +964,7 @@ export const TeacherDashboard: React.FC<Props> = ({
               <div>
                 <span className="text-xs text-slate-500 font-medium">Tổng số Sinh viên</span>
                 <h3 className="font-extrabold text-2xl text-slate-900 mt-0.5">
-                  {courses.reduce((acc, c) => acc + c.enrolledStudents, 0)} học viên
+                  {overviewData ? overviewData.totalStudents : courses.reduce((acc, c) => acc + c.enrolledStudents, 0)} học viên
                 </h3>
                 <span className="text-[11px] text-indigo-600 font-semibold mt-0.5 block">Trên toàn bộ các lớp</span>
               </div>
@@ -729,7 +977,7 @@ export const TeacherDashboard: React.FC<Props> = ({
               <div>
                 <span className="text-xs text-slate-500 font-medium">Bài tập chờ chấm</span>
                 <h3 className="font-extrabold text-2xl text-amber-600 mt-0.5">
-                  {totalPendingSubmissions} bài
+                  {overviewData ? overviewData.pendingSubmissions : totalPendingSubmissions} bài
                 </h3>
                 <span className="text-[11px] text-amber-700 font-semibold mt-0.5 block">Cần xử lý sớm</span>
               </div>
@@ -741,8 +989,14 @@ export const TeacherDashboard: React.FC<Props> = ({
               </div>
               <div>
                 <span className="text-xs text-slate-500 font-medium">Tiến độ lớp trung bình</span>
-                <h3 className="font-extrabold text-2xl text-emerald-600 mt-0.5">68%</h3>
-                <span className="text-[11px] text-emerald-600 font-semibold mt-0.5 block">Hoàn thành bài tập</span>
+                <h3 className="font-extrabold text-2xl text-emerald-600 mt-0.5">
+                  {overviewData !== null
+                    ? overviewData.averageProgress
+                    : (studentsList.length > 0
+                        ? Math.round(studentsList.reduce((acc, s) => acc + s.progressPercentage, 0) / studentsList.length)
+                        : 0)}%
+                </h3>
+                <span className="text-[11px] text-emerald-600 font-semibold mt-0.5 block">Hoàn thành học tập</span>
               </div>
             </div>
           </div>
@@ -757,44 +1011,58 @@ export const TeacherDashboard: React.FC<Props> = ({
                   Bài nộp cần chấm điểm mới nhất
                 </h3>
                 <span className="text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full">
-                  {totalPendingSubmissions} bài chờ chấm
+                  {(overviewData ? overviewData.pendingSubmissions : totalPendingSubmissions)} bài chờ chấm
                 </span>
               </div>
 
               <div className="space-y-3">
-                {submissions.map((sub) => (
-                  <div
-                    key={sub.id}
-                    className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 flex items-center justify-between gap-4"
-                  >
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-extrabold text-blue-700 bg-blue-100/70 px-2 py-0.5 rounded-md">
-                          {sub.courseCode}
-                        </span>
-                        <span className="text-xs font-bold text-slate-900">{sub.studentName}</span>
-                        <span className="text-xs text-slate-500">({sub.studentCode})</span>
-                      </div>
-                      <p className="text-xs text-slate-700 font-medium">{sub.assignmentTitle}</p>
-                    </div>
+                {(() => {
+                  const overviewSubmissions = (overviewData?.recentSubmissions && overviewData.recentSubmissions.length > 0)
+                    ? overviewData.recentSubmissions
+                    : submissions;
 
-                    <div>
-                      {sub.status === 'GRADED' ? (
-                        <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-full">
-                          Đã chấm: {sub.grade}đ
-                        </span>
-                      ) : (
-                        <button
-                          onClick={() => handleOpenCourse(sub.courseId, 'grading')}
-                          className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5"
-                        >
-                          <Edit3 className="w-3.5 h-3.5" />
-                          <span>Chấm bài</span>
-                        </button>
-                      )}
+                  if (overviewSubmissions.length === 0) {
+                    return (
+                      <div className="py-8 text-center text-slate-400 text-xs">
+                        Hiện chưa có bài nộp nào của sinh viên.
+                      </div>
+                    );
+                  }
+
+                  return overviewSubmissions.map((sub) => (
+                    <div
+                      key={sub.id}
+                      className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 flex items-center justify-between gap-4"
+                    >
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-extrabold text-blue-700 bg-blue-100/70 px-2 py-0.5 rounded-md">
+                            {sub.courseCode}
+                          </span>
+                          <span className="text-xs font-bold text-slate-900">{sub.studentName}</span>
+                          <span className="text-xs text-slate-500">({sub.studentCode})</span>
+                        </div>
+                        <p className="text-xs text-slate-700 font-medium">{sub.assignmentTitle}</p>
+                      </div>
+
+                      <div>
+                        {sub.status === 'GRADED' ? (
+                          <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-full">
+                            Đã chấm: {sub.grade}đ
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => handleOpenCourse(sub.courseId, 'grading')}
+                            className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                            <span>Chấm bài</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ));
+                })()}
               </div>
             </div>
 
@@ -1204,23 +1472,49 @@ export const TeacherDashboard: React.FC<Props> = ({
                                                 {item.durationMinutes} phút
                                               </span>
                                               {item.resourceUrl && (
-                                                <span className="block truncate text-blue-600 hover:underline" title={item.resourceUrl}>
-                                                  Link: {item.resourceUrl}
-                                                </span>
+                                                mapToActivityCategory(item.activityType) === 'DOCUMENT' ? (
+                                                  <a
+                                                    href={getUploadedFileUrl(item.resourceUrl)}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="flex items-center gap-1 text-rose-600 hover:underline font-semibold truncate"
+                                                    title={item.subtitle || item.title || item.resourceUrl}
+                                                  >
+                                                    <Paperclip className="w-3 h-3 shrink-0" />
+                                                    <span className="truncate">{item.subtitle || 'Tài liệu đính kèm'}</span>
+                                                  </a>
+                                                ) : (
+                                                  <span className="block truncate text-blue-600 hover:underline" title={item.resourceUrl}>
+                                                    Link: {item.resourceUrl}
+                                                  </span>
+                                                )
                                               )}
                                               {item.dueDate && <span className="block text-slate-400">Hạn: {item.dueDate}</span>}
                                               {item.password && <span className="block text-indigo-600 font-bold">Có mật khẩu quiz</span>}
                                             </div>
                                             <div className="flex items-center gap-1.5 pt-1">
                                               {item.resourceUrl && (
-                                                <button
-                                                  onClick={() => setPreviewVideoLesson(item)}
-                                                  className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 font-bold text-xs rounded-xl flex items-center justify-center gap-1 transition-colors"
-                                                  title="Xem video YouTube / tài nguyên"
-                                                >
-                                                  <PlayCircle className="w-3.5 h-3.5 text-red-600" />
-                                                  <span>Xem</span>
-                                                </button>
+                                                mapToActivityCategory(item.activityType) === 'DOCUMENT' ? (
+                                                  <a
+                                                    href={getUploadedFileUrl(item.resourceUrl)}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs rounded-xl flex items-center justify-center gap-1 transition-colors"
+                                                    title="Xem tệp tài liệu"
+                                                  >
+                                                    <FileText className="w-3.5 h-3.5 text-rose-600" />
+                                                    <span>Xem</span>
+                                                  </a>
+                                                ) : (
+                                                  <button
+                                                    onClick={() => setPreviewVideoLesson(item)}
+                                                    className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 font-bold text-xs rounded-xl flex items-center justify-center gap-1 transition-colors"
+                                                    title="Xem video YouTube / bài giảng"
+                                                  >
+                                                    <PlayCircle className="w-3.5 h-3.5 text-red-600" />
+                                                    <span>Xem</span>
+                                                  </button>
+                                                )
                                               )}
                                               <button
                                                 onClick={() => openEditActivityModal(item)}
@@ -1306,9 +1600,22 @@ export const TeacherDashboard: React.FC<Props> = ({
                                     <Clock className="w-3.5 h-3.5" /> {les.durationMinutes} phút
                                   </span>
                                   {les.resourceUrl && (
-                                    <span className="truncate max-w-xs text-blue-600" title={les.resourceUrl}>
-                                      Link: {les.resourceUrl}
-                                    </span>
+                                    mapToActivityCategory(les.activityType) === 'DOCUMENT' ? (
+                                      <a
+                                        href={getUploadedFileUrl(les.resourceUrl)}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="truncate max-w-xs text-rose-600 hover:underline flex items-center gap-1 font-semibold"
+                                        title={les.subtitle || les.title || les.resourceUrl}
+                                      >
+                                        <Paperclip className="w-3 h-3 shrink-0" />
+                                        <span>Tài liệu: {les.subtitle || les.title || 'Tệp đính kèm'}</span>
+                                      </a>
+                                    ) : (
+                                      <span className="truncate max-w-xs text-blue-600" title={les.resourceUrl}>
+                                        Link: {les.resourceUrl}
+                                      </span>
+                                    )
                                   )}
                                   {les.description && (
                                     <span className="text-slate-400 truncate max-w-md" title={les.description}>
@@ -1334,14 +1641,27 @@ export const TeacherDashboard: React.FC<Props> = ({
                               </button>
 
                               {les.resourceUrl && (
-                                <button
-                                  onClick={() => setPreviewVideoLesson(les)}
-                                  className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs rounded-xl flex items-center gap-1.5 transition-colors border border-blue-200"
-                                  title="Xem thử video YouTube / tài nguyên"
-                                >
-                                  <PlayCircle className="w-3.5 h-3.5 text-red-600" />
-                                  <span>Xem</span>
-                                </button>
+                                mapToActivityCategory(les.activityType) === 'DOCUMENT' ? (
+                                  <a
+                                    href={getUploadedFileUrl(les.resourceUrl)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl flex items-center gap-1.5 transition-colors border border-rose-200"
+                                    title="Xem / Tải tài liệu đính kèm"
+                                  >
+                                    <FileText className="w-3.5 h-3.5 text-rose-600" />
+                                    <span>Tài liệu</span>
+                                  </a>
+                                ) : (
+                                  <button
+                                    onClick={() => setPreviewVideoLesson(les)}
+                                    className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs rounded-xl flex items-center gap-1.5 transition-colors border border-blue-200"
+                                    title="Xem thử video YouTube / tài nguyên"
+                                  >
+                                    <PlayCircle className="w-3.5 h-3.5 text-red-600" />
+                                    <span>Xem</span>
+                                  </button>
+                                )
                               )}
 
                               <button
@@ -1383,13 +1703,22 @@ export const TeacherDashboard: React.FC<Props> = ({
                       </p>
                     </div>
 
-                    <button
-                      onClick={() => setShowAddStudentModal(true)}
-                      className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl flex items-center gap-2 shadow-xs transition-all"
-                    >
-                      <UserPlus className="w-4 h-4" />
-                      <span>Thêm Sinh viên vào lớp</span>
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setShowImportStudentsModal(true)}
+                        className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl flex items-center gap-2 shadow-xs transition-all"
+                      >
+                        <FolderUp className="w-4 h-4" />
+                        <span>Import từ Excel / CSV</span>
+                      </button>
+                      <button
+                        onClick={() => setShowAddStudentModal(true)}
+                        className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl flex items-center gap-2 shadow-xs transition-all"
+                      >
+                        <UserPlus className="w-4 h-4" />
+                        <span>Thêm Sinh viên</span>
+                      </button>
+                    </div>
                   </div>
 
                   {/* Search & Status Filter */}
@@ -1767,6 +2096,7 @@ export const TeacherDashboard: React.FC<Props> = ({
                             <th className="p-4 text-center">Thi cuối kỳ ({currentCourse.weightFinalExam}%)</th>
                             <th className="p-4 text-center">Điểm Tổng kết</th>
                             <th className="p-4 text-center">Xếp loại</th>
+                            <th className="p-4 text-center">Thao tác</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 text-xs">
@@ -1782,13 +2112,30 @@ export const TeacherDashboard: React.FC<Props> = ({
                               <td className="p-4 text-center">
                                 <span
                                   className={`px-2.5 py-1 rounded-full text-xs font-black ${
-                                    row.letterGrade === 'A'
+                                    row.letterGrade.startsWith('A')
                                       ? 'bg-emerald-100 text-emerald-800'
-                                      : 'bg-blue-100 text-blue-800'
+                                      : row.letterGrade.startsWith('B')
+                                      ? 'bg-blue-100 text-blue-800'
+                                      : row.letterGrade.startsWith('C')
+                                      ? 'bg-amber-100 text-amber-800'
+                                      : 'bg-rose-100 text-rose-800'
                                   }`}
                                 >
                                   Điểm {row.letterGrade}
                                 </span>
+                              </td>
+                              <td className="p-4 text-center">
+                                <button
+                                  onClick={() => {
+                                    setEditingGradeRow(row);
+                                    setEditAttScore(row.attendanceScore);
+                                    setEditAssScore(row.assignmentScore);
+                                    setEditExamScore(row.examScore);
+                                  }}
+                                  className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 font-bold text-xs rounded-xl transition-all shadow-2xs"
+                                >
+                                  Nhập / Sửa điểm
+                                </button>
                               </td>
                             </tr>
                           ))}
@@ -2028,7 +2375,7 @@ export const TeacherDashboard: React.FC<Props> = ({
       {/* ========================================================================= */}
       {showAddLessonModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl p-6 text-slate-900 space-y-4">
+          <div className={`bg-white border border-slate-200 w-full ${newLessonType === 'QUIZ' ? 'max-w-4xl' : 'max-w-2xl'} max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl p-6 text-slate-900 space-y-4`}>
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="font-extrabold text-lg flex items-center gap-2">
                 <PlusCircle className="w-5 h-5 text-blue-600" />
@@ -2050,7 +2397,10 @@ export const TeacherDashboard: React.FC<Props> = ({
                     type="number"
                     min="1"
                     value={newLessonWeek}
-                    onChange={(e) => setNewLessonWeek(Math.max(1, parseInt(e.target.value) || 1))}
+                    onChange={(e) => {
+                      const nextWeek = Math.max(1, parseInt(e.target.value) || 1);
+                      setNewLessonWeek(nextWeek);
+                    }}
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900"
                   />
                 </div>
@@ -2093,22 +2443,102 @@ export const TeacherDashboard: React.FC<Props> = ({
                 />
               </div>
 
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Link tài nguyên / video bài giảng:</label>
-                <input
-                  type="text"
-                  placeholder="Dán link YouTube (youtube.com/watch?v=... hoặc youtu.be/...), PDF, DOCX..."
-                  value={newLessonUrl}
-                  onChange={(e) => setNewLessonUrl(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900"
-                />
-                {parseVideoUrl(newLessonUrl).isYouTube && (
-                  <div className="mt-2 p-2 bg-red-50 text-red-700 rounded-xl border border-red-200 text-xs flex items-center gap-2">
-                    <PlayCircle className="w-4 h-4 text-red-600 shrink-0" />
-                    <span>Hệ thống đã nhận diện link YouTube và sẽ tự động nhúng video player cho sinh viên!</span>
+              {newLessonType === 'DOCUMENT' ? (
+                <div className="space-y-2.5">
+                  <label className="block font-bold text-slate-700">Tệp tài liệu đính kèm:</label>
+                  
+                  {/* Drag and Drop Zone */}
+                  <div
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setIsNewLessonDragOver(true);
+                    }}
+                    onDragLeave={() => setIsNewLessonDragOver(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setIsNewLessonDragOver(false);
+                      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                        const file = e.dataTransfer.files[0];
+                        setNewLessonFile(file);
+                        if (!newLessonTitle.trim()) {
+                          setNewLessonTitle(file.name.replace(/\.[^/.]+$/, ''));
+                        }
+                      }
+                    }}
+                    onClick={() => newLessonFileInputRef.current?.click()}
+                    className={`border-2 border-dashed rounded-2xl p-6 text-center transition-all cursor-pointer ${
+                      isNewLessonDragOver
+                        ? 'border-rose-500 bg-rose-50/70 scale-[0.99]'
+                        : 'border-slate-300 hover:border-rose-400 bg-slate-50/50 hover:bg-rose-50/20'
+                    }`}
+                  >
+                    <input
+                      type="file"
+                      ref={newLessonFileInputRef}
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          const file = e.target.files[0];
+                          setNewLessonFile(file);
+                          if (!newLessonTitle.trim()) {
+                            setNewLessonTitle(file.name.replace(/\.[^/.]+$/, ''));
+                          }
+                        }
+                      }}
+                      className="hidden"
+                      accept=".pdf,.docx,.doc,.ppt,.pptx,.xls,.xlsx,.txt,.zip,.rar"
+                    />
+                    <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mx-auto mb-2 shadow-2xs">
+                      <Upload className="w-6 h-6" />
+                    </div>
+                    <h5 className="font-bold text-sm text-slate-800">
+                      Kéo và thả tệp tài liệu vào đây, hoặc <span className="text-rose-600 underline">chọn từ máy tính</span>
+                    </h5>
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      Hỗ trợ tệp tài liệu .PDF, .DOCX, .PPTX, .XLSX, .TXT, .ZIP (Tối đa 50MB)
+                    </p>
                   </div>
-                )}
-              </div>
+
+                  {/* Selected File Preview Card */}
+                  {newLessonFile && (
+                    <div className="flex items-center justify-between bg-white px-4 py-3 rounded-xl border border-rose-200 text-xs shadow-2xs">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="p-2 bg-rose-50 text-rose-600 rounded-lg shrink-0">
+                          <Paperclip className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-bold text-slate-800 truncate max-w-sm">{newLessonFile.name}</p>
+                          <p className="text-[11px] text-slate-400">{formatFileSize(newLessonFile.size)}</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setNewLessonFile(null)}
+                        className="p-1.5 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg transition-colors"
+                        title="Gỡ tệp này"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : newLessonType === 'LECTURE' ? (
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Link video bài giảng / YouTube:</label>
+                  <input
+                    type="text"
+                    placeholder="Dán link YouTube (youtube.com/watch?v=... hoặc youtu.be/...)..."
+                    value={newLessonUrl}
+                    onChange={(e) => setNewLessonUrl(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900"
+                  />
+                  {parseVideoUrl(newLessonUrl).isYouTube && (
+                    <div className="mt-2 p-2 bg-red-50 text-red-700 rounded-xl border border-red-200 text-xs flex items-center gap-2">
+                      <PlayCircle className="w-4 h-4 text-red-600 shrink-0" />
+                      <span>Hệ thống đã nhận diện link YouTube và sẽ tự động nhúng video player cho sinh viên!</span>
+                    </div>
+                  )}
+                </div>
+              ) : null}
 
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Mô tả / hướng dẫn:</label>
@@ -2145,19 +2575,72 @@ export const TeacherDashboard: React.FC<Props> = ({
                 )}
               </div>
 
+              {newLessonType === 'QUIZ' && (
+                <div className="space-y-3 pt-1">
+                  {/* Trạng thái Mở khóa / Khóa bài trắc nghiệm */}
+                  <div className="flex items-center justify-between p-3.5 bg-slate-50 border border-slate-200 rounded-2xl">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        {newLessonIsUnlocked ? (
+                          <Unlock className="w-4 h-4 text-emerald-600" />
+                        ) : (
+                          <Lock className="w-4 h-4 text-rose-500" />
+                        )}
+                        <span className="font-bold text-sm text-slate-800">
+                          Mở khóa bài trắc nghiệm:
+                        </span>
+                        <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${newLessonIsUnlocked ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-rose-100 text-rose-700 border border-rose-200'}`}>
+                          {newLessonIsUnlocked ? 'Đang mở khóa' : 'Đang khóa'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500">
+                        {newLessonIsUnlocked ? 'Sinh viên có thể thấy và tham gia làm bài trắc nghiệm.' : 'Khóa không cho sinh viên làm bài trắc nghiệm này.'}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setNewLessonIsUnlocked(!newLessonIsUnlocked)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${newLessonIsUnlocked ? 'bg-emerald-600' : 'bg-slate-300'}`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${newLessonIsUnlocked ? 'translate-x-6' : 'translate-x-1'}`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Banner tự động tải câu hỏi CSDL */}
+                  <div className="p-3.5 bg-blue-50/80 border border-blue-200 rounded-2xl flex items-start gap-3">
+                    <div className="p-2 bg-blue-600 text-white rounded-xl shadow-2xs shrink-0">
+                      <Database className="w-4 h-4" />
+                    </div>
+                    <div className="text-xs text-slate-700 space-y-1">
+                      <p className="font-extrabold text-blue-950">
+                        Tự động liên kết Ngân hàng đề CSDL theo Tuần {newLessonWeek}
+                      </p>
+                      <p className="text-[11px] text-slate-600 leading-relaxed">
+                        Hệ thống tự động nạp toàn bộ câu hỏi trắc nghiệm chuẩn từ CSDL theo tuần học và xáo trộn ngẫu nhiên thứ tự các phương án đáp án cho sinh viên khi làm bài.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setShowAddLessonModal(false)}
+                  disabled={isUploadingDocument}
                   className="px-4 py-2 bg-slate-200 text-slate-800 font-semibold rounded-xl"
                 >
                   Hủy
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-xs"
+                  disabled={isUploadingDocument}
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-bold rounded-xl shadow-xs inline-flex items-center gap-2"
                 >
-                  Thêm hoạt động
+                  {isUploadingDocument && <Loader2 className="w-4 h-4 animate-spin" />}
+                  <span>{isUploadingDocument ? 'Đang tải tệp lên...' : 'Thêm hoạt động'}</span>
                 </button>
               </div>
             </form>
@@ -2195,7 +2678,10 @@ export const TeacherDashboard: React.FC<Props> = ({
                     type="number"
                     min="1"
                     value={editLessonWeek}
-                    onChange={(e) => setEditLessonWeek(Math.max(1, parseInt(e.target.value) || 1))}
+                    onChange={(e) => {
+                      const nextWeek = Math.max(1, parseInt(e.target.value) || 1);
+                      setEditLessonWeek(nextWeek);
+                    }}
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -2206,7 +2692,9 @@ export const TeacherDashboard: React.FC<Props> = ({
                     onChange={(e) => {
                       const newType = e.target.value as TeacherActivityType;
                       setEditLessonType(newType);
-                      if (newType !== 'QUIZ') setEditLessonPassword('');
+                      if (newType !== 'QUIZ') {
+                        setEditLessonPassword('');
+                      }
                     }}
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
@@ -2243,31 +2731,131 @@ export const TeacherDashboard: React.FC<Props> = ({
                 />
               </div>
 
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Link tài nguyên / video bài giảng:</label>
-                <input
-                  type="text"
-                  placeholder="Dán link YouTube (youtube.com/watch?v=... hoặc youtu.be/...), PDF, DOCX..."
-                  value={editLessonUrl}
-                  onChange={(e) => setEditLessonUrl(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                {parseVideoUrl(editLessonUrl).isYouTube && (
-                  <div className="mt-2 p-2.5 bg-red-50 text-red-700 rounded-xl border border-red-200 text-xs flex items-center justify-between gap-2">
-                    <span className="flex items-center gap-1.5 font-semibold">
-                      <PlayCircle className="w-4 h-4 text-red-600 shrink-0" />
-                      Nhận diện link YouTube: Hệ thống sẽ tự động nhúng video player để sinh viên xem trực tiếp!
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setPreviewVideoLesson({ ...editingLesson, resourceUrl: editLessonUrl })}
-                      className="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold text-[11px] shrink-0"
-                    >
-                      Xem thử
-                    </button>
+              {editLessonType === 'DOCUMENT' ? (
+                <div className="space-y-2.5">
+                  <label className="block font-bold text-slate-700">Tệp tài liệu đính kèm:</label>
+                  
+                  {/* Current file if already exists */}
+                  {editLessonUrl && !editLessonFile && (
+                    <div className="flex items-center justify-between bg-slate-50 px-4 py-3 rounded-xl border border-slate-200 text-xs">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="p-2 bg-rose-50 text-rose-600 rounded-lg shrink-0">
+                          <FileText className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-bold text-slate-800 truncate max-w-sm">
+                            {editingLesson.subtitle || editingLesson.title || editLessonUrl.split('/').pop()}
+                          </p>
+                          <a
+                            href={getUploadedFileUrl(editLessonUrl)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[11px] text-blue-600 hover:underline flex items-center gap-1 mt-0.5"
+                          >
+                            <ExternalLink className="w-3 h-3" /> Xem tệp tài liệu hiện tại
+                          </a>
+                        </div>
+                      </div>
+                      <span className="text-[10px] bg-white text-slate-600 px-2.5 py-1 rounded-md font-semibold border border-slate-200">
+                        Tệp hiện hành
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Drag and Drop Zone */}
+                  <div
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setIsEditLessonDragOver(true);
+                    }}
+                    onDragLeave={() => setIsEditLessonDragOver(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setIsEditLessonDragOver(false);
+                      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                        setEditLessonFile(e.dataTransfer.files[0]);
+                      }
+                    }}
+                    onClick={() => editLessonFileInputRef.current?.click()}
+                    className={`border-2 border-dashed rounded-2xl p-5 text-center transition-all cursor-pointer ${
+                      isEditLessonDragOver
+                        ? 'border-rose-500 bg-rose-50/70 scale-[0.99]'
+                        : 'border-slate-300 hover:border-rose-400 bg-slate-50/50 hover:bg-rose-50/20'
+                    }`}
+                  >
+                    <input
+                      type="file"
+                      ref={editLessonFileInputRef}
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          setEditLessonFile(e.target.files[0]);
+                        }
+                      }}
+                      className="hidden"
+                      accept=".pdf,.docx,.doc,.ppt,.pptx,.xls,.xlsx,.txt,.zip,.rar"
+                    />
+                    <div className="w-10 h-10 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mx-auto mb-2 shadow-2xs">
+                      <Upload className="w-5 h-5" />
+                    </div>
+                    <h5 className="font-bold text-xs text-slate-800">
+                      {editLessonUrl ? 'Kéo và thả để thay thế bằng tệp tài liệu mới, hoặc ' : 'Kéo và thả tệp tài liệu vào đây, hoặc '}
+                      <span className="text-rose-600 underline">chọn từ máy tính</span>
+                    </h5>
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      Hỗ trợ .PDF, .DOCX, .PPTX, .XLSX, .TXT, .ZIP (Tối đa 50MB)
+                    </p>
                   </div>
-                )}
-              </div>
+
+                  {/* New Selected File Preview Card */}
+                  {editLessonFile && (
+                    <div className="flex items-center justify-between bg-white px-4 py-3 rounded-xl border border-rose-200 text-xs shadow-2xs">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="p-2 bg-rose-50 text-rose-600 rounded-lg shrink-0">
+                          <Paperclip className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-bold text-slate-800 truncate max-w-sm">{editLessonFile.name} (Tệp mới)</p>
+                          <p className="text-[11px] text-slate-400">{formatFileSize(editLessonFile.size)}</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setEditLessonFile(null)}
+                        className="p-1.5 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg transition-colors"
+                        title="Hủy chọn tệp mới"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : editLessonType === 'LECTURE' ? (
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Link video bài giảng / YouTube:</label>
+                  <input
+                    type="text"
+                    placeholder="Dán link YouTube (youtube.com/watch?v=... hoặc youtu.be/...)..."
+                    value={editLessonUrl}
+                    onChange={(e) => setEditLessonUrl(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  {parseVideoUrl(editLessonUrl).isYouTube && (
+                    <div className="mt-2 p-2.5 bg-red-50 text-red-700 rounded-xl border border-red-200 text-xs flex items-center justify-between gap-2">
+                      <span className="flex items-center gap-1.5 font-semibold">
+                        <PlayCircle className="w-4 h-4 text-red-600 shrink-0" />
+                        Nhận diện link YouTube: Hệ thống sẽ tự động nhúng video player để sinh viên xem trực tiếp!
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setPreviewVideoLesson({ ...editingLesson, resourceUrl: editLessonUrl })}
+                        className="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold text-[11px] shrink-0"
+                      >
+                        Xem thử
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : null}
 
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Mô tả / hướng dẫn bài học:</label>
@@ -2304,6 +2892,56 @@ export const TeacherDashboard: React.FC<Props> = ({
                 )}
               </div>
 
+              {editLessonType === 'QUIZ' && (
+                <div className="space-y-3 pt-1">
+                  {/* Trạng thái Mở khóa / Khóa bài trắc nghiệm */}
+                  <div className="flex items-center justify-between p-3.5 bg-slate-50 border border-slate-200 rounded-2xl">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        {editLessonIsUnlocked ? (
+                          <Unlock className="w-4 h-4 text-emerald-600" />
+                        ) : (
+                          <Lock className="w-4 h-4 text-rose-500" />
+                        )}
+                        <span className="font-bold text-sm text-slate-800">
+                          Mở khóa bài trắc nghiệm:
+                        </span>
+                        <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${editLessonIsUnlocked ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-rose-100 text-rose-700 border border-rose-200'}`}>
+                          {editLessonIsUnlocked ? 'Đang mở khóa' : 'Đang khóa'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500">
+                        {editLessonIsUnlocked ? 'Sinh viên có thể thấy và tham gia làm bài trắc nghiệm.' : 'Khóa không cho sinh viên làm bài trắc nghiệm này.'}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setEditLessonIsUnlocked(!editLessonIsUnlocked)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${editLessonIsUnlocked ? 'bg-emerald-600' : 'bg-slate-300'}`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${editLessonIsUnlocked ? 'translate-x-6' : 'translate-x-1'}`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Banner tự động tải câu hỏi CSDL */}
+                  <div className="p-3.5 bg-blue-50/80 border border-blue-200 rounded-2xl flex items-start gap-3">
+                    <div className="p-2 bg-blue-600 text-white rounded-xl shadow-2xs shrink-0">
+                      <Database className="w-4 h-4" />
+                    </div>
+                    <div className="text-xs text-slate-700 space-y-1">
+                      <p className="font-extrabold text-blue-950">
+                        Tự động liên kết Ngân hàng đề CSDL theo Tuần {editLessonWeek}
+                      </p>
+                      <p className="text-[11px] text-slate-600 leading-relaxed">
+                        Hệ thống tự động nạp toàn bộ câu hỏi trắc nghiệm chuẩn từ CSDL theo tuần học và xáo trộn ngẫu nhiên thứ tự các phương án đáp án cho sinh viên khi làm bài.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-center justify-between pt-3 border-t border-slate-100">
                 <button
                   type="button"
@@ -2312,6 +2950,7 @@ export const TeacherDashboard: React.FC<Props> = ({
                     setShowEditLessonModal(false);
                     setEditingLesson(null);
                   }}
+                  disabled={isUploadingDocument}
                   className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold rounded-xl inline-flex items-center gap-1.5 transition-colors"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -2325,16 +2964,18 @@ export const TeacherDashboard: React.FC<Props> = ({
                       setShowEditLessonModal(false);
                       setEditingLesson(null);
                     }}
+                    disabled={isUploadingDocument}
                     className="px-4 py-2 bg-slate-200 text-slate-800 font-semibold rounded-xl hover:bg-slate-300 transition-colors"
                   >
                     Hủy
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-xs inline-flex items-center gap-1.5 transition-colors"
+                    disabled={isUploadingDocument}
+                    className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-bold rounded-xl shadow-xs inline-flex items-center gap-1.5 transition-colors"
                   >
-                    <Save className="w-3.5 h-3.5" />
-                    <span>Lưu thay đổi</span>
+                    {isUploadingDocument ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                    <span>{isUploadingDocument ? 'Đang lưu tệp...' : 'Lưu thay đổi'}</span>
                   </button>
                 </div>
               </div>
@@ -2423,6 +3064,213 @@ export const TeacherDashboard: React.FC<Props> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: NHẬP & CHỈNH SỬA ĐIỂM HỌC PHẦN CHO SINH VIÊN                       */}
+      {/* ========================================================================= */}
+      {editingGradeRow && currentCourse && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 w-full max-w-md rounded-3xl shadow-2xl p-6 text-slate-900 space-y-5 animate-in fade-in zoom-in duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="font-extrabold text-base flex items-center gap-2">
+                  <Award className="w-5 h-5 text-blue-600" />
+                  Nhập điểm môn {currentCourse.courseCode}
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Sinh viên: <strong className="text-slate-900">{editingGradeRow.fullName}</strong> ({editingGradeRow.studentCode})
+                </p>
+              </div>
+              <button
+                onClick={() => setEditingGradeRow(null)}
+                className="text-slate-400 hover:text-slate-600 font-bold p-1 rounded-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Điểm Chuyên cần ({currentCourse.weightAttendance}%) - Thang điểm 10:
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="10"
+                  value={editAttScore}
+                  onChange={(e) => setEditAttScore(parseFloat(e.target.value) || 0)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Điểm Bài tập / Thực hành ({currentCourse.weightAssignments}%) - Thang điểm 10:
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="10"
+                  value={editAssScore}
+                  onChange={(e) => setEditAssScore(parseFloat(e.target.value) || 0)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Điểm Thi kết thúc học phần ({currentCourse.weightFinalExam}%) - Thang điểm 10:
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="10"
+                  value={editExamScore}
+                  onChange={(e) => setEditExamScore(parseFloat(e.target.value) || 0)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-bold"
+                />
+              </div>
+
+              {/* Calculated Preview Box */}
+              {(() => {
+                const total = (
+                  (editAttScore * currentCourse.weightAttendance +
+                    editAssScore * currentCourse.weightAssignments +
+                    editExamScore * currentCourse.weightFinalExam) /
+                  100
+                ).toFixed(2);
+                return (
+                  <div className="p-3.5 bg-blue-50/70 border border-blue-200 rounded-xl space-y-1">
+                    <div className="flex justify-between items-center">
+                      <span className="font-semibold text-slate-600">Điểm tổng kết ước tính:</span>
+                      <strong className="text-base font-black text-blue-700">{total} / 10</strong>
+                    </div>
+                    <p className="text-[11px] text-slate-500">
+                      Hệ thống tự động quy đổi điểm chữ và lưu trực tiếp vào CSDL khi bạn xác nhận.
+                    </p>
+                  </div>
+                );
+              })()}
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setEditingGradeRow(null)}
+                  className="px-4 py-2 bg-slate-100 text-slate-700 font-semibold rounded-xl"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveStudentGrade}
+                  disabled={savingGrade}
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-bold rounded-xl shadow-xs flex items-center gap-1.5"
+                >
+                  {savingGrade ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  <span>{savingGrade ? 'Đang lưu...' : 'Lưu điểm vào CSDL'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: IMPORT SINH VIÊN TỪ FILE CSV / EXCEL                               */}
+      {/* ========================================================================= */}
+      {showImportStudentsModal && currentCourse && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 w-full max-w-lg rounded-3xl shadow-2xl p-6 text-slate-900 space-y-4 animate-in fade-in zoom-in duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="font-extrabold text-base flex items-center gap-2">
+                  <FolderUp className="w-5 h-5 text-emerald-600" />
+                  Import sinh viên vào lớp {currentCourse.courseCode}
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Tải lên tệp CSV hoặc dán trực tiếp danh sách sinh viên
+                </p>
+              </div>
+              <button
+                onClick={() => setShowImportStudentsModal(false)}
+                className="text-slate-400 hover:text-slate-600 font-bold p-1 rounded-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+                <strong className="text-slate-700 block">Định dạng mỗi dòng (phân cách bằng dấu phẩy):</strong>
+                <code className="text-blue-700 block font-mono text-[11px]">
+                  MSSV, Họ và tên, Email, Lớp
+                </code>
+                <span className="text-[10px] text-slate-500 block">
+                  Ví dụ: SV2024002, Lê Văn C, levanc@lms.edu.vn, CNTT-K65
+                </span>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1.5">
+                  Tải file CSV từ máy tính:
+                </label>
+                <input
+                  type="file"
+                  accept=".csv,.txt"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (evt) => {
+                        const content = evt.target?.result as string;
+                        if (content) setImportCsvText(content);
+                      };
+                      reader.readAsText(file);
+                    }
+                  }}
+                  className="w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Hoặc dán nội dung CSV trực tiếp tại đây:
+                </label>
+                <textarea
+                  rows={6}
+                  value={importCsvText}
+                  onChange={(e) => setImportCsvText(e.target.value)}
+                  placeholder={`SV2024002, Lê Văn C, levanc@lms.edu.vn, CNTT-K65\nSV2024003, Phạm Thị D, phamthid@lms.edu.vn, CNTT-K65`}
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowImportStudentsModal(false)}
+                  className="px-4 py-2 bg-slate-100 text-slate-700 font-semibold rounded-xl"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="button"
+                  onClick={handleImportStudents}
+                  disabled={importingStudents || !importCsvText.trim()}
+                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white font-bold rounded-xl shadow-xs flex items-center gap-1.5"
+                >
+                  {importingStudents ? <Loader2 className="w-4 h-4 animate-spin" /> : <FolderUp className="w-4 h-4" />}
+                  <span>{importingStudents ? 'Đang Import...' : 'Tiến hành Import'}</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -40,4 +40,5 @@ public class LessonSummaryDto
     public bool QuizPassed { get; set; }
     public Guid? QuizId { get; set; }
     public Guid? AssignmentId { get; set; }
+    public string? Password { get; set; }
 }

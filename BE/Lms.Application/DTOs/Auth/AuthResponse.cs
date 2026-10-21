@@ -8,5 +8,7 @@ public record AuthResponse(
     Guid UserId,
     string Email,
     string FullName,
-    string Role
+    string Role,
+    string? StudentCode = null,
+    string? TeacherCode = null
 );

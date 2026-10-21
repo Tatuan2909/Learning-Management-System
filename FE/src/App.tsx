@@ -1,17 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, GraduationCap, LayoutDashboard, Award, Bell, Sparkles, Menu, X, Edit3, Users, Activity, FileText, Settings } from 'lucide-react';
+import { BookOpen, GraduationCap, LayoutDashboard, Award, Bell, Sparkles, Menu, X, Edit3, Users, Activity, FileText, Settings, Building2, Landmark } from 'lucide-react';
 import { UpcomingDeadlinesWidget } from './components/UpcomingDeadlinesWidget';
 import { CoursesPage } from './components/CoursesPage';
 import { CourseStudyPage } from './components/CourseStudyPage';
 import { LoginPage } from './components/LoginPage';
+import { AdminLoginPage } from './components/AdminLoginPage';
 import { ProfileDropdown } from './components/ProfileDropdown';
 import { ProfilePage } from './components/ProfilePage';
 import { TeacherDashboard } from './components/TeacherDashboard';
 import { AdminDashboard } from './components/AdminDashboard';
+import { StudentGradesPage } from './components/StudentGradesPage';
 import { UpcomingDeadline, AuthUser, CourseItem } from './types';
 import api from './api/axios';
+import { useLanguage } from './context/LanguageContext';
 
 export const App: React.FC = () => {
+  const { t, language } = useLanguage();
   const [user, setUser] = useState<AuthUser | null>(() => {
     const saved = localStorage.getItem('user_info');
     if (saved) {
@@ -24,27 +28,48 @@ export const App: React.FC = () => {
     return null;
   });
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'my-courses' | 'courses' | 'profile' | 'study'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'my-courses' | 'courses' | 'grades' | 'profile' | 'study'>('dashboard');
   const [teacherTab, setTeacherTab] = useState<'overview' | 'courses'>('overview');
-  const [adminTab, setAdminTab] = useState<'overview' | 'users' | 'courses' | 'logs' | 'settings'>('overview');
+  const [adminTab, setAdminTab] = useState<'overview' | 'users' | 'departments' | 'majors' | 'courses' | 'logs' | 'settings'>('overview');
   const [studyCourseId, setStudyCourseId] = useState<string>('44444444-4444-4444-4444-444444444444');
   const [currentCourse, setCurrentCourse] = useState<CourseItem | null>(null);
+  const [loadingCurrentCourse, setLoadingCurrentCourse] = useState<boolean>(true);
   const [selectedActivityId, setSelectedActivityId] = useState<string | undefined>(undefined);
   const [selectedDeadline, setSelectedDeadline] = useState<UpcomingDeadline | null>(null);
   const [activeLesson, setActiveLesson] = useState<number>(1);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [courseAnnouncements, setCourseAnnouncements] = useState<any[]>([]);
+  const [isAdminPortal, setIsAdminPortal] = useState<boolean>(() => {
+    return typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
+  });
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setIsAdminPortal(window.location.pathname.startsWith('/admin'));
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   useEffect(() => {
     if (user && user.role === 'STUDENT') {
+      setLoadingCurrentCourse(true);
       api.get<CourseItem[]>('/courses/my-courses?studentId=' + user.userId)
         .then((res) => {
           if (res.data && res.data.length > 0) {
             setCurrentCourse(res.data[0]);
             setStudyCourseId(res.data[0].id);
+          } else {
+            setCurrentCourse(null);
           }
         })
-        .catch((err) => console.error('Lỗi tải khóa học người dùng:', err));
+        .catch((err) => {
+          console.error('Lỗi tải khóa học người dùng:', err);
+          setCurrentCourse(null);
+        })
+        .finally(() => {
+          setLoadingCurrentCourse(false);
+        });
     }
   }, [user]);
 
@@ -53,13 +78,21 @@ export const App: React.FC = () => {
       api.get(`/courses/${currentCourse.id}/announcements`)
         .then((res) => setCourseAnnouncements(res.data || []))
         .catch(() => setCourseAnnouncements([]));
+    } else {
+      setCourseAnnouncements([]);
     }
   }, [currentCourse]);
 
-  // Force permanent clean Light Mode
+  // Force permanent clean Light Mode & clear obsolete legacy keys
   useEffect(() => {
     document.documentElement.classList.remove('dark');
     localStorage.setItem('theme', 'light');
+    try {
+      localStorage.removeItem('lms_practice_submissions');
+      localStorage.removeItem('lms_enrolled_courses');
+      localStorage.removeItem('lms_course_passwords');
+      localStorage.removeItem('lms_lesson_quiz_attempts');
+    } catch {}
   }, []);
 
   const resetNavigationState = () => {
@@ -67,6 +100,7 @@ export const App: React.FC = () => {
     setTeacherTab('overview');
     setAdminTab('overview');
     setCurrentCourse(null);
+    setLoadingCurrentCourse(true);
     setCourseAnnouncements([]);
     setSelectedActivityId(undefined);
     setSelectedDeadline(null);
@@ -74,16 +108,28 @@ export const App: React.FC = () => {
   };
 
   const handleLogout = () => {
+    const wasAdmin = user?.role === 'ADMIN';
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('user_info');
     resetNavigationState();
     setUser(null);
+    if (wasAdmin) {
+      setIsAdminPortal(true);
+      window.history.pushState({}, '', '/admin/login');
+    } else {
+      setIsAdminPortal(false);
+      window.history.pushState({}, '', '/');
+    }
   };
 
   const handleLoginSuccess = (loggedInUser: AuthUser) => {
     resetNavigationState();
     setUser(loggedInUser);
+    if (loggedInUser.role === 'ADMIN') {
+      setAdminTab('overview');
+      window.history.pushState({}, '', '/');
+    }
   };
 
   const handleOpenStudyPage = (courseId: string, activityId?: string) => {
@@ -93,7 +139,22 @@ export const App: React.FC = () => {
   };
 
   if (!user) {
-    return <LoginPage onLoginSuccess={handleLoginSuccess} />;
+    if (isAdminPortal) {
+      return (
+        <AdminLoginPage
+          onLoginSuccess={handleLoginSuccess}
+          onBackToUserLogin={() => {
+            setIsAdminPortal(false);
+            window.history.pushState({}, '', '/');
+          }}
+        />
+      );
+    }
+    return (
+      <LoginPage
+        onLoginSuccess={handleLoginSuccess}
+      />
+    );
   }
 
   const isRoleDashboardActive = activeTab === 'dashboard' || (user.role !== 'STUDENT' && activeTab !== 'profile');
@@ -103,6 +164,7 @@ export const App: React.FC = () => {
     return (
       <CourseStudyPage
         courseId={studyCourseId}
+        studentId={user.userId}
         initialActivityId={selectedActivityId}
         onBack={() => {
           setSelectedActivityId(undefined);
@@ -141,8 +203,8 @@ export const App: React.FC = () => {
                 <GraduationCap className="w-5 h-5 text-white" />
               </div>
               <div className="hidden sm:block">
-                <h1 className="font-extrabold text-base leading-none tracking-tight text-slate-900">Hệ thống LMS</h1>
-                <span className="text-[10px] text-blue-600 font-mono font-medium mt-0.5 inline-block">Client - Server</span>
+                <h1 className="font-extrabold text-base leading-none tracking-tight text-slate-900">{t('lmsTitle')}</h1>
+                <span className="text-[10px] text-blue-600 font-mono font-medium mt-0.5 inline-block">{t('lmsSubtitle')}</span>
               </div>
             </div>
 
@@ -160,7 +222,7 @@ export const App: React.FC = () => {
                     }`}
                   >
                     <Award className="w-4 h-4" />
-                    <span>Tổng quan giảng dạy</span>
+                    <span>{t('teacherOverview')}</span>
                   </button>
                   <button
                     onClick={() => { setActiveTab('dashboard'); setTeacherTab('courses'); }}
@@ -171,7 +233,7 @@ export const App: React.FC = () => {
                     }`}
                   >
                     <BookOpen className="w-4 h-4" />
-                    <span>Khóa học phụ trách (2)</span>
+                    <span>{t('assignedCourses')}</span>
                   </button>
                 </>
               )}
@@ -188,7 +250,7 @@ export const App: React.FC = () => {
                     }`}
                   >
                     <Activity className="w-4 h-4" />
-                    <span>Tổng quan Hệ thống</span>
+                    <span>{t('systemOverview')}</span>
                   </button>
                   <button
                     onClick={() => { setActiveTab('dashboard'); setAdminTab('users'); }}
@@ -199,7 +261,29 @@ export const App: React.FC = () => {
                     }`}
                   >
                     <Users className="w-4 h-4" />
-                    <span>Quản lý Người dùng</span>
+                    <span>{t('userManagement')}</span>
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab('dashboard'); setAdminTab('departments'); }}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+                      isRoleDashboardActive && adminTab === 'departments'
+                        ? 'bg-blue-600 text-white shadow-2xs'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <Building2 className="w-4 h-4" />
+                    <span>{t('departmentManagement')}</span>
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab('dashboard'); setAdminTab('majors'); }}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+                      isRoleDashboardActive && adminTab === 'majors'
+                        ? 'bg-blue-600 text-white shadow-2xs'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <GraduationCap className="w-4 h-4" />
+                    <span>{t('majorManagement')}</span>
                   </button>
                   <button
                     onClick={() => { setActiveTab('dashboard'); setAdminTab('courses'); }}
@@ -210,7 +294,7 @@ export const App: React.FC = () => {
                     }`}
                   >
                     <BookOpen className="w-4 h-4" />
-                    <span>Quản lý Khóa học</span>
+                    <span>{t('courseManagement')}</span>
                   </button>
                   <button
                     onClick={() => { setActiveTab('dashboard'); setAdminTab('logs'); }}
@@ -221,7 +305,7 @@ export const App: React.FC = () => {
                     }`}
                   >
                     <FileText className="w-4 h-4" />
-                    <span>Nhật ký An ninh</span>
+                    <span>{t('securityLogs')}</span>
                   </button>
                   <button
                     onClick={() => { setActiveTab('dashboard'); setAdminTab('settings'); }}
@@ -232,7 +316,7 @@ export const App: React.FC = () => {
                     }`}
                   >
                     <Settings className="w-4 h-4" />
-                    <span>Cấu hình Hệ thống</span>
+                    <span>{t('systemSettings')}</span>
                   </button>
                 </>
               )}
@@ -249,7 +333,7 @@ export const App: React.FC = () => {
                     }`}
                   >
                     <LayoutDashboard className="w-4 h-4" />
-                    <span>Dashboard</span>
+                    <span>{t('dashboard')}</span>
                   </button>
                   <button
                     onClick={() => setActiveTab('my-courses')}
@@ -260,7 +344,7 @@ export const App: React.FC = () => {
                     }`}
                   >
                     <BookOpen className="w-4 h-4" />
-                    <span>Khóa học của tôi</span>
+                    <span>{t('myCourses')}</span>
                   </button>
                   <button
                     onClick={() => setActiveTab('courses')}
@@ -271,7 +355,18 @@ export const App: React.FC = () => {
                     }`}
                   >
                     <Sparkles className="w-4 h-4" />
-                    <span>Tất cả khóa học</span>
+                    <span>{t('allCourses')}</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('grades')}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+                      activeTab === 'grades'
+                        ? 'bg-blue-600 text-white shadow-2xs'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <Award className="w-4 h-4" />
+                    <span>{t('grades')}</span>
                   </button>
                 </>
               )}
@@ -284,7 +379,6 @@ export const App: React.FC = () => {
               user={user}
               onLogout={handleLogout}
               onOpenProfilePage={() => setActiveTab('profile')}
-              onSwitchUser={handleLoginSuccess}
             />
           </div>
 
@@ -303,7 +397,7 @@ export const App: React.FC = () => {
                   }`}
                 >
                   <Award className="w-4 h-4" />
-                  <span>Tổng quan giảng dạy</span>
+                  <span>{t('teacherOverview')}</span>
                 </button>
                 <button
                   onClick={() => { setActiveTab('dashboard'); setTeacherTab('courses'); setMobileMenuOpen(false); }}
@@ -312,7 +406,7 @@ export const App: React.FC = () => {
                   }`}
                 >
                   <BookOpen className="w-4 h-4" />
-                  <span>Khóa học phụ trách (2)</span>
+                  <span>{t('assignedCourses')}</span>
                 </button>
               </>
             )}
@@ -327,7 +421,7 @@ export const App: React.FC = () => {
                   }`}
                 >
                   <Activity className="w-4 h-4" />
-                  <span>Tổng quan Hệ thống</span>
+                  <span>{t('systemOverview')}</span>
                 </button>
                 <button
                   onClick={() => { setActiveTab('dashboard'); setAdminTab('users'); setMobileMenuOpen(false); }}
@@ -336,7 +430,25 @@ export const App: React.FC = () => {
                   }`}
                 >
                   <Users className="w-4 h-4" />
-                  <span>Quản lý Người dùng</span>
+                  <span>{t('userManagement')}</span>
+                </button>
+                <button
+                  onClick={() => { setActiveTab('dashboard'); setAdminTab('departments'); setMobileMenuOpen(false); }}
+                  className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
+                    isRoleDashboardActive && adminTab === 'departments' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <Building2 className="w-4 h-4" />
+                  <span>{t('departmentManagement')}</span>
+                </button>
+                <button
+                  onClick={() => { setActiveTab('dashboard'); setAdminTab('majors'); setMobileMenuOpen(false); }}
+                  className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
+                    isRoleDashboardActive && adminTab === 'majors' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <GraduationCap className="w-4 h-4" />
+                  <span>{t('majorManagement')}</span>
                 </button>
                 <button
                   onClick={() => { setActiveTab('dashboard'); setAdminTab('courses'); setMobileMenuOpen(false); }}
@@ -345,7 +457,7 @@ export const App: React.FC = () => {
                   }`}
                 >
                   <BookOpen className="w-4 h-4" />
-                  <span>Quản lý Khóa học</span>
+                  <span>{t('courseManagement')}</span>
                 </button>
                 <button
                   onClick={() => { setActiveTab('dashboard'); setAdminTab('logs'); setMobileMenuOpen(false); }}
@@ -354,7 +466,7 @@ export const App: React.FC = () => {
                   }`}
                 >
                   <FileText className="w-4 h-4" />
-                  <span>Nhật ký An ninh</span>
+                  <span>{t('securityLogs')}</span>
                 </button>
                 <button
                   onClick={() => { setActiveTab('dashboard'); setAdminTab('settings'); setMobileMenuOpen(false); }}
@@ -363,7 +475,7 @@ export const App: React.FC = () => {
                   }`}
                 >
                   <Settings className="w-4 h-4" />
-                  <span>Cấu hình Hệ thống</span>
+                  <span>{t('systemSettings')}</span>
                 </button>
               </>
             )}
@@ -378,7 +490,7 @@ export const App: React.FC = () => {
                   }`}
                 >
                   <LayoutDashboard className="w-4 h-4" />
-                  <span>Dashboard</span>
+                  <span>{t('dashboard')}</span>
                 </button>
                 <button
                   onClick={() => { setActiveTab('my-courses'); setMobileMenuOpen(false); }}
@@ -387,7 +499,7 @@ export const App: React.FC = () => {
                   }`}
                 >
                   <BookOpen className="w-4 h-4" />
-                  <span>Khóa học của tôi</span>
+                  <span>{t('myCourses')}</span>
                 </button>
                 <button
                   onClick={() => { setActiveTab('courses'); setMobileMenuOpen(false); }}
@@ -396,7 +508,16 @@ export const App: React.FC = () => {
                   }`}
                 >
                   <Sparkles className="w-4 h-4" />
-                  <span>Tất cả khóa học</span>
+                  <span>{t('allCourses')}</span>
+                </button>
+                <button
+                  onClick={() => { setActiveTab('grades'); setMobileMenuOpen(false); }}
+                  className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
+                    activeTab === 'grades' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <Award className="w-4 h-4" />
+                  <span>{t('grades')}</span>
                 </button>
               </>
             )}
@@ -417,13 +538,13 @@ export const App: React.FC = () => {
               <div className="bg-gradient-to-r from-blue-50/90 via-indigo-50/40 to-slate-50 rounded-3xl p-6 sm:p-8 text-slate-800 shadow-2xs border border-blue-100/80 relative overflow-hidden w-full">
                 <div className="relative z-10 max-w-3xl">
                   <span className="bg-blue-100/80 text-blue-700 text-[11px] sm:text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider inline-block border border-blue-200/60">
-                    Học kỳ I • Năm học 2024 - 2025
+                    {t('semesterNotice')}
                   </span>
                   <h2 className="text-2xl sm:text-3xl font-extrabold mt-3 leading-tight text-slate-900">
-                    Xin chào, {user.fullName}!
+                    {t('hello')}, {user.fullName}!
                   </h2>
                   <p className="text-slate-600 text-xs sm:text-sm mt-2 leading-relaxed">
-                    Theo dõi hạn nộp bài tập và bài kiểm tra trắc nghiệm cần hoàn thành dưới đây, hoặc chọn mục "Khóa học của tôi" để tiếp tục học các bài giảng.
+                    {t('welcomeSubtext')}
                   </p>
                 </div>
               </div>
@@ -446,21 +567,40 @@ export const App: React.FC = () => {
                   {/* Quick My Courses Card - Calmer Subtle Blue */}
                   <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
                     <span className="text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-100 px-2.5 py-0.5 rounded-full uppercase">
-                      Khóa học đang học
+                      {t('currentEnrolledCourse')}
                     </span>
-                    <h4 className="font-extrabold text-base text-slate-900">
-                      {currentCourse ? `${currentCourse.courseCode} - ${currentCourse.title}` : 'INT3306 - Lập trình Web C# .NET 8'}
-                    </h4>
-                    <p className="text-xs text-slate-500">
-                      Giảng viên: {currentCourse?.teacherName || 'TS. Nguyễn Văn A'} • Tiến độ: {currentCourse?.progressPercentage ?? 0}%
-                    </p>
-                    <button
-                      onClick={() => handleOpenStudyPage(currentCourse?.id || '44444444-4444-4444-4444-444444444444')}
-                      className="w-full mt-2 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-2xs"
-                    >
-                      <BookOpen className="w-3.5 h-3.5" />
-                      <span>Vào Trang Học Bài Giảng</span>
-                    </button>
+                    {loadingCurrentCourse ? (
+                      <div className="py-4 space-y-2">
+                        <div className="h-4 bg-slate-100 rounded animate-pulse w-3/4"></div>
+                        <div className="h-3 bg-slate-100 rounded animate-pulse w-1/2"></div>
+                      </div>
+                    ) : currentCourse ? (
+                      <>
+                        <h4 className="font-extrabold text-base text-slate-900 leading-snug">
+                          {currentCourse.courseCode} - {currentCourse.title}
+                        </h4>
+                        <p className="text-xs text-slate-500">
+                          {t('lecturerLabel')}: {currentCourse.teacherName || 'TS. Nguyễn Văn A'} • {t('progressLabel')}: {currentCourse.progressPercentage ?? 0}%
+                        </p>
+                        <button
+                          onClick={() => handleOpenStudyPage(currentCourse.id)}
+                          className="w-full mt-2 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-2xs"
+                        >
+                          <BookOpen className="w-3.5 h-3.5" />
+                          <span>{t('goToStudyPage')}</span>
+                        </button>
+                      </>
+                    ) : (
+                      <div className="py-2 text-center space-y-3">
+                        <p className="text-xs text-slate-500">{t('noEnrolledCourseYet')}</p>
+                        <button
+                          onClick={() => setActiveTab('courses')}
+                          className="w-full py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs rounded-xl transition-all"
+                        >
+                          {t('exploreCourses')}
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {/* Announcements Card */}
@@ -468,9 +608,9 @@ export const App: React.FC = () => {
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-2 text-slate-900 font-bold">
                         <Bell className="w-5 h-5 text-blue-600" />
-                        <h3>Thông báo lớp học</h3>
+                        <h3>{t('classAnnouncements')}</h3>
                       </div>
-                      <span className="bg-blue-50 text-blue-700 text-xs px-2.5 py-0.5 rounded-full font-bold border border-blue-100">Mới nhất</span>
+                      <span className="bg-blue-50 text-blue-700 text-xs px-2.5 py-0.5 rounded-full font-bold border border-blue-100">{t('latest')}</span>
                     </div>
 
                     {courseAnnouncements && courseAnnouncements.length > 0 ? (
@@ -488,7 +628,7 @@ export const App: React.FC = () => {
                         ))}
                       </div>
                     ) : (
-                      <p className="text-xs text-slate-500 italic py-2 text-center">Chưa có thông báo mới từ giảng viên.</p>
+                      <p className="text-xs text-slate-500 italic py-2 text-center">{t('noLecturerAnnouncements')}</p>
                     )}
                   </div>
 
@@ -496,21 +636,25 @@ export const App: React.FC = () => {
                   <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
                     <h3 className="font-bold text-slate-900 flex items-center gap-2">
                       <Award className="w-5 h-5 text-indigo-600" />
-                      Tiến độ môn học {currentCourse?.courseCode || 'INT3306'}
+                      {t('courseProgressTitle')} {currentCourse ? currentCourse.courseCode : ''}
                     </h3>
 
-                    <div>
-                      <div className="flex justify-between text-xs font-semibold mb-1">
-                        <span className="text-slate-600">{currentCourse?.title || 'Lập trình Web C# .NET 8'}</span>
-                        <span className="text-blue-600 font-bold">{currentCourse?.progressPercentage ?? 0}% Hoàn thành</span>
+                    {currentCourse ? (
+                      <div>
+                        <div className="flex justify-between text-xs font-semibold mb-1">
+                          <span className="text-slate-600 truncate max-w-[200px]">{currentCourse.title}</span>
+                          <span className="text-blue-600 font-bold">{currentCourse.progressPercentage ?? 0}% {t('completedLabel')}</span>
+                        </div>
+                        <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden border border-slate-200">
+                          <div
+                            className="bg-blue-600 h-full rounded-full transition-all"
+                            style={{ width: `${currentCourse.progressPercentage ?? 0}%` }}
+                          ></div>
+                        </div>
                       </div>
-                      <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden border border-slate-200">
-                        <div
-                          className="bg-blue-600 h-full rounded-full transition-all"
-                          style={{ width: `${currentCourse?.progressPercentage ?? 0}%` }}
-                        ></div>
-                      </div>
-                    </div>
+                    ) : (
+                      <p className="text-xs text-slate-500 italic text-center py-2">{t('noProgressData')}</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -521,6 +665,7 @@ export const App: React.FC = () => {
         {user.role === 'STUDENT' && activeTab === 'my-courses' && (
           <CoursesPage
             initialFilter="ENROLLED"
+            studentId={user.userId}
             onSelectLessonForQuiz={(courseId, activityId) => handleOpenStudyPage(courseId, activityId)}
           />
         )}
@@ -528,7 +673,15 @@ export const App: React.FC = () => {
         {user.role === 'STUDENT' && activeTab === 'courses' && (
           <CoursesPage
             initialFilter="ALL"
+            studentId={user.userId}
             onSelectLessonForQuiz={(courseId, activityId) => handleOpenStudyPage(courseId, activityId)}
+          />
+        )}
+
+        {user.role === 'STUDENT' && activeTab === 'grades' && (
+          <StudentGradesPage
+            user={user}
+            onOpenCourseStudy={(courseId) => handleOpenStudyPage(courseId)}
           />
         )}
 

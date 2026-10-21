@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { BookOpen, CheckCircle, Lock, PlayCircle, FileText, Search, UserCheck, ArrowRight, Award, PlusCircle, Sparkles, Filter, CheckSquare, KeyRound, ShieldCheck, AlertCircle } from 'lucide-react';
 import { CourseItem, CourseDetail } from '../types';
 import api from '../api/axios';
+import { useLanguage } from '../context/LanguageContext';
 
 interface Props {
   initialFilter?: 'ALL' | 'ENROLLED' | 'AVAILABLE';
+  studentId?: string;
   onSelectLessonForQuiz?: (courseId: string, activityId?: string) => void;
 }
 
@@ -12,7 +14,8 @@ type CoursePasswordAction = 'enroll' | 'study' | 'lesson';
 
 const hasCoursePassword = (course: CourseItem) => Boolean((course.accessPassword || '').trim());
 
-export const CoursesPage: React.FC<Props> = ({ initialFilter = 'ALL', onSelectLessonForQuiz }) => {
+export const CoursesPage: React.FC<Props> = ({ initialFilter = 'ALL', studentId, onSelectLessonForQuiz }) => {
+  const { t } = useLanguage();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'ALL' | 'ENROLLED' | 'AVAILABLE'>(initialFilter);
   const [selectedCourse, setSelectedCourse] = useState<CourseItem | null>(null);
@@ -30,8 +33,8 @@ export const CoursesPage: React.FC<Props> = ({ initialFilter = 'ALL', onSelectLe
     setSelectedCourse(course);
     setLoadingDetail(true);
     try {
-      const studentId = getStudentId();
-      const res = await api.get<CourseDetail>(`/courses/${course.id}?studentId=${studentId}`);
+      const currentStudentId = getStudentId();
+      const res = await api.get<CourseDetail>(`/courses/${course.id}?studentId=${currentStudentId}`);
       setSelectedCourseDetail(res.data);
     } catch {
       setSelectedCourseDetail(null);
@@ -44,7 +47,15 @@ export const CoursesPage: React.FC<Props> = ({ initialFilter = 'ALL', onSelectLe
     setFilterType(initialFilter);
   }, [initialFilter]);
 
+  useEffect(() => {
+    try {
+      localStorage.removeItem('lms_enrolled_courses');
+      localStorage.removeItem('lms_course_passwords');
+    } catch {}
+  }, []);
+
   const getStudentId = () => {
+    if (studentId) return studentId;
     try {
       const userStr = localStorage.getItem('user_info');
       if (userStr) return JSON.parse(userStr).userId;
@@ -167,15 +178,15 @@ export const CoursesPage: React.FC<Props> = ({ initialFilter = 'ALL', onSelectLe
         <div className="relative z-10 max-w-3xl">
           <span className="bg-blue-100/80 text-blue-700 text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider inline-flex items-center gap-1.5 mb-3 border border-blue-200/60">
             <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-            {filterType === 'ENROLLED' ? 'Khóa học của tôi' : 'Danh mục Khóa học & Môn học'}
+            {filterType === 'ENROLLED' ? t('myCoursesBannerTitle') : t('allCoursesBannerTitle')}
           </span>
           <h2 className="text-2xl sm:text-3xl font-extrabold leading-tight text-slate-900">
-            {filterType === 'ENROLLED' ? 'Danh sách các Khóa học Bạn đã Đăng ký' : 'Khám phá & Chọn Khóa học'}
+            {filterType === 'ENROLLED' ? t('myCoursesBannerHeading') : t('allCoursesBannerHeading')}
           </h2>
           <p className="text-slate-600 text-xs sm:text-sm mt-2 leading-relaxed">
             {filterType === 'ENROLLED'
-              ? 'Theo dõi tiến độ học tập, vào học bài giảng và hoàn thành bài kiểm tra trắc nghiệm cho từng môn học.'
-              : 'Ghi danh vào các môn học mới, xem nội dung bài giảng và tích lũy điểm số học tập.'}
+              ? t('myCoursesBannerDesc')
+              : t('allCoursesBannerDesc')}
           </p>
         </div>
       </div>
@@ -189,7 +200,7 @@ export const CoursesPage: React.FC<Props> = ({ initialFilter = 'ALL', onSelectLe
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Tìm theo Mã môn (INT3306), Tên môn học..."
+            placeholder={t('searchCourseInputPlaceholder')}
             className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
           />
         </div>
@@ -198,7 +209,7 @@ export const CoursesPage: React.FC<Props> = ({ initialFilter = 'ALL', onSelectLe
         <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto no-scrollbar">
           <span className="text-xs font-semibold text-slate-500 flex items-center gap-1 mr-1">
             <Filter className="w-3.5 h-3.5 text-slate-400" />
-            Lọc:
+            {t('filterLabel')}
           </span>
           <button
             onClick={() => setFilterType('ENROLLED')}
@@ -208,7 +219,7 @@ export const CoursesPage: React.FC<Props> = ({ initialFilter = 'ALL', onSelectLe
                 : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
             }`}
           >
-            Khóa học của tôi ({courses.filter((c) => c.isEnrolled).length})
+            {t('myCoursesTab')} ({courses.filter((c) => c.isEnrolled).length})
           </button>
           <button
             onClick={() => setFilterType('ALL')}
@@ -218,7 +229,7 @@ export const CoursesPage: React.FC<Props> = ({ initialFilter = 'ALL', onSelectLe
                 : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
             }`}
           >
-            Tất cả khóa học ({courses.length})
+            {t('allCoursesTab')} ({courses.length})
           </button>
           <button
             onClick={() => setFilterType('AVAILABLE')}
@@ -228,7 +239,7 @@ export const CoursesPage: React.FC<Props> = ({ initialFilter = 'ALL', onSelectLe
                 : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
             }`}
           >
-            Chưa ghi danh ({courses.filter((c) => !c.isEnrolled).length})
+            {t('notEnrolledTab')} ({courses.filter((c) => !c.isEnrolled).length})
           </button>
         </div>
       </div>
@@ -255,11 +266,11 @@ export const CoursesPage: React.FC<Props> = ({ initialFilter = 'ALL', onSelectLe
                 {course.isEnrolled ? (
                   <span className="inline-flex items-center gap-1 text-xs font-bold bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-full border border-emerald-200 flex-shrink-0">
                     <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
-                    Đã ghi danh
+                    {t('enrolledBadge')}
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1 text-xs font-bold bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full border border-slate-200 flex-shrink-0">
-                    Chưa đăng ký
+                    {t('notEnrolledBadge')}
                   </span>
                 )}
               </div>
@@ -269,15 +280,15 @@ export const CoursesPage: React.FC<Props> = ({ initialFilter = 'ALL', onSelectLe
               </p>
 
               <div className="flex items-center justify-between text-xs text-slate-500 pt-3 border-t border-slate-100 mb-4">
-                <span>Giảng viên: <strong className="text-slate-800">{course.teacherName}</strong></span>
-                <span>{course.lessonsCount} bài học</span>
+                <span>{t('lecturerLabel')}: <strong className="text-slate-800">{course.teacherName}</strong></span>
+                <span>{course.lessonsCount} {t('lessonsCount')}</span>
               </div>
 
               {/* Progress Bar (If Enrolled) */}
               {course.isEnrolled && (
                 <div className="space-y-1.5">
                   <div className="flex justify-between text-xs font-semibold">
-                    <span className="text-slate-600">Tiến độ bài học</span>
+                    <span className="text-slate-600">{t('progressLabel')}</span>
                     <span className="text-blue-600 font-bold">{course.progressPercentage}%</span>
                   </div>
                   <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden border border-slate-200">
@@ -297,7 +308,7 @@ export const CoursesPage: React.FC<Props> = ({ initialFilter = 'ALL', onSelectLe
                 className="text-xs font-bold text-slate-700 hover:text-blue-600 flex items-center gap-1.5 transition-colors"
               >
                 <BookOpen className="w-4 h-4" />
-                <span>Xem chi tiết danh sách bài học</span>
+                <span>{t('viewLessonsDetail')}</span>
               </button>
 
               {course.isEnrolled ? (
@@ -306,7 +317,7 @@ export const CoursesPage: React.FC<Props> = ({ initialFilter = 'ALL', onSelectLe
                   className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl shadow-2xs flex items-center gap-1.5 transition-all"
                 >
                   <KeyRound className="w-3.5 h-3.5" />
-                  <span>Vào Trang Học</span>
+                  <span>{t('goToStudy')}</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               ) : (
@@ -315,7 +326,7 @@ export const CoursesPage: React.FC<Props> = ({ initialFilter = 'ALL', onSelectLe
                   className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-2xs flex items-center gap-1.5 transition-all"
                 >
                   <KeyRound className="w-3.5 h-3.5" />
-                  <span>Ghi danh học</span>
+                  <span>{t('enrollAction')}</span>
                 </button>
               )}
             </div>

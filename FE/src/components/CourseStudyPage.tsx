@@ -48,6 +48,7 @@ import { parseDocumentUrl } from '../utils/documentHelper';
 
 interface Props {
   courseId?: string;
+  studentId?: string;
   initialActivityId?: string;
   onBack: () => void;
 }
@@ -76,6 +77,7 @@ export interface CurriculumItem {
   quizId?: string;
   assignmentId?: string;
   password?: string;
+  bodyMarkdown?: string;
 }
 
 export interface Section {
@@ -87,7 +89,6 @@ export interface Section {
   items: CurriculumItem[];
 }
 
-const DEFAULT_QUIZ_PASSWORD = 'quiz123';
 
 const getQuizAccessKey = (item: CurriculumItem) => item.quizId || item.id;
 
@@ -123,235 +124,37 @@ export interface PracticeSubmission {
   gitRepoUrl?: string;
 }
 
-const renderDocumentReaderContent = (title: string, type: ActivityType) => {
-  const isSyllabus = title.toLowerCase().includes('đề cương') || title.toLowerCase().includes('de-cuong');
-  const isTopics = title.toLowerCase().includes('đề tài') || title.toLowerCase().includes('de-tai') || title.toLowerCase().includes('btl');
-
-  if (isSyllabus) {
-    return (
-      <div className="space-y-6 text-left">
-        <div className="border-b border-slate-200 pb-5 text-center">
-          <p className="text-xs uppercase font-extrabold text-blue-700 tracking-wider">Đại học Quốc gia Hà Nội • Khoa Công nghệ Thông tin</p>
-          <h2 className="text-xl sm:text-2xl font-black text-slate-900 mt-2 uppercase">Đề cương chi tiết học phần</h2>
-          <p className="text-sm font-bold text-slate-700 mt-1">Phát triển ứng dụng Mobile & Web đa nền tảng (INT3306)</p>
-          <p className="text-xs text-slate-500 mt-0.5">Số tín chỉ: 3 (2 lý thuyết + 1 thực hành) • Giảng viên: TS. Nguyễn Văn A</p>
-        </div>
-
-        <div>
-          <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wide flex items-center gap-2 mb-2">
-            <span className="w-1.5 h-4 bg-blue-600 rounded-full inline-block"></span>
-            1. Mục tiêu học phần & Chuẩn đầu ra (CLO)
-          </h3>
-          <ul className="text-xs sm:text-sm text-slate-700 space-y-1.5 list-disc list-inside leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-200">
-            <li><strong>CLO 1:</strong> Nắm vững nguyên lý kiến trúc phần mềm Clean Architecture, Dependency Inversion và Separation of Concerns.</li>
-            <li><strong>CLO 2:</strong> Thiết kế và xây dựng hệ thống RESTful API chuẩn hóa với ASP.NET Core (.NET 8) kết nối Microsoft SQL Server.</li>
-            <li><strong>CLO 3:</strong> Xây dựng giao diện ứng dụng web hiện đại với ReactJS, TypeScript và Tailwind CSS kết nối Web API.</li>
-            <li><strong>CLO 4:</strong> Làm việc nhóm hiệu quả, quản lý mã nguồn bằng Git/GitHub, thực hiện kiểm thử và báo cáo dự án.</li>
-          </ul>
-        </div>
-
-        <div>
-          <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wide flex items-center gap-2 mb-2">
-            <span className="w-1.5 h-4 bg-blue-600 rounded-full inline-block"></span>
-            2. Kế hoạch giảng dạy chi tiết 15 tuần
-          </h3>
-          <div className="overflow-x-auto border border-slate-200 rounded-xl">
-            <table className="w-full text-xs text-left">
-              <thead className="bg-slate-100 text-slate-700 font-bold uppercase text-[11px] border-b border-slate-200">
-                <tr>
-                  <th className="p-3">Tuần</th>
-                  <th className="p-3">Nội dung bài học</th>
-                  <th className="p-3">Hoạt động & Bài tập</th>
-                  <th className="p-3">Yêu cầu chuẩn bị</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-slate-700">
-                <tr className="hover:bg-blue-50/30">
-                  <td className="p-3 font-bold text-blue-700">Tuần 1</td>
-                  <td className="p-3">Tổng quan Clean Architecture, .NET 8 Web API & RESTful Principles</td>
-                  <td className="p-3">Bài giảng SCORM, Luyện tập tạo Controller & Test Swagger</td>
-                  <td className="p-3">Cài đặt .NET 8 SDK, VS Code/Visual Studio</td>
-                </tr>
-                <tr className="hover:bg-blue-50/30">
-                  <td className="p-3 font-bold text-blue-700">Tuần 2</td>
-                  <td className="p-3">Entity Framework Core, Code-First & CSDL SQL Server</td>
-                  <td className="p-3">Thiết kế bảng Database, Migration, Seed Data bài học</td>
-                  <td className="p-3">Cài đặt Microsoft SQL Server Express</td>
-                </tr>
-                <tr className="hover:bg-blue-50/30">
-                  <td className="p-3 font-bold text-blue-700">Tuần 3</td>
-                  <td className="p-3">Xác thực người dùng: JWT Token & Phân quyền Role-based</td>
-                  <td className="p-3">Bài trắc nghiệm Đánh giá Tuần 1-3, Mở khóa đề tài BTL</td>
-                  <td className="p-3">Đăng ký nhóm Bài tập lớn (3-4 sinh viên)</td>
-                </tr>
-                <tr className="hover:bg-blue-50/30">
-                  <td className="p-3 font-bold text-blue-700">Tuần 4-6</td>
-                  <td className="p-3">Repository Pattern, Unit of Work & Validation với FluentValidation</td>
-                  <td className="p-3">Báo cáo đề cương kiến trúc dự án BTL</td>
-                  <td className="p-3">Khởi tạo Git Repository nhóm</td>
-                </tr>
-                <tr className="hover:bg-blue-50/30">
-                  <td className="p-3 font-bold text-blue-700">Tuần 7-10</td>
-                  <td className="p-3">Phát triển Frontend ReactJS, TypeScript & Gọi API qua Axios</td>
-                  <td className="p-3">Nộp bài tập tiến độ giữa kỳ</td>
-                  <td className="p-3">Ghép nối giao diện với Backend API</td>
-                </tr>
-                <tr className="hover:bg-blue-50/30">
-                  <td className="p-3 font-bold text-blue-700">Tuần 11-14</td>
-                  <td className="p-3">Tối ưu hiệu năng, Bảo mật, Viết Unit Test & Triển khai</td>
-                  <td className="p-3">Hoàn thiện mã nguồn & Viết tài liệu báo cáo</td>
-                  <td className="p-3">Chuẩn bị Slide thuyết trình</td>
-                </tr>
-                <tr className="hover:bg-blue-50/30">
-                  <td className="p-3 font-bold text-blue-700">Tuần 15</td>
-                  <td className="p-3">Bảo vệ Bài tập lớn & Tổng kết học phần</td>
-                  <td className="p-3">Vấn đáp nhóm & Chấm điểm cuối kỳ</td>
-                  <td className="p-3">Nộp toàn bộ source code + tài liệu</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div>
-          <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wide flex items-center gap-2 mb-2">
-            <span className="w-1.5 h-4 bg-blue-600 rounded-full inline-block"></span>
-            3. Phương pháp đánh giá học phần
-          </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-center">
-              <span className="text-xs text-slate-500 block">Chuyên cần</span>
-              <span className="text-lg font-black text-blue-600">10%</span>
-            </div>
-            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-center">
-              <span className="text-xs text-slate-500 block">Trắc nghiệm & Luyện tập</span>
-              <span className="text-lg font-black text-indigo-600">20%</span>
-            </div>
-            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-center">
-              <span className="text-xs text-slate-500 block">Bài tập lớn (BTL)</span>
-              <span className="text-lg font-black text-emerald-600">30%</span>
-            </div>
-            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-center">
-              <span className="text-xs text-slate-500 block">Thi cuối kỳ</span>
-              <span className="text-lg font-black text-rose-600">40%</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (isTopics) {
-    return (
-      <div className="space-y-6 text-left">
-        <div className="border-b border-slate-200 pb-5 text-center">
-          <p className="text-xs uppercase font-extrabold text-indigo-700 tracking-wider">Học phần: INT3306 - Học kỳ I (2024 - 2025)</p>
-          <h2 className="text-xl sm:text-2xl font-black text-slate-900 mt-2 uppercase">Danh sách đề tài gợi ý Bài tập lớn</h2>
-          <p className="text-xs text-slate-500 mt-1">Quy định: Nhóm từ 3 - 4 thành viên • Quản lý source code trên GitHub</p>
-        </div>
-
-        <div className="p-4 bg-indigo-50/60 border border-indigo-200 rounded-2xl text-xs text-indigo-900 space-y-1.5">
-          <strong className="block text-sm font-bold text-indigo-950">Yêu cầu công nghệ bắt buộc đối với tất cả các đề tài:</strong>
-          <ul className="list-disc list-inside space-y-1 leading-relaxed">
-            <li><strong>Backend:</strong> C# .NET 8 Web API, thiết kế theo chuẩn Clean Architecture (Domain, Application, Infrastructure, Presentation).</li>
-            <li><strong>Database:</strong> Microsoft SQL Server, quản lý bảng và truy vấn bằng Entity Framework Core (Code-First Migration).</li>
-            <li><strong>Frontend:</strong> ReactJS với TypeScript, Tailwind CSS, gọi API qua Axios và có giao diện Responsive (Mobile + Desktop).</li>
-            <li><strong>Quản lý tiến độ:</strong> Tạo Git repository công khai, phân chia commit rõ ràng theo từng thành viên trong nhóm.</li>
-          </ul>
-        </div>
-
-        <div className="space-y-4">
-          <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wide flex items-center gap-2">
-            <span className="w-1.5 h-4 bg-indigo-600 rounded-full inline-block"></span>
-            Danh mục các đề tài được phê duyệt
-          </h3>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-4 rounded-2xl border border-slate-200 bg-white hover:border-indigo-300 transition-all space-y-2">
-              <span className="px-2.5 py-0.5 rounded-md bg-blue-100 text-blue-800 font-extrabold text-[10px]">Đề tài 01</span>
-              <h4 className="font-extrabold text-sm text-slate-900">Hệ thống Quản lý Học tập Trực tuyến (LMS)</h4>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Quản lý khóa học, đề cương tuần học, phát bài giảng video YouTube, đính kèm tài liệu PDF/Word, nộp bài thực hành và tổ chức thi trắc nghiệm trực tuyến có tính thời gian & tự động chấm điểm.
-              </p>
-            </div>
-
-            <div className="p-4 rounded-2xl border border-slate-200 bg-white hover:border-indigo-300 transition-all space-y-2">
-              <span className="px-2.5 py-0.5 rounded-md bg-purple-100 text-purple-800 font-extrabold text-[10px]">Đề tài 02</span>
-              <h4 className="font-extrabold text-sm text-slate-900">Hệ thống Đặt lịch Khám & Bệnh án Điện tử</h4>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Phân quyền Bác sĩ / Bệnh nhân, quản lý chuyên khoa, đặt lịch hẹn theo khung giờ, kê đơn thuốc điện tử, theo dõi lịch sử khám chữa bệnh và xuất báo cáo PDF.
-              </p>
-            </div>
-
-            <div className="p-4 rounded-2xl border border-slate-200 bg-white hover:border-indigo-300 transition-all space-y-2">
-              <span className="px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-extrabold text-[10px]">Đề tài 03</span>
-              <h4 className="font-extrabold text-sm text-slate-900">Sàn Thương mại Điện tử E-Commerce Đa kênh</h4>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Quản lý danh mục hàng hóa, giỏ hàng, đặt hàng trực tuyến, thanh toán giả lập với mã QR/VNPAY, phân hệ quản lý kho và bảng thống kê doanh thu thời gian thực.
-              </p>
-            </div>
-
-            <div className="p-4 rounded-2xl border border-slate-200 bg-white hover:border-indigo-300 transition-all space-y-2">
-              <span className="px-2.5 py-0.5 rounded-md bg-amber-100 text-amber-800 font-extrabold text-[10px]">Đề tài 04</span>
-              <h4 className="font-extrabold text-sm text-slate-900">Nền tảng Tuyển dụng & Kết nối Thực tập sinh CNTT</h4>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Doanh nghiệp đăng tin tuyển dụng, sinh viên nộp CV (định dạng PDF/Word), bộ lọc kỹ năng ứng viên, theo dõi trạng thái hồ sơ (Chờ duyệt, Phỏng vấn, Trúng tuyển).
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // General Lesson 1 or default lecture document
+const renderDocumentReaderContent = (item: CurriculumItem) => {
   return (
     <div className="space-y-6 text-left">
       <div className="border-b border-slate-200 pb-5 text-center">
-        <p className="text-xs uppercase font-extrabold text-rose-700 tracking-wider">Học phần INT3306 • Tài liệu nghiên cứu chuyên đề</p>
-        <h2 className="text-xl sm:text-2xl font-black text-slate-900 mt-2 uppercase">{title}</h2>
-        <p className="text-xs text-slate-500 mt-1">Định dạng: {type} • Biên soạn: TS. Nguyễn Văn A</p>
-      </div>
-
-      <div className="space-y-3">
-        <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wide flex items-center gap-2">
-          <span className="w-1.5 h-4 bg-rose-600 rounded-full inline-block"></span>
-          1. Tổng quan kiến trúc Clean Architecture trong C# .NET 8
-        </h3>
-        <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
-          Clean Architecture là mẫu kiến trúc phần mềm nhấn mạnh vào nguyên tắc <strong>Tách biệt mối quan tâm (Separation of Concerns)</strong> và <strong>Đảo ngược phụ thuộc (Dependency Inversion)</strong>. Trọng tâm của hệ thống là mô hình miền (Domain Model), các thành phần công nghệ như Cơ sở dữ liệu, Framework, Giao diện người dùng đều là các phụ thuộc bên ngoài và có thể dễ dàng thay thế hoặc bảo trì mà không làm ảnh hưởng đến lõi nghiệp vụ.
+        <p className="text-xs uppercase font-extrabold text-blue-700 tracking-wider">
+          Tài liệu học phần • {item.type}
         </p>
+        <h2 className="text-xl sm:text-2xl font-black text-slate-900 mt-2 uppercase">
+          {item.title}
+        </h2>
+        {item.subtitle && (
+          <p className="text-xs text-slate-500 mt-1">{item.subtitle}</p>
+        )}
       </div>
 
-      <div className="space-y-3">
-        <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wide flex items-center gap-2">
-          <span className="w-1.5 h-4 bg-rose-600 rounded-full inline-block"></span>
-          2. Các tầng chính trong hệ thống
-        </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-          <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
-            <strong className="text-blue-700 font-bold block text-sm">Tầng Domain (Lõi)</strong>
-            <p className="text-slate-600 leading-relaxed">Chứa các Entities (User, Course, Lesson), Value Objects, Domain Exceptions và quy tắc nghiệp vụ cốt lõi không phụ thuộc vào bất kỳ thư viện bên ngoài nào.</p>
+      <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-4">
+        {item.bodyMarkdown ? (
+          <div className="prose prose-slate max-w-none text-slate-800 text-sm leading-relaxed whitespace-pre-line">
+            {item.bodyMarkdown}
           </div>
-          <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
-            <strong className="text-indigo-700 font-bold block text-sm">Tầng Application</strong>
-            <p className="text-slate-600 leading-relaxed">Chứa các Use Cases, Interfaces (IRepository, IJwtProvider), Data Transfer Objects (DTOs), và logic điều phối quy trình xử lý.</p>
+        ) : (
+          <div className="text-center py-8 text-slate-500 text-sm italic">
+            Chưa có nội dung văn bản cho bài học này. Bạn có thể xem hoặc tải tài liệu đính kèm bên trên.
           </div>
-          <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
-            <strong className="text-emerald-700 font-bold block text-sm">Tầng Infrastructure</strong>
-            <p className="text-slate-600 leading-relaxed">Cài đặt kết nối SQL Server (AppDbContext), cấu hình Entity Framework Core, lưu trữ file và tích hợp các dịch vụ bên thứ ba.</p>
-          </div>
-          <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
-            <strong className="text-purple-700 font-bold block text-sm">Tầng Presentation (Web API)</strong>
-            <p className="text-slate-600 leading-relaxed">Xây dựng Controllers (CoursesController, LessonsController), Middleware xử lý lỗi, Dependency Injection container và Swagger documentation.</p>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );
 };
 
-export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, onBack }) => {
+export const CourseStudyPage: React.FC<Props> = ({ courseId, studentId, initialActivityId, onBack }) => {
   const [quizPasswordInput, setQuizPasswordInput] = useState('');
   const [quizPasswordError, setQuizPasswordError] = useState('');
   const [unlockedQuizKeys, setUnlockedQuizKeys] = useState<Record<string, boolean>>({});
@@ -370,6 +173,7 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
   const [selectedActivity, setSelectedActivity] = useState<CurriculumItem | null>(null);
 
   const getStudentId = () => {
+    if (studentId) return studentId;
     try {
       const userStr = localStorage.getItem('user_info');
       if (userStr) return JSON.parse(userStr).userId;
@@ -378,6 +182,29 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
   };
 
   const targetCourseId = courseId || '44444444-4444-4444-4444-444444444444';
+
+  // Quick course grades modal
+  const [showCourseGradesModal, setShowCourseGradesModal] = useState(false);
+  const [courseGrades, setCourseGrades] = useState<any>(null);
+  const [loadingGrades, setLoadingGrades] = useState(false);
+
+  const fetchCourseGrades = async () => {
+    try {
+      setLoadingGrades(true);
+      const sId = getStudentId();
+      const res = await api.get(`/student/courses/${targetCourseId}/grades?studentId=${sId}`);
+      setCourseGrades(res.data);
+    } catch (err) {
+      console.error('Lỗi tải bảng điểm khóa học:', err);
+    } finally {
+      setLoadingGrades(false);
+    }
+  };
+
+  const handleOpenCourseGrades = () => {
+    setShowCourseGradesModal(true);
+    fetchCourseGrades();
+  };
 
   // Toggle item completion state (To do <-> Done) with optimistic local state update
   const toggleItemCompletion = async (itemId: string, e?: React.MouseEvent) => {
@@ -430,7 +257,9 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
           isCompleted: i.isCompleted,
           isLocked: i.isLocked,
           quizId: i.quizId,
-          assignmentId: i.assignmentId
+          assignmentId: i.assignmentId,
+          password: i.password,
+          bodyMarkdown: i.bodyMarkdown
         }))
       }));
 
@@ -465,16 +294,14 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
     fetchCourseData();
   }, [targetCourseId]);
 
-  // Practice Submissions State (persisted to localStorage & synced with backend)
-  const [practiceSubmissions, setPracticeSubmissions] = useState<Record<string, PracticeSubmission>>(() => {
+  // Practice Submissions State (loaded and managed directly via backend database API, no localStorage)
+  const [practiceSubmissions, setPracticeSubmissions] = useState<Record<string, PracticeSubmission>>({});
+
+  useEffect(() => {
     try {
-      const saved = localStorage.getItem('lms_practice_submissions');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.error('Error reading submissions from localStorage', e);
-    }
-    return {};
-  });
+      localStorage.removeItem('lms_practice_submissions');
+    } catch {}
+  }, []);
 
   const [isSubmittingPractice, setIsSubmittingPractice] = useState(false);
 
@@ -590,10 +417,12 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
     event.preventDefault();
     if (!selectedActivity || selectedActivity.type !== 'QUIZ') return;
 
-    const expectedPassword = selectedActivity.password || DEFAULT_QUIZ_PASSWORD;
-    if (quizPasswordInput.trim() !== expectedPassword) {
-      setQuizPasswordError('Mật khẩu bài trắc nghiệm chưa đúng. Vui lòng kiểm tra lại.');
-      return;
+    const expectedPassword = selectedActivity.password?.trim();
+    if (expectedPassword) {
+      if (quizPasswordInput.trim() !== expectedPassword) {
+        setQuizPasswordError('Mật khẩu bài trắc nghiệm chưa đúng. Vui lòng kiểm tra lại.');
+        return;
+      }
     }
 
     setUnlockedQuizKeys((prev) => ({
@@ -604,26 +433,13 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
     setQuizPasswordError('');
   };
 
-  // Handle Quiz Passed callback -> Unlocks Week 2 & Marks completed
+  // Handle Quiz Passed callback -> Marks completed & Refreshes dynamic course progress from database
   const handleQuizPassed = () => {
     if (selectedActivity) {
       toggleItemCompletion(selectedActivity.id);
     }
-
-    setSections((prev) =>
-      prev.map((sec) => {
-        if (sec.id === 'section-week2') {
-          return {
-            ...sec,
-            isLocked: false,
-            isExpanded: true,
-            items: sec.items.map((item) => ({ ...item, isLocked: false }))
-          };
-        }
-        return sec;
-      })
-    );
-    alert('🎉 Chúc mừng! Bạn đã hoàn thành xuất sắc bài trắc nghiệm. Tuần 2 (Week 2) đã được mở khóa thành công!');
+    fetchCourseData();
+    alert('🎉 Chúc mừng! Bạn đã hoàn thành xuất sắc bài trắc nghiệm. Tiến độ học tập đã được cập nhật thành công!');
   };
 
   // Practice helper functions
@@ -735,11 +551,6 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
 
       const updated = { ...practiceSubmissions, [activityId]: record };
       setPracticeSubmissions(updated);
-      try {
-        localStorage.setItem('lms_practice_submissions', JSON.stringify(updated));
-      } catch (e) {
-        console.error(e);
-      }
 
       // Automatically mark the activity as completed if not yet completed
       if (selectedActivity && !selectedActivity.isCompleted) {
@@ -749,47 +560,10 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
       setStagedFiles([]);
       setIsEditingPractice(false);
       alert('🎉 Chúc mừng! Bạn đã nộp bài tập thực hành thành công lên hệ thống và đã lưu vào CSDL.');
-    } catch (err) {
+    } catch (err: any) {
       console.error('Lỗi khi nộp bài tập:', err);
-      if ((err as any)?.response) {
-        alert((err as any).response.data?.message || 'Khong the luu bai nop tren may chu. Vui long thu lai.');
-        return;
-      }
-      // Fallback
-      const newFilesMeta: SubmittedFileMeta[] = stagedFiles.map((f) => ({
-        name: f.name,
-        size: f.size,
-        type: f.type || 'application/octet-stream',
-        lastModified: f.lastModified
-      }));
-      const finalFiles = existing && stagedFiles.length === 0
-        ? existing.files
-        : [...(existing?.files || []), ...newFilesMeta];
-
-      const record: PracticeSubmission = {
-        activityId,
-        submissionId: existing?.submissionId,
-        status: 'SUBMITTED',
-        gradingStatus: existing?.gradingStatus || 'PENDING',
-        submittedAt: new Date().toLocaleString('vi-VN'),
-        files: finalFiles,
-        note: stagedNote.trim() || existing?.note || '',
-        gitRepoUrl: stagedGitUrl.trim() || existing?.gitRepoUrl || ''
-      };
-
-      const updated = { ...practiceSubmissions, [activityId]: record };
-      setPracticeSubmissions(updated);
-      try {
-        localStorage.setItem('lms_practice_submissions', JSON.stringify(updated));
-      } catch (e) {
-        console.error(e);
-      }
-      if (selectedActivity && !selectedActivity.isCompleted) {
-        toggleItemCompletion(activityId);
-      }
-      setStagedFiles([]);
-      setIsEditingPractice(false);
-      alert('🎉 Đã ghi nhận bài nộp!');
+      const msg = err?.response?.data?.message || err?.message || 'Không thể lưu bài nộp lên máy chủ CSDL. Vui lòng thử lại.';
+      alert('Lỗi nộp bài: ' + msg);
     } finally {
       setIsSubmittingPractice(false);
     }
@@ -809,8 +583,8 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
       }
     } catch (err: any) {
       if (err?.response?.status !== 404) {
-        console.error('Loi xoa bai nop:', err);
-        alert('Khong the xoa bai nop tren may chu. Vui long thu lai.');
+        console.error('Lỗi xóa bài nộp:', err);
+        alert('Không thể xóa bài nộp trên máy chủ. Vui lòng thử lại.');
         return;
       }
     }
@@ -818,9 +592,6 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
     const updated = { ...practiceSubmissions };
     delete updated[activityId];
     setPracticeSubmissions(updated);
-    try {
-      localStorage.setItem('lms_practice_submissions', JSON.stringify(updated));
-    } catch (e) {}
     setStagedFiles([]);
     setStagedGitUrl('');
     setStagedNote('');
@@ -1413,7 +1184,7 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
                         {item.isLocked && (
                           <Lock className="w-3 h-3 flex-shrink-0 text-slate-400" />
                         )}
-                        {item.type === 'QUIZ' && !item.isLocked && !unlockedQuizKeys[getQuizAccessKey(item)] && (
+                        {item.type === 'QUIZ' && !item.isLocked && !!item.password?.trim() && !unlockedQuizKeys[getQuizAccessKey(item)] && (
                           <KeyRound className={`w-3 h-3 flex-shrink-0 ${isCurrent ? 'text-white' : 'text-indigo-500'}`} />
                         )}
                       </button>
@@ -1456,21 +1227,30 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
           <div className="min-w-0 border-l border-slate-200 pl-3">
             <div className="flex items-center gap-2">
               <span className="bg-blue-100 text-blue-700 text-[10px] font-black uppercase px-2 py-0.5 rounded-md">
-                INT3306
+                {course?.courseCode || 'KHÓA HỌC'}
               </span>
               <span className="text-xs text-slate-500 font-medium hidden sm:inline truncate">
-                Lập trình Web C# .NET 8 & ReactJS
+                {course?.teacherName ? `Giảng viên: ${course.teacherName}` : (course?.description || '')}
               </span>
             </div>
 
             <h1 className="font-extrabold text-xs sm:text-sm text-slate-900 leading-tight truncate max-w-[200px] sm:max-w-md lg:max-w-lg mt-0.5">
-              20241_Phát triển ứng dụng Mobile đa nền tảng (2+1)_12626W.1
+              {course?.title || 'Đang tải khóa học...'}
             </h1>
           </div>
         </div>
 
         {/* Right Section: Progress Indicator & Quick Nav Controls */}
         <div className="flex items-center gap-3">
+          <button
+            onClick={handleOpenCourseGrades}
+            className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border bg-white hover:bg-blue-50 text-blue-700 border-blue-200 shadow-2xs"
+            title="Xem bảng điểm chi tiết của môn học này"
+          >
+            <Award className="w-3.5 h-3.5 text-blue-600" />
+            <span className="hidden md:inline">Bảng điểm môn học</span>
+          </button>
+
           {selectedActivity ? (
             <div className="flex items-center gap-2">
               {/* Mark Completed Toggle Button */}
@@ -1648,7 +1428,7 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
               {/* 1. QUIZ DEDICATED PAGE */}
               {selectedActivity.type === 'QUIZ' && (
                 <div className="w-full space-y-6">
-                  {unlockedQuizKeys[getQuizAccessKey(selectedActivity)] ? (
+                  {!selectedActivity.password?.trim() || unlockedQuizKeys[getQuizAccessKey(selectedActivity)] ? (
                     <PostLessonQuiz
                       quizId={selectedActivity.quizId}
                       onBack={() => setSelectedActivity(null)}
@@ -1919,7 +1699,7 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
                       ) : (
                         /* Reader View */
                         <div className="p-6 sm:p-10 max-w-4xl mx-auto overflow-y-auto">
-                          {renderDocumentReaderContent(selectedActivity.title, selectedActivity.type)}
+                          {renderDocumentReaderContent(selectedActivity)}
                         </div>
                       )}
                     </div>
@@ -2048,7 +1828,7 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
                   Phát triển ứng dụng Mobile & Web đa nền tảng
                 </h2>
                 <p className="text-xs sm:text-sm text-slate-600 max-w-2xl leading-relaxed">
-                  Mã học phần: <strong>INT3306</strong> • Giảng viên: <strong>TS. Nguyễn Văn A</strong> • Chọn từng bài học ở danh mục bên trái hoặc bên dưới để mở giao diện học tập hoặc làm bài trắc nghiệm riêng.
+                  Mã học phần: <strong>{course?.courseCode || '...'}</strong> • Giảng viên: <strong>{course?.teacherName || 'Giảng viên'}</strong> • Chọn từng bài học ở danh mục bên trái hoặc bên dưới để mở giao diện học tập hoặc làm bài trắc nghiệm riêng.
                 </p>
               </div>
 
@@ -2140,7 +1920,7 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
                                       <span className="text-[11px] text-slate-400">
                                         Loại: {item.type} {item.subtitle ? `• ${item.subtitle}` : ''}
                                       </span>
-                                      {item.type === 'QUIZ' && !unlockedQuizKeys[getQuizAccessKey(item)] && (
+                                      {item.type === 'QUIZ' && !item.isLocked && !!item.password?.trim() && !unlockedQuizKeys[getQuizAccessKey(item)] && (
                                         <span className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-700">
                                           <KeyRound className="h-3 w-3" />
                                           Cần mật khẩu
@@ -2219,6 +1999,160 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, initialActivityId, 
           )}
         </main>
       </div>
+
+      {/* Course Grades Quick Modal */}
+      {showCourseGradesModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 w-full max-w-2xl rounded-3xl shadow-2xl p-6 text-slate-900 space-y-5 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-blue-50 text-blue-600 rounded-xl border border-blue-200">
+                  <Award className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base text-slate-900">
+                    Bảng điểm học phần: {courseGrades?.courseCode || course?.courseCode}
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    {courseGrades?.courseTitle || course?.title} &bull; GV: {courseGrades?.teacherName || course?.teacherName}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowCourseGradesModal(false)}
+                className="text-slate-400 hover:text-slate-600 font-bold p-1 rounded-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            {loadingGrades ? (
+              <div className="py-12 text-center text-slate-400 text-xs flex flex-col items-center gap-2">
+                <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                <span>Đang tải bảng điểm từ cơ sở dữ liệu...</span>
+              </div>
+            ) : courseGrades ? (
+              <div className="space-y-5 text-xs">
+                {/* 4 Score Cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 text-center">
+                    <span className="text-[11px] font-bold text-slate-500 block">Chuyên cần ({courseGrades.weightAttendance}%)</span>
+                    <span className="text-lg font-black text-slate-800 mt-1 block">
+                      {courseGrades.attendanceScore.toFixed(1)} <span className="text-xs text-slate-400">/ 10</span>
+                    </span>
+                  </div>
+
+                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 text-center">
+                    <span className="text-[11px] font-bold text-slate-500 block">Bài tập / TH ({courseGrades.weightAssignments}%)</span>
+                    <span className="text-lg font-black text-slate-800 mt-1 block">
+                      {courseGrades.assignmentScore.toFixed(1)} <span className="text-xs text-slate-400">/ 10</span>
+                    </span>
+                  </div>
+
+                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 text-center">
+                    <span className="text-[11px] font-bold text-slate-500 block">Thi cuối kỳ ({courseGrades.weightFinalExam}%)</span>
+                    <span className="text-lg font-black text-slate-800 mt-1 block">
+                      {courseGrades.examScore.toFixed(1)} <span className="text-xs text-slate-400">/ 10</span>
+                    </span>
+                  </div>
+
+                  <div className={`p-3 rounded-2xl border text-center ${courseGrades.isPassed ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-rose-50 border-rose-200 text-rose-900'}`}>
+                    <span className="text-[11px] font-bold block opacity-80">Điểm tổng kết</span>
+                    <div className="flex items-center justify-center gap-1.5 mt-1">
+                      <span className="text-lg font-black">{courseGrades.totalScore.toFixed(1)}</span>
+                      <span className="text-xs font-bold px-1.5 py-0.5 rounded-md bg-white/80 border border-current">
+                        {courseGrades.letterGrade} ({courseGrades.gpa4.toFixed(1)})
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Status Notice */}
+                <div className="flex items-center justify-between p-3 bg-blue-50/70 border border-blue-200 rounded-xl text-blue-900">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold">Trạng thái:</span>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-extrabold ${courseGrades.isPassed ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+                      {courseGrades.isFinalized ? (courseGrades.isPassed ? 'ĐÃ ĐẠT (HOÀN THÀNH)' : 'CHƯA ĐẠT') : 'ĐANG HỌC (ĐIỂM TẠM TÍNH)'}
+                    </span>
+                  </div>
+                  <span className="text-xs text-slate-500">
+                    Tiến độ hoàn thành: <strong className="text-slate-800">{courseGrades.progressPercentage}%</strong>
+                  </span>
+                </div>
+
+                {/* Assignments Breakdown Table */}
+                <div className="space-y-2">
+                  <h4 className="font-bold text-slate-800 flex items-center gap-1.5">
+                    <FileText className="w-4 h-4 text-blue-600" />
+                    Chi tiết Bài tập & Luyện tập đã nộp:
+                  </h4>
+                  {courseGrades.assignments && courseGrades.assignments.length > 0 ? (
+                    <div className="border border-slate-200 rounded-2xl overflow-hidden">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold">
+                          <tr>
+                            <th className="p-3">Tên bài tập</th>
+                            <th className="p-3">Hạn nộp</th>
+                            <th className="p-3 text-center">Trạng thái</th>
+                            <th className="p-3 text-right">Điểm số</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {courseGrades.assignments.map((a: any) => (
+                            <tr key={a.id} className="hover:bg-slate-50/60">
+                              <td className="p-3">
+                                <span className="font-bold text-slate-800 block">{a.title}</span>
+                                {a.feedback && (
+                                  <span className="text-[11px] text-blue-700 italic block mt-0.5">
+                                    GV phản hồi: "{a.feedback}"
+                                  </span>
+                                )}
+                              </td>
+                              <td className="p-3 text-slate-500">{a.dueDate}</td>
+                              <td className="p-3 text-center">
+                                {a.isSubmitted ? (
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">
+                                    Đã nộp ({a.submittedAt})
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">
+                                    Chưa nộp
+                                  </span>
+                                )}
+                              </td>
+                              <td className="p-3 text-right font-bold text-slate-900">
+                                {a.grade !== null && a.grade !== undefined ? (
+                                  <span className="text-emerald-700 text-sm">{a.grade} / {a.maxScore}</span>
+                                ) : (
+                                  <span className="text-slate-400 font-normal">Chưa chấm</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-400 italic">Môn học này hiện chưa có bài tập nộp riêng.</p>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <p className="text-center text-slate-500 py-6 text-xs">Không tìm thấy thông tin bảng điểm của môn học này.</p>
+            )}
+
+            <div className="flex justify-end pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowCourseGradesModal(false)}
+                className="px-5 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold rounded-xl text-xs"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

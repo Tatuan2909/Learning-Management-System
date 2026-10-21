@@ -48,6 +48,7 @@ export interface LessonSummary {
   quizPassed: boolean;
   quizId?: string;
   assignmentId?: string;
+  password?: string;
 }
 
 export interface SectionSummary {
@@ -162,3 +163,79 @@ export interface AssignmentDetail {
   allowedExtensions?: string;
   mySubmission?: SubmissionDetail;
 }
+
+export interface QuizReviewOption {
+  optionId: string;
+  optionText: string;
+  isCorrect: boolean;
+  explanation?: string;
+}
+
+export interface QuizReviewQuestion {
+  questionId: string;
+  questionText: string;
+  questionType: string;
+  points: number;
+  pointsEarned: number;
+  isCorrect: boolean;
+  explanation?: string;
+  selectedOptionIds: string[];
+  options: QuizReviewOption[];
+}
+
+export interface QuizReview {
+  attemptId: string;
+  quizId: string;
+  title: string;
+  attemptNumber: number;
+  scoreAchieved: number;
+  passingScore: number;
+  maxScore: number;
+  isPassed: boolean;
+  submittedAt?: string;
+  questions: QuizReviewQuestion[];
+}
+
+export interface QuizAttemptSummary {
+  attemptId: string;
+  quizId: string;
+  attemptNumber: number;
+  scoreAchieved: number;
+  passingScore: number;
+  maxScore: number;
+  isPassed: boolean;
+  submittedAt?: string;
+}
+
+export interface AdminDepartment {
+  id: string;
+  code: string;
+  name: string;
+  deanName: string;
+  email: string;
+  phone: string;
+  officeLocation: string;
+  description: string;
+  majorsCount: number;
+  majors?: { id: string; code: string; name: string }[];
+  teachersCount: number;
+  studentsCount: number;
+  createdAt: string;
+}
+
+export interface AdminMajor {
+  id: string;
+  departmentId: string;
+  departmentCode: string;
+  departmentName: string;
+  code: string;
+  name: string;
+  degreeLevel: string;
+  totalCredits: number;
+  durationYears: number;
+  description: string;
+  studentsCount: number;
+  createdAt: string;
+}
+
+

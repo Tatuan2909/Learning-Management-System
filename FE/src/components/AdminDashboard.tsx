@@ -20,15 +20,25 @@ import {
   Layers,
   HardDrive,
   FileText,
-  KeyRound
+  KeyRound,
+  Edit3,
+  Building2,
+  GraduationCap,
+  Trash2,
+  Mail,
+  Phone,
+  MapPin,
+  Award
 } from 'lucide-react';
-import { AuthUser } from '../types';
+import { AuthUser, AdminDepartment, AdminMajor } from '../types';
 import api from '../api/axios';
+
+export type AdminTabType = 'overview' | 'users' | 'departments' | 'majors' | 'courses' | 'logs' | 'settings';
 
 interface Props {
   user: AuthUser;
-  activeTab?: 'overview' | 'users' | 'courses' | 'logs' | 'settings';
-  onTabChange?: (tab: 'overview' | 'users' | 'courses' | 'logs' | 'settings') => void;
+  activeTab?: AdminTabType;
+  onTabChange?: (tab: AdminTabType) => void;
 }
 
 interface ManagedUser {
@@ -64,10 +74,10 @@ interface AuditLog {
 }
 
 export const AdminDashboard: React.FC<Props> = ({ user, activeTab: propActiveTab, onTabChange }) => {
-  const [internalActiveTab, setInternalActiveTab] = useState<'overview' | 'users' | 'courses' | 'logs' | 'settings'>('overview');
+  const [internalActiveTab, setInternalActiveTab] = useState<AdminTabType>('overview');
 
   const activeTab = propActiveTab !== undefined ? propActiveTab : internalActiveTab;
-  const setActiveTab = (tab: 'overview' | 'users' | 'courses' | 'logs' | 'settings') => {
+  const setActiveTab = (tab: AdminTabType) => {
     if (onTabChange) {
       onTabChange(tab);
     } else {
@@ -87,12 +97,35 @@ export const AdminDashboard: React.FC<Props> = ({ user, activeTab: propActiveTab
   const [newUserCode, setNewUserCode] = useState('');
   const [newUserClass, setNewUserClass] = useState('');
 
+  // Edit User Modal State
+  const [editingUser, setEditingUser] = useState<ManagedUser | null>(null);
+  const [editUserName, setEditUserName] = useState('');
+  const [editUserEmail, setEditUserEmail] = useState('');
+  const [editUserRole, setEditUserRole] = useState<'STUDENT' | 'TEACHER' | 'ADMIN'>('STUDENT');
+  const [editUserCode, setEditUserCode] = useState('');
+  const [editUserClass, setEditUserClass] = useState('');
+  const [savingUser, setSavingUser] = useState(false);
+
+  // Reset Password Modal State
+  const [resettingUser, setResettingUser] = useState<ManagedUser | null>(null);
+  const [newPasswordInput, setNewPasswordInput] = useState('');
+  const [savingPassword, setSavingPassword] = useState(false);
+
   // Add Course Modal State
   const [showAddCourseModal, setShowAddCourseModal] = useState(false);
   const [newCourseCode, setNewCourseCode] = useState('');
   const [newCourseTitle, setNewCourseTitle] = useState('');
-  const [newCourseDept, setNewCourseDept] = useState('Khoa Công nghệ Thông tin');
-  const [newCourseTeacher, setNewCourseTeacher] = useState('TS. Nguyễn Văn A');
+  const [newCourseDept, setNewCourseDept] = useState('');
+  const [newCourseTeacher, setNewCourseTeacher] = useState('');
+
+  // Edit Course Modal State
+  const [editingCourse, setEditingCourse] = useState<AdminCourse | null>(null);
+  const [editCourseCode, setEditCourseCode] = useState('');
+  const [editCourseTitle, setEditCourseTitle] = useState('');
+  const [editCourseDept, setEditCourseDept] = useState('');
+  const [editCourseTeacher, setEditCourseTeacher] = useState('');
+  const [editCourseStatus, setEditCourseStatus] = useState<'ACTIVE' | 'ARCHIVED'>('ACTIVE');
+  const [savingCourse, setSavingCourse] = useState(false);
 
   // Settings State
   const [academicYear, setAcademicYear] = useState('2024 - 2025');
@@ -102,34 +135,104 @@ export const AdminDashboard: React.FC<Props> = ({ user, activeTab: propActiveTab
   // Dynamic state loaded from real database
   const [usersList, setUsersList] = useState<ManagedUser[]>([]);
   const [coursesList, setCoursesList] = useState<AdminCourse[]>([]);
+  const [departmentsList, setDepartmentsList] = useState<AdminDepartment[]>([]);
+  const [majorsList, setMajorsList] = useState<AdminMajor[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [overviewMetrics, setOverviewMetrics] = useState<{
     totalUsers: number;
     totalCourses: number;
     totalEnrollments: number;
     totalSubmissions: number;
+    totalDepartments?: number;
+    totalMajors?: number;
   } | null>(null);
   const [loadingData, setLoadingData] = useState<boolean>(false);
+
+  // Departments & Majors search/filter
+  const [deptSearchTerm, setDeptSearchTerm] = useState('');
+  const [majorSearchTerm, setMajorSearchTerm] = useState('');
+  const [selectedDeptFilterForMajors, setSelectedDeptFilterForMajors] = useState<string>('ALL');
+
+  // Add/Edit Department Modal State
+  const [showAddDeptModal, setShowAddDeptModal] = useState(false);
+  const [editingDept, setEditingDept] = useState<AdminDepartment | null>(null);
+  const [deptCodeInput, setDeptCodeInput] = useState('');
+  const [deptNameInput, setDeptNameInput] = useState('');
+  const [deptDeanInput, setDeptDeanInput] = useState('');
+  const [deptEmailInput, setDeptEmailInput] = useState('');
+  const [deptPhoneInput, setDeptPhoneInput] = useState('');
+  const [deptLocationInput, setDeptLocationInput] = useState('');
+  const [deptDescInput, setDeptDescInput] = useState('');
+  const [savingDept, setSavingDept] = useState(false);
+
+  // Add/Edit Major Modal State
+  const [showAddMajorModal, setShowAddMajorModal] = useState(false);
+  const [editingMajor, setEditingMajor] = useState<AdminMajor | null>(null);
+  const [majorDeptIdInput, setMajorDeptIdInput] = useState('');
+  const [majorCodeInput, setMajorCodeInput] = useState('');
+  const [majorNameInput, setMajorNameInput] = useState('');
+  const [majorDegreeInput, setMajorDegreeInput] = useState('Đại học Chính quy');
+  const [majorCreditsInput, setMajorCreditsInput] = useState(135);
+  const [majorYearsInput, setMajorYearsInput] = useState(4.0);
+  const [majorDescInput, setMajorDescInput] = useState('');
+  const [savingMajor, setSavingMajor] = useState(false);
 
   // Fetch admin overview and datasets from real SQL database
   const fetchAdminData = async () => {
     try {
       setLoadingData(true);
-      const [overviewRes, usersRes, coursesRes, logsRes] = await Promise.all([
+      const [overviewRes, usersRes, deptsRes, majorsRes, coursesRes, logsRes, maintRes] = await Promise.all([
         api.get('/admin/overview'),
         api.get<ManagedUser[]>('/admin/users'),
+        api.get<AdminDepartment[]>('/admin/departments'),
+        api.get<AdminMajor[]>('/admin/majors'),
         api.get<AdminCourse[]>('/admin/courses'),
-        api.get<AuditLog[]>('/admin/logs')
+        api.get<AuditLog[]>('/admin/logs'),
+        api.get('/admin/maintenance').catch(() => ({ data: { isMaintenance: false } }))
       ]);
 
       setOverviewMetrics(overviewRes.data);
-      setUsersList(usersRes.data || []);
+      const users = usersRes.data || [];
+      const depts = deptsRes.data || [];
+      setUsersList(users);
+      setDepartmentsList(depts);
+      setMajorsList(majorsRes.data || []);
       setCoursesList(coursesRes.data || []);
       setAuditLogs(logsRes.data || []);
+      if (depts.length > 0 && !newCourseDept) {
+        setNewCourseDept(depts[0].name);
+      }
+      const firstTeacher = users.find((u) => u.role === 'TEACHER');
+      if (firstTeacher && !newCourseTeacher) {
+        setNewCourseTeacher(firstTeacher.fullName);
+      }
+      if (maintRes?.data?.isMaintenance !== undefined) {
+        setMaintenanceMode(Boolean(maintRes.data.isMaintenance));
+      }
     } catch (err) {
       console.error('Lỗi tải dữ liệu Quản trị từ CSDL:', err);
     } finally {
       setLoadingData(false);
+    }
+  };
+
+  const handleToggleMaintenance = async () => {
+    const nextMode = !maintenanceMode;
+    try {
+      const res = await api.post('/admin/maintenance', {
+        isMaintenance: nextMode,
+        message: nextMode
+          ? 'Hệ thống đang trong chế độ bảo trì định kỳ để nâng cấp cơ sở dữ liệu. Sinh viên và Giảng viên tạm thời không thể đăng nhập. Vui lòng quay lại sau.'
+          : ''
+      });
+      setMaintenanceMode(res.data.isMaintenance);
+      if (res.data.isMaintenance) {
+        alert('Đã BẬT chế độ bảo trì hệ thống! Sinh viên và giảng viên sẽ không thể đăng nhập cho đến khi bảo trì hoàn tất.');
+      } else {
+        alert('Đã TẮT chế độ bảo trì hệ thống! Hệ thống đã mở lại hoạt động bình thường cho toàn bộ người dùng.');
+      }
+    } catch (err: any) {
+      alert('Lỗi cập nhật chế độ bảo trì: ' + (err.response?.data?.message || err.message));
     }
   };
 
@@ -181,9 +284,60 @@ export const AdminDashboard: React.FC<Props> = ({ user, activeTab: propActiveTab
     }
   };
 
-  // Reset User Password Simulator
-  const handleResetPassword = (targetUser: ManagedUser) => {
-    alert(`Đã gửi liên kết đặt lại mật khẩu tạm thời đến email: ${targetUser.email}`);
+  const handleStartEditUser = (u: ManagedUser) => {
+    setEditingUser(u);
+    setEditUserName(u.fullName);
+    setEditUserEmail(u.email);
+    setEditUserRole(u.role);
+    setEditUserCode(u.code);
+    setEditUserClass(u.departmentOrClass);
+  };
+
+  const handleUpdateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+    try {
+      setSavingUser(true);
+      const res = await api.put(`/admin/users/${editingUser.id}`, {
+        fullName: editUserName,
+        email: editUserEmail,
+        role: editUserRole,
+        code: editUserCode,
+        departmentOrClass: editUserClass
+      });
+
+      setUsersList((prev) =>
+        prev.map((u) => (u.id === editingUser.id ? { ...u, ...res.data } : u))
+      );
+      setEditingUser(null);
+      alert('Đã cập nhật thông tin người dùng thành công vào CSDL!');
+    } catch (err: any) {
+      alert('Lỗi cập nhật: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setSavingUser(false);
+    }
+  };
+
+  const handleStartResetPassword = (u: ManagedUser) => {
+    setResettingUser(u);
+    setNewPasswordInput('');
+  };
+
+  const handleExecuteResetPassword = async () => {
+    if (!resettingUser) return;
+    try {
+      setSavingPassword(true);
+      const res = await api.post(`/admin/users/${resettingUser.id}/reset-password`, {
+        newPassword: newPasswordInput.trim() || undefined
+      });
+      alert(res.data.message || `Đã đặt lại mật khẩu thành công!`);
+      setResettingUser(null);
+      setNewPasswordInput('');
+    } catch (err: any) {
+      alert('Lỗi đặt lại mật khẩu: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setSavingPassword(false);
+    }
   };
 
   // Handle Add Course into database
@@ -208,6 +362,266 @@ export const AdminDashboard: React.FC<Props> = ({ user, activeTab: propActiveTab
       alert('Lỗi thêm khóa học: ' + (err.response?.data?.message || err.message));
     }
   };
+
+  const handleStartEditCourse = (c: AdminCourse) => {
+    setEditingCourse(c);
+    setEditCourseCode(c.courseCode);
+    setEditCourseTitle(c.title);
+    setEditCourseDept(c.department);
+    setEditCourseTeacher(c.teacherName);
+    setEditCourseStatus(c.status);
+  };
+
+  const handleUpdateCourse = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCourse) return;
+    try {
+      setSavingCourse(true);
+      const res = await api.put(`/admin/courses/${editingCourse.id}`, {
+        courseCode: editCourseCode.trim().toUpperCase(),
+        title: editCourseTitle.trim(),
+        isPublished: editCourseStatus === 'ACTIVE'
+      });
+
+      setCoursesList((prev) =>
+        prev.map((c) =>
+          c.id === editingCourse.id
+            ? {
+                ...c,
+                courseCode: res.data.courseCode || editCourseCode.trim().toUpperCase(),
+                title: res.data.title || editCourseTitle.trim(),
+                status: res.data.status || editCourseStatus,
+                department: editCourseDept || c.department,
+                teacherName: editCourseTeacher || c.teacherName
+              }
+            : c
+        )
+      );
+      setEditingCourse(null);
+      alert('Cập nhật khóa học thành công vào CSDL!');
+    } catch (err: any) {
+      alert('Lỗi cập nhật khóa học: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setSavingCourse(false);
+    }
+  };
+
+  const handleToggleCourseStatus = async (course: AdminCourse) => {
+    try {
+      const nextPublished = course.status !== 'ACTIVE';
+      const res = await api.put(`/admin/courses/${course.id}`, {
+        isPublished: nextPublished
+      });
+      setCoursesList((prev) =>
+        prev.map((item) =>
+          item.id === course.id ? { ...item, status: res.data.status } : item
+        )
+      );
+      alert(
+        nextPublished
+          ? `Đã kích hoạt lại môn học ${course.courseCode}!`
+          : `Đã chuyển môn học ${course.courseCode} vào trạng thái lưu trữ!`
+      );
+    } catch (err: any) {
+      alert('Lỗi thay đổi trạng thái khóa học: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
+  // Department Handlers
+  const handleOpenAddDept = () => {
+    setEditingDept(null);
+    setDeptCodeInput('');
+    setDeptNameInput('');
+    setDeptDeanInput('');
+    setDeptEmailInput('');
+    setDeptPhoneInput('');
+    setDeptLocationInput('');
+    setDeptDescInput('');
+    setShowAddDeptModal(true);
+  };
+
+  const handleOpenEditDept = (dept: AdminDepartment) => {
+    setEditingDept(dept);
+    setDeptCodeInput(dept.code);
+    setDeptNameInput(dept.name);
+    setDeptDeanInput(dept.deanName || '');
+    setDeptEmailInput(dept.email || '');
+    setDeptPhoneInput(dept.phone || '');
+    setDeptLocationInput(dept.officeLocation || '');
+    setDeptDescInput(dept.description || '');
+    setShowAddDeptModal(true);
+  };
+
+  const handleSaveDepartment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!deptCodeInput.trim() || !deptNameInput.trim()) {
+      alert('Vui lòng điền đầy đủ Mã Khoa và Tên Khoa!');
+      return;
+    }
+
+    try {
+      setSavingDept(true);
+      if (editingDept) {
+        const res = await api.put(`/admin/departments/${editingDept.id}`, {
+          code: deptCodeInput.trim(),
+          name: deptNameInput.trim(),
+          deanName: deptDeanInput.trim(),
+          email: deptEmailInput.trim(),
+          phone: deptPhoneInput.trim(),
+          officeLocation: deptLocationInput.trim(),
+          description: deptDescInput.trim()
+        });
+        setDepartmentsList((prev) =>
+          prev.map((d) => (d.id === editingDept.id ? { ...d, ...res.data } : d))
+        );
+        alert('Cập nhật thông tin Khoa thành công!');
+      } else {
+        const res = await api.post<AdminDepartment>('/admin/departments', {
+          code: deptCodeInput.trim(),
+          name: deptNameInput.trim(),
+          deanName: deptDeanInput.trim(),
+          email: deptEmailInput.trim(),
+          phone: deptPhoneInput.trim(),
+          officeLocation: deptLocationInput.trim(),
+          description: deptDescInput.trim()
+        });
+        setDepartmentsList([res.data, ...departmentsList]);
+        alert('Thêm Khoa mới vào CSDL thành công!');
+      }
+      setShowAddDeptModal(false);
+    } catch (err: any) {
+      alert('Lỗi lưu Khoa: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setSavingDept(false);
+    }
+  };
+
+  const handleDeleteDepartment = async (dept: AdminDepartment) => {
+    if (!confirm(`Bạn có chắc chắn muốn xóa Khoa "${dept.name}" (${dept.code}) khỏi hệ thống?`)) return;
+    try {
+      await api.delete(`/admin/departments/${dept.id}`);
+      setDepartmentsList((prev) => prev.filter((d) => d.id !== dept.id));
+      alert(`Đã xóa Khoa ${dept.name} thành công!`);
+    } catch (err: any) {
+      alert('Lỗi xóa Khoa: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
+  // Major Handlers
+  const handleOpenAddMajor = () => {
+    setEditingMajor(null);
+    setMajorDeptIdInput(departmentsList[0]?.id || '');
+    setMajorCodeInput('');
+    setMajorNameInput('');
+    setMajorDegreeInput('Đại học Chính quy');
+    setMajorCreditsInput(135);
+    setMajorYearsInput(4.0);
+    setMajorDescInput('');
+    setShowAddMajorModal(true);
+  };
+
+  const handleOpenEditMajor = (major: AdminMajor) => {
+    setEditingMajor(major);
+    setMajorDeptIdInput(major.departmentId);
+    setMajorCodeInput(major.code);
+    setMajorNameInput(major.name);
+    setMajorDegreeInput(major.degreeLevel || 'Đại học Chính quy');
+    setMajorCreditsInput(major.totalCredits || 135);
+    setMajorYearsInput(major.durationYears || 4.0);
+    setMajorDescInput(major.description || '');
+    setShowAddMajorModal(true);
+  };
+
+  const handleSaveMajor = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!majorDeptIdInput || !majorCodeInput.trim() || !majorNameInput.trim()) {
+      alert('Vui lòng chọn Khoa trực thuộc và điền đầy đủ Mã ngành, Tên ngành!');
+      return;
+    }
+
+    try {
+      setSavingMajor(true);
+      if (editingMajor) {
+        const res = await api.put(`/admin/majors/${editingMajor.id}`, {
+          departmentId: majorDeptIdInput,
+          code: majorCodeInput.trim(),
+          name: majorNameInput.trim(),
+          degreeLevel: majorDegreeInput.trim(),
+          totalCredits: Number(majorCreditsInput),
+          durationYears: Number(majorYearsInput),
+          description: majorDescInput.trim()
+        });
+        setMajorsList((prev) =>
+          prev.map((m) => (m.id === editingMajor.id ? { ...m, ...res.data } : m))
+        );
+        alert('Cập nhật Chuyên ngành thành công!');
+      } else {
+        const res = await api.post<AdminMajor>('/admin/majors', {
+          departmentId: majorDeptIdInput,
+          code: majorCodeInput.trim(),
+          name: majorNameInput.trim(),
+          degreeLevel: majorDegreeInput.trim(),
+          totalCredits: Number(majorCreditsInput),
+          durationYears: Number(majorYearsInput),
+          description: majorDescInput.trim()
+        });
+        setMajorsList([res.data, ...majorsList]);
+        alert('Thêm Chuyên ngành mới vào CSDL thành công!');
+      }
+      setShowAddMajorModal(false);
+      // Refresh departments to update majorsCount
+      api.get<AdminDepartment[]>('/admin/departments').then((r) => setDepartmentsList(r.data || []));
+    } catch (err: any) {
+      alert('Lỗi lưu Chuyên ngành: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setSavingMajor(false);
+    }
+  };
+
+  const handleDeleteMajor = async (major: AdminMajor) => {
+    if (!confirm(`Bạn có chắc chắn muốn xóa Chuyên ngành "${major.name}" (${major.code})?`)) return;
+    try {
+      await api.delete(`/admin/majors/${major.id}`);
+      setMajorsList((prev) => prev.filter((m) => m.id !== major.id));
+      alert(`Đã xóa Chuyên ngành ${major.name} thành công!`);
+      // Refresh departments to update majorsCount
+      api.get<AdminDepartment[]>('/admin/departments').then((r) => setDepartmentsList(r.data || []));
+    } catch (err: any) {
+      alert('Lỗi xóa Chuyên ngành: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const handleDeleteCourse = async (course: AdminCourse) => {
+    if (!confirm(`Bạn có chắc muốn xóa hoặc lưu trữ môn học "${course.title}" (${course.courseCode})?`)) return;
+    try {
+      const res = await api.delete(`/admin/courses/${course.id}`);
+      alert(res.data.message || 'Thao tác thành công!');
+      const cRes = await api.get<AdminCourse[]>('/admin/courses');
+      setCoursesList(cRes.data || []);
+    } catch (err: any) {
+      alert('Lỗi xóa khóa học: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
+  // Filtered Departments
+  const filteredDepartments = departmentsList.filter((d) => {
+    return (
+      d.name.toLowerCase().includes(deptSearchTerm.toLowerCase()) ||
+      d.code.toLowerCase().includes(deptSearchTerm.toLowerCase()) ||
+      d.deanName.toLowerCase().includes(deptSearchTerm.toLowerCase())
+    );
+  });
+
+  // Filtered Majors
+  const filteredMajors = majorsList.filter((m) => {
+    const matchesSearch =
+      m.name.toLowerCase().includes(majorSearchTerm.toLowerCase()) ||
+      m.code.toLowerCase().includes(majorSearchTerm.toLowerCase()) ||
+      m.departmentName.toLowerCase().includes(majorSearchTerm.toLowerCase());
+
+    if (selectedDeptFilterForMajors === 'ALL') return matchesSearch;
+    return matchesSearch && m.departmentId === selectedDeptFilterForMajors;
+  });
 
   // Filtered Users
   const filteredUsers = usersList.filter((u) => {
@@ -264,6 +678,28 @@ export const AdminDashboard: React.FC<Props> = ({ user, activeTab: propActiveTab
             <span>Quản lý Người dùng ({usersList.length})</span>
           </button>
           <button
+            onClick={() => setActiveTab('departments')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+              activeTab === 'departments'
+                ? 'bg-blue-600 text-white shadow-2xs'
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+            }`}
+          >
+            <Building2 className="w-4 h-4" />
+            <span>Quản lý Khoa ({departmentsList.length})</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('majors')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+              activeTab === 'majors'
+                ? 'bg-blue-600 text-white shadow-2xs'
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+            }`}
+          >
+            <GraduationCap className="w-4 h-4" />
+            <span>Quản lý Chuyên ngành ({majorsList.length})</span>
+          </button>
+          <button
             onClick={() => setActiveTab('courses')}
             className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
               activeTab === 'courses'
@@ -302,51 +738,77 @@ export const AdminDashboard: React.FC<Props> = ({ user, activeTab: propActiveTab
       {/* Tab 1: Overview Metrics & Health */}
       {activeTab === 'overview' && (
         <div className="space-y-8 w-full">
-          {/* Top KPI Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 w-full">
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs flex items-center gap-4">
+          {/* Top KPI Cards (6 metrics) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 w-full">
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs flex items-center gap-4">
               <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
                 <Users className="w-6 h-6" />
               </div>
               <div>
                 <span className="text-xs text-slate-500 font-medium">Tổng người dùng</span>
-                <h3 className="font-extrabold text-2xl text-slate-900 mt-0.5">{usersList.length} tài khoản</h3>
+                <h3 className="font-extrabold text-xl text-slate-900 mt-0.5">{usersList.length} tài khoản</h3>
                 <span className="text-[11px] text-emerald-600 font-semibold mt-0.5 block">
-                  {usersList.filter((u) => u.role === 'STUDENT').length} SV • {usersList.filter((u) => u.role === 'TEACHER').length} GV
+                  {usersList.filter((u) => u.role === 'STUDENT').length} Sinh viên • {usersList.filter((u) => u.role === 'TEACHER').length} Giảng viên
                 </span>
               </div>
             </div>
 
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs flex items-center gap-4">
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs flex items-center gap-4">
               <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl">
+                <Building2 className="w-6 h-6" />
+              </div>
+              <div>
+                <span className="text-xs text-slate-500 font-medium">Khoa & Viện Đào tạo</span>
+                <h3 className="font-extrabold text-xl text-slate-900 mt-0.5">{departmentsList.length} Khoa</h3>
+                <span className="text-[11px] text-indigo-600 font-semibold mt-0.5 block">
+                  Cơ cấu tổ chức đào tạo toàn trường
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs flex items-center gap-4">
+              <div className="p-3 bg-purple-50 text-purple-600 rounded-xl">
+                <GraduationCap className="w-6 h-6" />
+              </div>
+              <div>
+                <span className="text-xs text-slate-500 font-medium">Chuyên ngành Đào tạo</span>
+                <h3 className="font-extrabold text-xl text-slate-900 mt-0.5">{majorsList.length} Ngành</h3>
+                <span className="text-[11px] text-purple-600 font-semibold mt-0.5 block">
+                  Đại học chính quy & Chất lượng cao
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs flex items-center gap-4">
+              <div className="p-3 bg-amber-50 text-amber-600 rounded-xl">
                 <BookOpen className="w-6 h-6" />
               </div>
               <div>
                 <span className="text-xs text-slate-500 font-medium">Khóa học toàn trường</span>
-                <h3 className="font-extrabold text-2xl text-slate-900 mt-0.5">{coursesList.length} môn học</h3>
-                <span className="text-[11px] text-blue-600 font-semibold mt-0.5 block">Đang hoạt động 100%</span>
+                <h3 className="font-extrabold text-xl text-slate-900 mt-0.5">{coursesList.length} môn học</h3>
+                <span className="text-[11px] text-blue-600 font-semibold mt-0.5 block">Đang mở giảng dạy</span>
               </div>
             </div>
 
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs flex items-center gap-4">
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs flex items-center gap-4">
               <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
+                <Award className="w-6 h-6" />
+              </div>
+              <div>
+                <span className="text-xs text-slate-500 font-medium">Lượt ghi danh học phần</span>
+                <h3 className="font-extrabold text-xl text-slate-900 mt-0.5">{overviewMetrics?.totalEnrollments || 0} lượt</h3>
+                <span className="text-[11px] text-emerald-600 font-semibold mt-0.5 block">Đã đăng ký kỳ này</span>
+              </div>
+            </div>
+
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs flex items-center gap-4">
+              <div className="p-3 bg-teal-50 text-teal-600 rounded-xl">
                 <Server className="w-6 h-6" />
               </div>
               <div>
                 <span className="text-xs text-slate-500 font-medium">Máy chủ Backend API</span>
-                <h3 className="font-extrabold text-2xl text-emerald-600 mt-0.5">Online</h3>
-                <span className="text-[11px] text-slate-500 mt-0.5 block">.NET 8 & SQL Server</span>
-              </div>
-            </div>
-
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs flex items-center gap-4">
-              <div className="p-3 bg-purple-50 text-purple-600 rounded-xl">
-                <HardDrive className="w-6 h-6" />
-              </div>
-              <div>
-                <span className="text-xs text-slate-500 font-medium">Lưu trữ Hệ thống</span>
-                <h3 className="font-extrabold text-2xl text-slate-900 mt-0.5">42.5 GB</h3>
-                <span className="text-[11px] text-slate-500 mt-0.5 block">Trên tổng số 100 GB</span>
+                <h3 className="font-extrabold text-xl text-emerald-600 mt-0.5">Online</h3>
+                <span className="text-[11px] text-slate-500 mt-0.5 block">.NET 8 & Microsoft SQL Server</span>
               </div>
             </div>
           </div>
@@ -546,6 +1008,14 @@ export const AdminDashboard: React.FC<Props> = ({ user, activeTab: propActiveTab
                       <td className="p-4 text-center">
                         <div className="flex items-center justify-center gap-1.5">
                           <button
+                            onClick={() => handleStartEditUser(u)}
+                            title="Chỉnh sửa thông tin người dùng"
+                            className="p-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-700 hover:bg-amber-50 hover:text-amber-600 hover:border-amber-200 transition-all"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+
+                          <button
                             onClick={() => toggleUserLock(u.id)}
                             title={u.status === 'ACTIVE' ? 'Khóa tài khoản' : 'Mở khóa tài khoản'}
                             className={`p-1.5 rounded-lg border text-xs font-semibold transition-all ${
@@ -558,7 +1028,7 @@ export const AdminDashboard: React.FC<Props> = ({ user, activeTab: propActiveTab
                           </button>
 
                           <button
-                            onClick={() => handleResetPassword(u)}
+                            onClick={() => handleStartResetPassword(u)}
                             title="Đặt lại mật khẩu"
                             className="p-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-700 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-all"
                           >
@@ -575,7 +1045,261 @@ export const AdminDashboard: React.FC<Props> = ({ user, activeTab: propActiveTab
         </div>
       )}
 
-      {/* Tab 3: Courses Oversight */}
+      {/* Tab: Departments Management */}
+      {activeTab === 'departments' && (
+        <div className="space-y-6 w-full">
+          {/* Header Action Bar */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs">
+            <div>
+              <div className="flex items-center gap-2.5">
+                <span className="p-2.5 bg-blue-50 text-blue-600 rounded-xl border border-blue-200">
+                  <Building2 className="w-5 h-5" />
+                </span>
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-lg">Quản lý Khoa & Viện Đào tạo</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">Quản lý cơ cấu tổ chức các Khoa, thông tin Trưởng khoa, văn phòng liên hệ và các chuyên ngành trực thuộc</p>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={handleOpenAddDept}
+              className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl flex items-center gap-2 shadow-2xs transition-all"
+            >
+              <PlusCircle className="w-4 h-4" />
+              <span>Thêm Khoa mới</span>
+            </button>
+          </div>
+
+          {/* Search Box */}
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs flex items-center justify-between gap-4">
+            <div className="relative w-full md:w-96">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={deptSearchTerm}
+                onChange={(e) => setDeptSearchTerm(e.target.value)}
+                placeholder="Tìm theo Mã Khoa, Tên Khoa hoặc Trưởng khoa..."
+                className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
+              />
+            </div>
+            <span className="text-xs text-slate-500 font-semibold">
+              Hiển thị: <strong className="text-slate-800">{filteredDepartments.length}</strong> / {departmentsList.length} Khoa
+            </span>
+          </div>
+
+          {/* Departments Grid Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+            {filteredDepartments.map((d) => (
+              <div key={d.id} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs space-y-4 hover:border-blue-300 transition-all flex flex-col justify-between">
+                <div>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <span className="text-xs font-black text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200 uppercase font-mono tracking-wider">
+                        {d.code}
+                      </span>
+                      <h4 className="font-extrabold text-slate-900 text-base mt-2">{d.name}</h4>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => handleOpenEditDept(d)}
+                        title="Chỉnh sửa Khoa"
+                        className="p-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-700 hover:bg-amber-50 hover:text-amber-600 hover:border-amber-200 transition-all"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteDepartment(d)}
+                        title="Xóa Khoa"
+                        className="p-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-700 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-slate-500 mt-2 line-clamp-2 leading-relaxed">
+                    {d.description || 'Chưa có mô tả chi tiết cho đơn vị này.'}
+                  </p>
+
+                  <div className="mt-4 p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-2 text-slate-700">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-500 flex items-center gap-1.5">
+                        <Users className="w-3.5 h-3.5 text-blue-600" /> Trưởng khoa:
+                      </span>
+                      <strong className="text-slate-900 font-bold">{d.deanName || 'Chưa chỉ định'}</strong>
+                    </div>
+
+                    {d.officeLocation && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-500 flex items-center gap-1.5">
+                          <MapPin className="w-3.5 h-3.5 text-amber-600" /> Văn phòng:
+                        </span>
+                        <span className="text-slate-800 font-medium">{d.officeLocation}</span>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-500 flex items-center gap-1.5">
+                        <Mail className="w-3.5 h-3.5 text-indigo-600" /> Email:
+                      </span>
+                      <span className="text-slate-800 font-mono text-[11px]">{d.email || 'N/A'}</span>
+                    </div>
+
+                    {d.phone && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-500 flex items-center gap-1.5">
+                          <Phone className="w-3.5 h-3.5 text-emerald-600" /> Hotline:
+                        </span>
+                        <span className="text-slate-800 font-mono text-[11px]">{d.phone}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Majors Chips */}
+                  {d.majors && d.majors.length > 0 && (
+                    <div className="mt-3">
+                      <span className="text-[11px] font-bold text-slate-500 block mb-1.5">Chuyên ngành đào tạo ({d.majors.length}):</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {d.majors.map((m) => (
+                          <span key={m.id} className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-blue-50 text-blue-800 border border-blue-200">
+                            {m.name}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between pt-3 border-t border-slate-100 text-xs text-slate-500">
+                  <span className="flex items-center gap-1 font-semibold text-blue-700">
+                    <GraduationCap className="w-4 h-4" /> {d.majorsCount} Chuyên ngành
+                  </span>
+                  <span>{d.teachersCount} Giảng viên</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Tab: Majors Management */}
+      {activeTab === 'majors' && (
+        <div className="space-y-6 w-full">
+          {/* Header Action Bar */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs">
+            <div>
+              <div className="flex items-center gap-2.5">
+                <span className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl border border-indigo-200">
+                  <GraduationCap className="w-5 h-5" />
+                </span>
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-lg">Quản lý Chuyên ngành / Ngành Đào tạo</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">Quản lý mã ngành, bậc đào tạo, chuẩn thời gian và tổng số tín chỉ tích lũy theo từng ngành học</p>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={handleOpenAddMajor}
+              className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl flex items-center gap-2 shadow-2xs transition-all"
+            >
+              <PlusCircle className="w-4 h-4" />
+              <span>Thêm Chuyên ngành mới</span>
+            </button>
+          </div>
+
+          {/* Search & Department Filter Bar */}
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col md:flex-row items-center justify-between gap-4 w-full">
+            <div className="relative w-full md:w-96">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={majorSearchTerm}
+                onChange={(e) => setMajorSearchTerm(e.target.value)}
+                placeholder="Tìm theo Mã ngành, Tên chuyên ngành hoặc Tên khoa..."
+                className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
+              />
+            </div>
+
+            <div className="flex items-center gap-2 w-full md:w-auto">
+              <span className="text-xs font-semibold text-slate-500 flex items-center gap-1">
+                <Filter className="w-3.5 h-3.5" /> Lọc theo Khoa:
+              </span>
+              <select
+                value={selectedDeptFilterForMajors}
+                onChange={(e) => setSelectedDeptFilterForMajors(e.target.value)}
+                className="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-50 border border-slate-200 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="ALL">Tất cả các Khoa ({majorsList.length})</option>
+                {departmentsList.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.code} - {d.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Majors Table */}
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-2xs">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 text-xs font-extrabold uppercase tracking-wider">
+                    <th className="p-4">Mã ngành</th>
+                    <th className="p-4">Tên Chuyên ngành</th>
+                    <th className="p-4">Khoa trực thuộc</th>
+                    <th className="p-4 text-center">Bậc đào tạo</th>
+                    <th className="p-4 text-center">Tín chỉ</th>
+                    <th className="p-4 text-center">Thời gian</th>
+                    <th className="p-4 text-center">Sinh viên</th>
+                    <th className="p-4 text-center">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-xs">
+                  {filteredMajors.map((m) => (
+                    <tr key={m.id} className="hover:bg-slate-50/70 transition-colors">
+                      <td className="p-4 font-mono font-bold text-indigo-700">{m.code}</td>
+                      <td className="p-4 font-bold text-slate-900">{m.name}</td>
+                      <td className="p-4 text-slate-600 font-medium">{m.departmentName}</td>
+                      <td className="p-4 text-center">
+                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
+                          {m.degreeLevel}
+                        </span>
+                      </td>
+                      <td className="p-4 text-center font-bold text-slate-800">{m.totalCredits} TC</td>
+                      <td className="p-4 text-center text-slate-600">{m.durationYears} năm</td>
+                      <td className="p-4 text-center font-bold text-blue-700">{m.studentsCount} SV</td>
+                      <td className="p-4 text-center">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            onClick={() => handleOpenEditMajor(m)}
+                            title="Chỉnh sửa Chuyên ngành"
+                            className="p-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-700 hover:bg-amber-50 hover:text-amber-600 hover:border-amber-200 transition-all"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteMajor(m)}
+                            title="Xóa Chuyên ngành"
+                            className="p-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-700 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab: Courses Oversight */}
       {activeTab === 'courses' && (
         <div className="space-y-6 w-full">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs">
@@ -623,20 +1347,24 @@ export const AdminDashboard: React.FC<Props> = ({ user, activeTab: propActiveTab
 
                 <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
                   <button
-                    onClick={() => alert(`Chỉnh sửa thông tin khóa học: ${c.courseCode}`)}
-                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold"
+                    onClick={() => handleStartEditCourse(c)}
+                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1"
                   >
-                    Chỉnh sửa
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>Chỉnh sửa</span>
                   </button>
                   <button
-                    onClick={() => {
-                      setCoursesList((prev) =>
-                        prev.map((item) => (item.id === c.id ? { ...item, status: item.status === 'ACTIVE' ? 'ARCHIVED' : 'ACTIVE' } : item))
-                      );
-                    }}
+                    onClick={() => handleToggleCourseStatus(c)}
                     className="px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded-xl text-xs font-bold"
                   >
                     {c.status === 'ACTIVE' ? 'Lưu trữ khóa học' : 'Kích hoạt lại'}
+                  </button>
+                  <button
+                    onClick={() => handleDeleteCourse(c)}
+                    title="Xóa khóa học"
+                    className="p-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 rounded-xl text-xs font-bold"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
@@ -745,13 +1473,13 @@ export const AdminDashboard: React.FC<Props> = ({ user, activeTab: propActiveTab
             <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
               <div>
                 <h4 className="font-bold text-slate-900 text-sm">Chế độ Bảo trì Hệ thống (Maintenance Mode)</h4>
-                <p className="text-xs text-slate-500">Khi bật, sinh viên và giảng viên sẽ không thể đăng nhập trong quá trình nâng cấp cơ sở dữ liệu.</p>
+                <p className="text-xs text-slate-500">Khi bật, sinh viên và giảng viên sẽ không thể đăng nhập. Quản trị viên vẫn truy cập qua Cổng Quản trị.</p>
               </div>
               <button
                 type="button"
-                onClick={() => setMaintenanceMode(!maintenanceMode)}
+                onClick={handleToggleMaintenance}
                 className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                  maintenanceMode ? 'bg-rose-600 text-white' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                  maintenanceMode ? 'bg-rose-600 text-white shadow-xs' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
                 }`}
               >
                 {maintenanceMode ? 'Đang Bật Bảo trì' : 'Đang Tắt'}
@@ -843,14 +1571,44 @@ export const AdminDashboard: React.FC<Props> = ({ user, activeTab: propActiveTab
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Lớp sinh hoạt hoặc Khoa:</label>
-                <input
-                  type="text"
-                  placeholder="Ví dụ: CNTT-K65 hoặc Khoa CNTT"
-                  value={newUserClass}
-                  onChange={(e) => setNewUserClass(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900"
-                />
+                <label className="block font-bold text-slate-700 mb-1">
+                  {newUserRole === 'TEACHER' ? 'Khoa công tác:' : newUserRole === 'STUDENT' ? 'Chuyên ngành đào tạo:' : 'Đơn vị / Phòng ban:'}
+                </label>
+                {newUserRole === 'TEACHER' ? (
+                  <select
+                    value={newUserClass}
+                    onChange={(e) => setNewUserClass(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">-- Chọn Khoa công tác --</option>
+                    {departmentsList.map((d) => (
+                      <option key={d.id} value={d.name}>
+                        {d.name} ({d.code})
+                      </option>
+                    ))}
+                  </select>
+                ) : newUserRole === 'STUDENT' ? (
+                  <select
+                    value={newUserClass}
+                    onChange={(e) => setNewUserClass(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">-- Chọn Chuyên ngành --</option>
+                    {majorsList.map((m) => (
+                      <option key={m.id} value={`${m.code} - ${m.name}`}>
+                        {m.code} - {m.name} ({m.departmentName || m.departmentCode})
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    placeholder="Ví dụ: Ban Quản trị Hệ thống"
+                    value={newUserClass}
+                    onChange={(e) => setNewUserClass(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                )}
               </div>
 
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
@@ -896,6 +1654,7 @@ export const AdminDashboard: React.FC<Props> = ({ user, activeTab: propActiveTab
                 <input
                   type="text"
                   placeholder="Ví dụ: CS301, AI101"
+                  required
                   value={newCourseCode}
                   onChange={(e) => setNewCourseCode(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900"
@@ -907,6 +1666,7 @@ export const AdminDashboard: React.FC<Props> = ({ user, activeTab: propActiveTab
                 <input
                   type="text"
                   placeholder="Nhập tên môn học"
+                  required
                   value={newCourseTitle}
                   onChange={(e) => setNewCourseTitle(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900"
@@ -915,22 +1675,33 @@ export const AdminDashboard: React.FC<Props> = ({ user, activeTab: propActiveTab
 
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Khoa phụ trách:</label>
-                <input
-                  type="text"
+                <select
                   value={newCourseDept}
                   onChange={(e) => setNewCourseDept(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900"
-                />
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {departmentsList.map((d) => (
+                    <option key={d.id} value={d.name}>
+                      {d.name} ({d.code})
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Giảng viên chỉ định:</label>
-                <input
-                  type="text"
+                <select
                   value={newCourseTeacher}
                   onChange={(e) => setNewCourseTeacher(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900"
-                />
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">-- Chọn Giảng viên phụ trách --</option>
+                  {usersList.filter((u) => u.role === 'TEACHER').map((t) => (
+                    <option key={t.id} value={t.fullName}>
+                      {t.fullName} ({t.code || t.email})
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
@@ -952,6 +1723,567 @@ export const AdminDashboard: React.FC<Props> = ({ user, activeTab: propActiveTab
           </div>
         </div>
       )}
+
+      {/* Edit User Modal */}
+      {editingUser && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 w-full max-w-md rounded-3xl shadow-2xl p-6 text-slate-900 space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="font-extrabold text-lg flex items-center gap-2">
+                <Edit3 className="w-5 h-5 text-amber-600" />
+                Cập nhật thông tin Người dùng
+              </h3>
+              <button
+                onClick={() => setEditingUser(null)}
+                className="text-slate-400 hover:text-slate-600 font-bold p-1 rounded-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateUser} className="space-y-4 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Họ và tên:</label>
+                <input
+                  type="text"
+                  required
+                  value={editUserName}
+                  onChange={(e) => setEditUserName(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Email:</label>
+                <input
+                  type="email"
+                  required
+                  value={editUserEmail}
+                  onChange={(e) => setEditUserEmail(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Vai trò:</label>
+                  <select
+                    value={editUserRole}
+                    onChange={(e) => setEditUserRole(e.target.value as any)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  >
+                    <option value="STUDENT">Sinh viên</option>
+                    <option value="TEACHER">Giảng viên</option>
+                    <option value="ADMIN">Admin</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Mã định danh:</label>
+                  <input
+                    type="text"
+                    required
+                    value={editUserCode}
+                    onChange={(e) => setEditUserCode(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  {editUserRole === 'TEACHER' ? 'Khoa công tác:' : editUserRole === 'STUDENT' ? 'Khoa & Chuyên ngành đào tạo:' : 'Đơn vị / Phòng ban:'}
+                </label>
+                {editUserRole === 'TEACHER' ? (
+                  <select
+                    value={editUserClass}
+                    onChange={(e) => setEditUserClass(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  >
+                    <option value="">-- Chọn Khoa công tác --</option>
+                    {departmentsList.map((d) => (
+                      <option key={d.id} value={d.name}>
+                        {d.name} ({d.code})
+                      </option>
+                    ))}
+                  </select>
+                ) : editUserRole === 'STUDENT' ? (
+                  <div className="space-y-1.5">
+                    <select
+                      value={editUserClass}
+                      onChange={(e) => setEditUserClass(e.target.value)}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    >
+                      <option value="">-- Chọn Chuyên ngành --</option>
+                      {majorsList.map((m) => (
+                        <option key={m.id} value={`${m.code} - ${m.name}`}>
+                          {m.code} - {m.name} ({m.departmentName || m.departmentCode})
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="text"
+                      placeholder="Hoặc nhập mã lớp sinh hoạt cụ thể (ví dụ: CNTT-K65)"
+                      value={editUserClass}
+                      onChange={(e) => setEditUserClass(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    />
+                  </div>
+                ) : (
+                  <input
+                    type="text"
+                    value={editUserClass}
+                    onChange={(e) => setEditUserClass(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                )}
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setEditingUser(null)}
+                  className="px-4 py-2 bg-slate-200 text-slate-800 font-semibold rounded-xl hover:bg-slate-300"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingUser}
+                  className="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl shadow-xs disabled:opacity-50"
+                >
+                  {savingUser ? 'Đang lưu...' : 'Lưu cập nhật'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Reset Password Modal */}
+      {resettingUser && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 w-full max-w-md rounded-3xl shadow-2xl p-6 text-slate-900 space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="font-extrabold text-lg flex items-center gap-2">
+                <KeyRound className="w-5 h-5 text-blue-600" />
+                Đặt lại Mật khẩu
+              </h3>
+              <button
+                onClick={() => setResettingUser(null)}
+                className="text-slate-400 hover:text-slate-600 font-bold p-1 rounded-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-xl text-blue-800">
+                <p className="font-semibold">
+                  Tài khoản: <span className="font-bold">{resettingUser.fullName}</span> ({resettingUser.code})
+                </p>
+                <p className="text-[11px] text-blue-600 mt-1">
+                  Email: {resettingUser.email} &bull; Vai trò: {resettingUser.role}
+                </p>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Mật khẩu mới (tùy chọn):</label>
+                <input
+                  type="password"
+                  placeholder="Để trống để reset về mặc định (student123 / teacher123 / admin123)"
+                  value={newPasswordInput}
+                  onChange={(e) => setNewPasswordInput(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Nếu không nhập gì, mật khẩu sẽ tự động chuyển về mật khẩu mặc định của hệ thống.
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setResettingUser(null)}
+                  className="px-4 py-2 bg-slate-200 text-slate-800 font-semibold rounded-xl hover:bg-slate-300"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExecuteResetPassword}
+                  disabled={savingPassword}
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-xs disabled:opacity-50"
+                >
+                  {savingPassword ? 'Đang xử lý...' : 'Xác nhận Đặt lại Mật khẩu'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add / Edit Department Modal */}
+      {showAddDeptModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 w-full max-w-lg rounded-3xl shadow-2xl p-6 text-slate-900 space-y-5 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="font-extrabold text-lg flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-blue-600" />
+                {editingDept ? 'Cập nhật thông tin Khoa / Viện' : 'Thêm Khoa / Viện Đào tạo Mới'}
+              </h3>
+              <button
+                onClick={() => setShowAddDeptModal(false)}
+                className="text-slate-400 hover:text-slate-600 font-bold p-1 rounded-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveDepartment} className="space-y-4 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Mã Khoa (Viết tắt): *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ví dụ: FIT, FEE, FBA..."
+                    value={deptCodeInput}
+                    onChange={(e) => setDeptCodeInput(e.target.value.toUpperCase())}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 uppercase font-mono font-bold focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Trưởng Khoa / Lãnh đạo:</label>
+                  <input
+                    type="text"
+                    placeholder="Ví dụ: PGS.TS. Nguyễn Văn A"
+                    value={deptDeanInput}
+                    onChange={(e) => setDeptDeanInput(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Tên Khoa / Viện đầy đủ: *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ví dụ: Khoa Công nghệ Thông tin"
+                  value={deptNameInput}
+                  onChange={(e) => setDeptNameInput(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Email liên hệ:</label>
+                  <input
+                    type="email"
+                    placeholder="fit@university.edu.vn"
+                    value={deptEmailInput}
+                    onChange={(e) => setDeptEmailInput(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Số điện thoại:</label>
+                  <input
+                    type="text"
+                    placeholder="(024) 3869 1234"
+                    value={deptPhoneInput}
+                    onChange={(e) => setDeptPhoneInput(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Văn phòng / Địa điểm:</label>
+                <input
+                  type="text"
+                  placeholder="Ví dụ: Tòa nhà B1, Phòng 302"
+                  value={deptLocationInput}
+                  onChange={(e) => setDeptLocationInput(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Mô tả / Giới thiệu chức năng:</label>
+                <textarea
+                  rows={3}
+                  placeholder="Mô tả tóm tắt về khoa, sứ mệnh đào tạo..."
+                  value={deptDescInput}
+                  onChange={(e) => setDeptDescInput(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowAddDeptModal(false)}
+                  className="px-4 py-2 bg-slate-200 text-slate-800 font-semibold rounded-xl hover:bg-slate-300"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingDept}
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-xs disabled:opacity-50"
+                >
+                  {savingDept ? 'Đang lưu...' : editingDept ? 'Lưu cập nhật' : 'Tạo mới Khoa'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add / Edit Major Modal */}
+      {showAddMajorModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 w-full max-w-lg rounded-3xl shadow-2xl p-6 text-slate-900 space-y-5 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="font-extrabold text-lg flex items-center gap-2">
+                <GraduationCap className="w-5 h-5 text-blue-600" />
+                {editingMajor ? 'Cập nhật Chuyên ngành' : 'Thêm Chuyên ngành Đào tạo Mới'}
+              </h3>
+              <button
+                onClick={() => setShowAddMajorModal(false)}
+                className="text-slate-400 hover:text-slate-600 font-bold p-1 rounded-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveMajor} className="space-y-4 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Khoa trực thuộc: *</label>
+                <select
+                  required
+                  value={majorDeptIdInput}
+                  onChange={(e) => setMajorDeptIdInput(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">-- Chọn Khoa trực thuộc --</option>
+                  {departmentsList.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name} ({d.code})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Mã Chuyên ngành: *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ví dụ: CS-SE, CS-AI, EE-TEL..."
+                    value={majorCodeInput}
+                    onChange={(e) => setMajorCodeInput(e.target.value.toUpperCase())}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 uppercase font-mono font-bold focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Hệ đào tạo:</label>
+                  <select
+                    value={majorDegreeInput}
+                    onChange={(e) => setMajorDegreeInput(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="Đại học Chính quy">Đại học Chính quy</option>
+                    <option value="Chất lượng cao">Chất lượng cao</option>
+                    <option value="Cử nhân">Cử nhân</option>
+                    <option value="Kỹ sư">Kỹ sư</option>
+                    <option value="Thạc sĩ">Thạc sĩ</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Tên Chuyên ngành: *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ví dụ: Kỹ thuật Phần mềm (Software Engineering)"
+                  value={majorNameInput}
+                  onChange={(e) => setMajorNameInput(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Tổng số tín chỉ đào tạo:</label>
+                  <input
+                    type="number"
+                    min={60}
+                    max={250}
+                    value={majorCreditsInput}
+                    onChange={(e) => setMajorCreditsInput(Number(e.target.value))}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Thời gian chuẩn (năm):</label>
+                  <input
+                    type="number"
+                    step={0.5}
+                    min={1}
+                    max={7}
+                    value={majorYearsInput}
+                    onChange={(e) => setMajorYearsInput(Number(e.target.value))}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Mô tả / Chuẩn đầu ra:</label>
+                <textarea
+                  rows={3}
+                  placeholder="Mô tả mục tiêu đào tạo, cơ hội việc làm sau tốt nghiệp..."
+                  value={majorDescInput}
+                  onChange={(e) => setMajorDescInput(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowAddMajorModal(false)}
+                  className="px-4 py-2 bg-slate-200 text-slate-800 font-semibold rounded-xl hover:bg-slate-300"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingMajor}
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-xs disabled:opacity-50"
+                >
+                  {savingMajor ? 'Đang lưu...' : editingMajor ? 'Lưu cập nhật' : 'Tạo mới Chuyên ngành'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Course Modal */}
+      {editingCourse && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 w-full max-w-md rounded-3xl shadow-2xl p-6 text-slate-900 space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="font-extrabold text-lg flex items-center gap-2">
+                <Edit3 className="w-5 h-5 text-blue-600" />
+                Cập nhật Khóa học & Lớp học
+              </h3>
+              <button
+                onClick={() => setEditingCourse(null)}
+                className="text-slate-400 hover:text-slate-600 font-bold p-1 rounded-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateCourse} className="space-y-4 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Mã khóa học (Course Code): *</label>
+                <input
+                  type="text"
+                  required
+                  value={editCourseCode}
+                  onChange={(e) => setEditCourseCode(e.target.value.toUpperCase())}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 uppercase font-mono font-bold focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Tên môn học: *</label>
+                <input
+                  type="text"
+                  required
+                  value={editCourseTitle}
+                  onChange={(e) => setEditCourseTitle(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Khoa phụ trách:</label>
+                <select
+                  value={editCourseDept}
+                  onChange={(e) => setEditCourseDept(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {departmentsList.map((d) => (
+                    <option key={d.id} value={d.name}>
+                      {d.name} ({d.code})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Giảng viên chỉ định:</label>
+                <select
+                  value={editCourseTeacher}
+                  onChange={(e) => setEditCourseTeacher(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">-- Chọn Giảng viên phụ trách --</option>
+                  {usersList.filter((u) => u.role === 'TEACHER').map((t) => (
+                    <option key={t.id} value={t.fullName}>
+                      {t.fullName} ({t.code || t.email})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Trạng thái lớp học:</label>
+                <select
+                  value={editCourseStatus}
+                  onChange={(e) => setEditCourseStatus(e.target.value as any)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="ACTIVE">Đang hoạt động (Mở lớp)</option>
+                  <option value="ARCHIVED">Lưu trữ (Đóng lớp)</option>
+                </select>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setEditingCourse(null)}
+                  className="px-4 py-2 bg-slate-200 text-slate-800 font-semibold rounded-xl hover:bg-slate-300"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingCourse}
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-xs disabled:opacity-50"
+                >
+                  {savingCourse ? 'Đang lưu...' : 'Lưu cập nhật'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+

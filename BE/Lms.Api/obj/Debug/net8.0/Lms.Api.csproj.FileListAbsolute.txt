@@ -209,4 +209,3 @@ C:\Users\ACXSAB\AppData\Local\Temp\lms-api-build-check\Lms.Api.deps.json
 C:\Users\ACXSAB\AppData\Local\Temp\lms-api-build-check\Lms.Api.runtimeconfig.json
 C:\Users\ACXSAB\AppData\Local\Temp\lms-api-build-check\Lms.Api.dll
 C:\Users\ACXSAB\AppData\Local\Temp\lms-api-build-check\Lms.Api.pdb
-C:\Users\ACXSAB\Desktop\Learning Management System\BE\Lms.Api\obj\Debug\net8.0\staticwebassets.upToDateCheck.txt

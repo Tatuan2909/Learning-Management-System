@@ -169,7 +169,8 @@ public class CoursesController : ControllerBase
                         IsCompleted = prog?.IsCompleted ?? false,
                         QuizPassed = prog?.QuizPassed ?? false,
                         QuizId = l.Quiz?.Id,
-                        AssignmentId = matchingAssignment?.Id
+                        AssignmentId = matchingAssignment?.Id,
+                        Password = l.Quiz?.Password
                     };
                 }).ToList()
             }).ToList()

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Clock, AlertTriangle, CheckCircle2, ArrowRight, BookOpen, FileText } from 'lucide-react';
 import { UpcomingDeadline } from '../types';
 import api from '../api/axios';
+import { useLanguage } from '../context/LanguageContext';
 
 interface Props {
   studentId?: string;
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export const UpcomingDeadlinesWidget: React.FC<Props> = ({ studentId, onSelectDeadline }) => {
+  const { t } = useLanguage();
   const [deadlines, setDeadlines] = useState<UpcomingDeadline[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -64,15 +66,15 @@ export const UpcomingDeadlinesWidget: React.FC<Props> = ({ studentId, onSelectDe
   }, []);
 
   const formatRemainingTime = (totalSeconds: number) => {
-    if (totalSeconds <= 0) return 'Đã hết hạn';
+    if (totalSeconds <= 0) return t('expired');
     const days = Math.floor(totalSeconds / (3600 * 24));
     const hours = Math.floor((totalSeconds % (3600 * 24)) / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const seconds = Math.floor(totalSeconds % 60);
 
-    if (days > 0) return `${days} ngày ${hours} giờ`;
-    if (hours > 0) return `${hours} giờ ${minutes} phút`;
-    return `${minutes} phút ${seconds} giây`;
+    if (days > 0) return `${days} ${t('days')} ${hours} ${t('hours')}`;
+    if (hours > 0) return `${hours} ${t('hours')} ${minutes} ${t('minutes')}`;
+    return `${minutes} ${t('minutes')} ${seconds} ${t('seconds')}`;
   };
 
   const getUrgencyBadge = (urgency: 'RED' | 'YELLOW' | 'GREEN') => {
@@ -81,14 +83,14 @@ export const UpcomingDeadlinesWidget: React.FC<Props> = ({ studentId, onSelectDe
         return (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
             <span className="w-2 h-2 rounded-full bg-rose-500"></span>
-            Còn dưới 24h
+            {t('under24h')}
           </span>
         );
       case 'YELLOW':
         return (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
             <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
-            Còn 1 - 3 ngày
+            {t('oneToThreeDays')}
           </span>
         );
       case 'GREEN':
@@ -96,7 +98,7 @@ export const UpcomingDeadlinesWidget: React.FC<Props> = ({ studentId, onSelectDe
         return (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-            Còn trên 3 ngày
+            {t('overThreeDays')}
           </span>
         );
     }
@@ -111,12 +113,12 @@ export const UpcomingDeadlinesWidget: React.FC<Props> = ({ studentId, onSelectDe
             <Clock className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="font-extrabold text-base leading-tight text-slate-900">Hạn nộp bài tập sắp tới</h3>
-            <p className="text-xs text-slate-500 mt-0.5">Các bài tập & bài kiểm tra chưa nộp cần hoàn thành</p>
+            <h3 className="font-extrabold text-base leading-tight text-slate-900">{t('upcomingDeadlinesTitle')}</h3>
+            <p className="text-xs text-slate-500 mt-0.5">{t('upcomingDeadlinesSub')}</p>
           </div>
         </div>
         <span className="bg-slate-200/80 text-slate-700 text-xs px-3 py-1 rounded-full font-bold">
-          {deadlines.length} bài nộp
+          {deadlines.length} {t('submissionsCount')}
         </span>
       </div>
 
@@ -125,12 +127,12 @@ export const UpcomingDeadlinesWidget: React.FC<Props> = ({ studentId, onSelectDe
         {loading ? (
           <div className="flex flex-col items-center justify-center py-8 text-slate-500">
             <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-            <p className="mt-3 text-xs font-semibold">Đang tải danh sách hạn nộp...</p>
+            <p className="mt-3 text-xs font-semibold">{t('loadingDeadlines')}</p>
           </div>
         ) : deadlines.length === 0 ? (
           <div className="text-center py-8 text-slate-500">
             <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto mb-2" />
-            <p className="font-bold text-slate-700 text-sm">Tuyệt vời! Bạn không có bài tập nào sắp hết hạn.</p>
+            <p className="font-bold text-slate-700 text-sm">{t('noDeadlinesMsg')}</p>
           </div>
         ) : (
           <div className="space-y-3.5">
@@ -171,14 +173,14 @@ export const UpcomingDeadlinesWidget: React.FC<Props> = ({ studentId, onSelectDe
                 <div className="mt-4 pt-3 border-t border-slate-200/60 flex items-center justify-between text-xs text-slate-600">
                   <div className="flex items-center gap-2">
                     <Clock className="w-4 h-4 text-slate-400" />
-                    <span>Thời gian còn lại: </span>
+                    <span>{t('remainingTime')} </span>
                     <strong className={`font-bold ${item.urgency === 'RED' ? 'text-rose-600' : 'text-slate-800'}`}>
                       {formatRemainingTime(item.remainingSeconds)}
                     </strong>
                   </div>
 
                   <div className="flex items-center gap-1 font-bold text-blue-600 group-hover:translate-x-1 transition-transform">
-                    <span>Nộp bài ngay</span>
+                    <span>{t('submitNow')}</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </div>
                 </div>

@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { User, Lock, Key, ShieldCheck, Mail, GraduationCap, CheckCircle2, AlertCircle, Save, Eye, EyeOff } from 'lucide-react';
 import { AuthUser } from '../types';
 import api from '../api/axios';
+import { useLanguage } from '../context/LanguageContext';
 
 interface Props {
   user: AuthUser;
 }
 
 export const ProfilePage: React.FC<Props> = ({ user }) => {
+  const { t } = useLanguage();
   const [profile, setProfile] = useState<any>(null);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -33,17 +35,17 @@ export const ProfilePage: React.FC<Props> = ({ user }) => {
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentPassword || !newPassword || !confirmPassword) {
-      setMessage({ type: 'error', text: 'Vui lòng nhập đầy đủ thông tin mật khẩu.' });
+      setMessage({ type: 'error', text: t('passwordEmptyError') });
       return;
     }
 
     if (newPassword.length < 6) {
-      setMessage({ type: 'error', text: 'Mật khẩu mới phải có ít nhất 6 ký tự.' });
+      setMessage({ type: 'error', text: t('passwordLengthError') });
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setMessage({ type: 'error', text: 'Mật khẩu mới và Xác nhận mật khẩu không khớp.' });
+      setMessage({ type: 'error', text: t('passwordMismatchError') });
       return;
     }
 
@@ -51,14 +53,18 @@ export const ProfilePage: React.FC<Props> = ({ user }) => {
     setMessage(null);
 
     try {
-      // Simulate backend API call or make real post
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      setMessage({ type: 'success', text: 'Đổi mật khẩu thành công! Hãy sử dụng mật khẩu mới cho lần đăng nhập tiếp theo.' });
+      await api.post('/auth/change-password', {
+        userId: user.userId,
+        currentPassword,
+        newPassword
+      });
+      setMessage({ type: 'success', text: t('passwordSuccessMsg') });
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-    } catch (err) {
-      setMessage({ type: 'error', text: 'Mật khẩu hiện tại không chính xác. Vui lòng thử lại.' });
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || 'Mật khẩu hiện tại không chính xác hoặc không thể cập nhật. Vui lòng thử lại.';
+      setMessage({ type: 'error', text: errorMsg });
     } finally {
       setSubmitting(false);
     }
@@ -71,13 +77,13 @@ export const ProfilePage: React.FC<Props> = ({ user }) => {
         <div className="relative z-10 max-w-2xl">
           <span className="bg-blue-100/80 text-blue-700 text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider inline-flex items-center gap-1.5 mb-3 border border-blue-200/60">
             <User className="w-3.5 h-3.5 text-blue-600" />
-            Hồ sơ Cá nhân & Bảo mật
+            {t('profilePageBadge')}
           </span>
           <h2 className="text-3xl font-extrabold leading-tight text-slate-900">
-            Quản lý Tài khoản của Bạn
+            {t('profilePageTitle')}
           </h2>
           <p className="text-slate-600 text-sm mt-2 leading-relaxed">
-            Xem thông tin tài khoản cá nhân, mã số sinh viên / giảng viên và đổi mật khẩu bảo mật.
+            {t('profilePageSubtitle')}
           </p>
         </div>
       </div>
@@ -100,42 +106,42 @@ export const ProfilePage: React.FC<Props> = ({ user }) => {
                   ? 'bg-indigo-100 text-indigo-700'
                   : 'bg-blue-100 text-blue-700'
               }`}>
-                {user.role === 'STUDENT' ? '🎓 SINH VIÊN' : user.role === 'TEACHER' ? '👨‍🏫 GIẢNG VIÊN' : '🛡️ ADMIN'}
+                {user.role === 'STUDENT' ? t('studentBadge') : user.role === 'TEACHER' ? t('teacherBadge') : t('adminBadge')}
               </span>
             </div>
           </div>
 
           <div className="space-y-4 text-xs">
             <h4 className="font-bold text-slate-400 uppercase tracking-wider text-[11px]">
-              Chi tiết Hồ sơ
+              {t('profileDetails')}
             </h4>
 
             {user.studentCode && (
               <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
-                <span className="text-slate-500">Mã số Sinh viên (MSSV):</span>
+                <span className="text-slate-500">{t('studentCodeLabel')}</span>
                 <span className="font-mono font-bold text-blue-600">{user.studentCode}</span>
               </div>
             )}
 
             {user.teacherCode && (
               <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
-                <span className="text-slate-500">Mã cán bộ Giảng viên:</span>
+                <span className="text-slate-500">{t('teacherCodeLabel')}</span>
                 <span className="font-mono font-bold text-indigo-600">{user.teacherCode}</span>
               </div>
             )}
 
             <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
-              <span className="text-slate-500">Lớp sinh hoạt / Khoa:</span>
+              <span className="text-slate-500">{t('classOrDeptLabel')}</span>
               <span className="font-semibold text-slate-800">
                 {user.role === 'STUDENT' ? 'CNTT-K65' : user.department || 'Khoa CNTT'}
               </span>
             </div>
 
             <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
-              <span className="text-slate-500">Trạng thái tài khoản:</span>
+              <span className="text-slate-500">{t('accountStatusLabel')}</span>
               <span className="font-bold text-emerald-600 flex items-center gap-1">
                 <CheckCircle2 className="w-3.5 h-3.5" />
-                Hoạt động (Active)
+                {t('activeStatus')}
               </span>
             </div>
           </div>
@@ -148,9 +154,9 @@ export const ProfilePage: React.FC<Props> = ({ user }) => {
               <Key className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="font-extrabold text-slate-900 text-lg">Đổi Mật khẩu Tài khoản</h3>
+              <h3 className="font-extrabold text-slate-900 text-lg">{t('changePasswordTitle')}</h3>
               <p className="text-xs text-slate-500 mt-0.5">
-                Đổi mật khẩu định kỳ để tăng cường độ an toàn cho tài khoản cá nhân
+                {t('changePasswordDesc')}
               </p>
             </div>
           </div>
@@ -174,14 +180,14 @@ export const ProfilePage: React.FC<Props> = ({ user }) => {
             {/* Current Password */}
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                Mật khẩu Hiện tại
+                {t('currentPasswordLabel')}
               </label>
               <div className="relative rounded-xl shadow-2xs">
                 <input
                   type={showCurrent ? 'text' : 'password'}
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="Nhập mật khẩu hiện tại"
+                  placeholder={t('currentPasswordPlaceholder')}
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
                 />
                 <button
@@ -197,14 +203,14 @@ export const ProfilePage: React.FC<Props> = ({ user }) => {
             {/* New Password */}
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                Mật khẩu Mới
+                {t('newPasswordLabel')}
               </label>
               <div className="relative rounded-xl shadow-2xs">
                 <input
                   type={showNew ? 'text' : 'password'}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Nhập mật khẩu mới (ít nhất 6 ký tự)"
+                  placeholder={t('newPasswordPlaceholder')}
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
                 />
                 <button
@@ -220,13 +226,13 @@ export const ProfilePage: React.FC<Props> = ({ user }) => {
             {/* Confirm Password */}
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                Xác nhận Mật khẩu Mới
+                {t('confirmPasswordLabel')}
               </label>
               <input
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Nhập lại mật khẩu mới"
+                placeholder={t('confirmPasswordPlaceholder')}
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
               />
             </div>
@@ -239,12 +245,12 @@ export const ProfilePage: React.FC<Props> = ({ user }) => {
               {submitting ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span>Đang cập nhật...</span>
+                  <span>{t('updatingPasswordBtn')}</span>
                 </>
               ) : (
                 <>
                   <Save className="w-4 h-4" />
-                  <span>Cập nhật Mật khẩu</span>
+                  <span>{t('updatePasswordBtn')}</span>
                 </>
               )}
             </button>

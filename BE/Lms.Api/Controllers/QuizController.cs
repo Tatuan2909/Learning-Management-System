@@ -50,4 +50,27 @@ public class QuizController : ControllerBase
             return BadRequest(new { message = ex.Message });
         }
     }
+
+    /// <summary>
+    /// Lấy chi tiết xem lại bài làm trắc nghiệm đã nộp (Review câu hỏi, đáp án đã chọn, đáp án đúng và giải thích)
+    /// </summary>
+    [HttpGet("attempts/{attemptId}/review")]
+    public async Task<IActionResult> GetQuizReview(Guid attemptId)
+    {
+        var result = await _quizService.GetQuizReviewAsync(attemptId);
+        if (result == null) return NotFound(new { message = "Không tìm thấy kết quả làm bài trắc nghiệm." });
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Lấy lượt làm bài trắc nghiệm gần nhất của sinh viên cho Quiz này
+    /// </summary>
+    [HttpGet("{quizId}/latest-attempt")]
+    public async Task<IActionResult> GetLatestAttempt(Guid quizId, [FromQuery] Guid? studentId)
+    {
+        var targetStudentId = studentId ?? Guid.Parse("33333333-3333-3333-3333-333333333333");
+        var result = await _quizService.GetLatestAttemptAsync(quizId, targetStudentId);
+        if (result == null) return NotFound(new { message = "Chưa có lượt làm bài nào." });
+        return Ok(result);
+    }
 }

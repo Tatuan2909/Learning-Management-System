@@ -37,9 +37,12 @@ public class DashboardService : IDashboardService
 
         var upcomingAssignments = await _db.Assignments
             .Include(a => a.Course)
+            .Include(a => a.Lesson)
             .Where(a => enrolledCourseIds.Contains(a.CourseId) 
                         && !submittedAssignmentIds.Contains(a.Id) 
-                        && a.DueDate > now)
+                        && a.DueDate > now
+                        && a.LessonId != null
+                        && a.Lesson != null)
             .Select(a => new UpcomingDeadlineDto
             {
                 Id = a.Id,

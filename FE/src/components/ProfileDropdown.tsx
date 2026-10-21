@@ -1,24 +1,22 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { User, LogOut, Globe, ChevronDown, ChevronRight, Check, GraduationCap } from 'lucide-react';
+import { User, LogOut, Globe, ChevronDown, ChevronRight, Check } from 'lucide-react';
 import { AuthUser } from '../types';
-import api from '../api/axios';
+import { useLanguage } from '../context/LanguageContext';
 
 interface Props {
   user: AuthUser;
   onLogout: () => void;
   onOpenProfilePage: () => void;
-  onSwitchUser?: (newUser: AuthUser) => void;
 }
 
 export const ProfileDropdown: React.FC<Props> = ({
   user,
   onLogout,
-  onOpenProfilePage,
-  onSwitchUser
+  onOpenProfilePage
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [language, setLanguage] = useState<'VI' | 'EN'>('VI');
-  const [showSubmenu, setShowSubmenu] = useState(false);
+  const { language, setLanguage, t } = useLanguage();
+  const [showLanguageOptions, setShowLanguageOptions] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown when clicking outside
@@ -26,39 +24,16 @@ export const ProfileDropdown: React.FC<Props> = ({
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsOpen(false);
-        setShowSubmenu(false);
+        setShowLanguageOptions(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleQuickSwitch = async (role: 'STUDENT' | 'TEACHER') => {
-    try {
-      setIsOpen(false);
-      const email = role === 'TEACHER' ? 'teacher@lms.edu.vn' : 'student@lms.edu.vn';
-      const password = role === 'TEACHER' ? 'teacher123' : 'student123';
-      const response = await api.post('/auth/login', { email, password });
-      const data = response.data;
-      const newUser: AuthUser = {
-        userId: data.userId,
-        email: data.email,
-        fullName: data.fullName,
-        role: data.role as 'ADMIN' | 'TEACHER' | 'STUDENT',
-        token: data.token,
-        refreshToken: data.refreshToken,
-        studentCode: data.role === 'STUDENT' ? 'SV2024001' : undefined,
-        teacherCode: data.role === 'TEACHER' ? 'GV001' : undefined
-      };
-      localStorage.setItem('access_token', newUser.token);
-      localStorage.setItem('refresh_token', newUser.refreshToken);
-      localStorage.setItem('user_info', JSON.stringify(newUser));
-      if (onSwitchUser) {
-        onSwitchUser(newUser);
-      }
-    } catch (err) {
-      console.error('Lỗi chuyển đổi tài khoản:', err);
-    }
+  const handleSelectLanguage = (lang: 'VI' | 'EN') => {
+    setLanguage(lang);
+    setShowLanguageOptions(false);
   };
 
   return (
@@ -113,7 +88,7 @@ export const ProfileDropdown: React.FC<Props> = ({
                   </span>
                   {(user.studentCode || user.teacherCode) && (
                     <span className="text-xs text-slate-500 font-mono">
-                      {user.role === 'STUDENT' ? `MSSV: ${user.studentCode}` : `Mã GV: ${user.teacherCode}`}
+                      {user.role === 'STUDENT' ? `${t('studentCode')}: ${user.studentCode}` : `${t('teacherCode')}: ${user.teacherCode}`}
                     </span>
                   )}
                 </div>
@@ -134,107 +109,73 @@ export const ProfileDropdown: React.FC<Props> = ({
               <div className="flex items-center gap-3">
                 <User className="w-4 h-4 text-blue-600 flex-shrink-0" />
                 <div className="flex flex-col">
-                  <span className="font-semibold text-slate-900">Thông tin tài khoản</span>
-                  <span className="text-[10px] text-slate-500">Xem hồ sơ & Đổi mật khẩu</span>
+                  <span className="font-semibold text-slate-900">{t('accountInfo')}</span>
+                  <span className="text-[10px] text-slate-500">{t('viewProfileAndChangePassword')}</span>
                 </div>
               </div>
               <ChevronRight className="w-4 h-4 text-slate-400" />
             </button>
 
-            {/* 2. Menu Item with Submenu for Language (Flyout Submenu) */}
-            <div
-              className="relative group"
-              onMouseEnter={() => setShowSubmenu(true)}
-              onMouseLeave={() => setShowSubmenu(false)}
-            >
+            {/* 2. Menu Item: Ngôn ngữ / Language (Inline Accordion) */}
+            <div className="rounded-xl overflow-hidden transition-all">
               <button
                 type="button"
-                onClick={() => setShowSubmenu(!showSubmenu)}
-                className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-slate-100 text-slate-700 hover:text-slate-900 transition-colors text-left"
+                onClick={() => setShowLanguageOptions(!showLanguageOptions)}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all text-left ${
+                  showLanguageOptions ? 'bg-slate-100 text-slate-900' : 'hover:bg-slate-100 text-slate-700 hover:text-slate-900'
+                }`}
               >
                 <div className="flex items-center gap-3">
                   <Globe className="w-4 h-4 text-indigo-600 flex-shrink-0" />
-                  <span className="font-semibold text-slate-900">Ngôn ngữ / Language</span>
+                  <span className="font-semibold text-slate-900">{t('language')}</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-extrabold bg-blue-100 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-extrabold bg-blue-100 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full whitespace-nowrap">
                     {language === 'VI' ? 'Tiếng Việt' : 'English'}
                   </span>
-                  <ChevronRight className="w-4 h-4 text-slate-400" />
+                  <ChevronDown
+                    className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${
+                      showLanguageOptions ? 'rotate-180 text-blue-600' : ''
+                    }`}
+                  />
                 </div>
               </button>
 
-              {/* Flyout Submenu Panel */}
-              {showSubmenu && (
-                <div className="absolute right-full top-0 mr-2 w-48 bg-white border border-slate-200 rounded-2xl shadow-xl p-2 z-50 animate-in fade-in slide-in-from-right-2 duration-150 space-y-1">
-                  <span className="block px-3 py-1 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
-                    Chọn ngôn ngữ
-                  </span>
+              {/* Inline expandable language options - Click to select without any hover/hold issues */}
+              {showLanguageOptions && (
+                <div className="mt-1 ml-4 mr-1 pl-3 py-2 border-l-2 border-indigo-200 space-y-1 bg-slate-50/80 rounded-r-xl animate-in fade-in slide-in-from-top-1 duration-150">
                   <button
                     type="button"
-                    onClick={() => {
-                      setLanguage('VI');
-                      setShowSubmenu(false);
-                    }}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
+                    onClick={() => handleSelectLanguage('VI')}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
                       language === 'VI'
-                        ? 'bg-blue-600 text-white shadow-2xs'
-                        : 'text-slate-700 hover:bg-slate-100'
+                        ? 'bg-blue-600 text-white shadow-2xs font-bold'
+                        : 'text-slate-700 hover:bg-slate-200/70'
                     }`}
                   >
-                    <span>🇻🇳 Tiếng Việt</span>
-                    {language === 'VI' && <Check className="w-3.5 h-3.5 text-white" />}
+                    <div className="flex items-center gap-2">
+                      <span className="text-base leading-none">🇻🇳</span>
+                      <span>Tiếng Việt</span>
+                    </div>
+                    {language === 'VI' && <Check className="w-4 h-4 text-white" />}
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => {
-                      setLanguage('EN');
-                      setShowSubmenu(false);
-                    }}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
+                    onClick={() => handleSelectLanguage('EN')}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
                       language === 'EN'
-                        ? 'bg-blue-600 text-white shadow-2xs'
-                        : 'text-slate-700 hover:bg-slate-100'
+                        ? 'bg-blue-600 text-white shadow-2xs font-bold'
+                        : 'text-slate-700 hover:bg-slate-200/70'
                     }`}
                   >
-                    <span>🇬🇧 English</span>
-                    {language === 'EN' && <Check className="w-3.5 h-3.5 text-white" />}
+                    <div className="flex items-center gap-2">
+                      <span className="text-base leading-none">🇬🇧</span>
+                      <span>English</span>
+                    </div>
+                    {language === 'EN' && <Check className="w-4 h-4 text-white" />}
                   </button>
                 </div>
-              )}
-            </div>
-
-            {/* Quick Role Switcher */}
-            <div className="border-t border-slate-100 pt-1 mt-1">
-              <span className="block px-3 py-1 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
-                Đổi tài khoản nhanh
-              </span>
-              {user.role !== 'TEACHER' && (
-                <button
-                  type="button"
-                  onClick={() => handleQuickSwitch('TEACHER')}
-                  className="w-full flex items-center justify-between px-3 py-2 rounded-xl hover:bg-indigo-50 text-indigo-700 transition-colors text-left"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <GraduationCap className="w-4 h-4 text-indigo-600 flex-shrink-0" />
-                    <span className="font-semibold text-xs">Giảng viên (TS. Nguyễn Văn A)</span>
-                  </div>
-                  <span className="text-[10px] bg-indigo-100 text-indigo-800 font-extrabold px-1.5 py-0.5 rounded">GV</span>
-                </button>
-              )}
-              {user.role !== 'STUDENT' && (
-                <button
-                  type="button"
-                  onClick={() => handleQuickSwitch('STUDENT')}
-                  className="w-full flex items-center justify-between px-3 py-2 rounded-xl hover:bg-blue-50 text-blue-700 transition-colors text-left"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <User className="w-4 h-4 text-blue-600 flex-shrink-0" />
-                    <span className="font-semibold text-xs">Sinh viên (Trần Thị B)</span>
-                  </div>
-                  <span className="text-[10px] bg-blue-100 text-blue-800 font-extrabold px-1.5 py-0.5 rounded">SV</span>
-                </button>
               )}
             </div>
           </div>
@@ -249,7 +190,7 @@ export const ProfileDropdown: React.FC<Props> = ({
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-rose-600 hover:bg-rose-50 transition-colors text-left text-xs font-bold"
             >
               <LogOut className="w-4 h-4 text-rose-600" />
-              <span>Đăng xuất khỏi hệ thống</span>
+              <span>{t('logout')}</span>
             </button>
           </div>
         </div>

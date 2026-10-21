@@ -29,6 +29,10 @@ public class LmsDbContext : DbContext
     public DbSet<AnnouncementComment> AnnouncementComments => Set<AnnouncementComment>();
     public DbSet<FinalGrade> FinalGrades => Set<FinalGrade>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<QuestionBank> QuestionBanks => Set<QuestionBank>();
+    public DbSet<QuestionBankOption> QuestionBankOptions => Set<QuestionBankOption>();
+    public DbSet<Department> Departments => Set<Department>();
+    public DbSet<Major> Majors => Set<Major>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -55,6 +59,24 @@ public class LmsDbContext : DbContext
         modelBuilder.Entity<AnnouncementComment>().ToTable("announcement_comments");
         modelBuilder.Entity<FinalGrade>().ToTable("final_grades");
         modelBuilder.Entity<Notification>().ToTable("notifications");
+        modelBuilder.Entity<QuestionBank>().ToTable("question_banks");
+        modelBuilder.Entity<QuestionBankOption>().ToTable("question_bank_options");
+        modelBuilder.Entity<Department>().ToTable("departments");
+        modelBuilder.Entity<Major>().ToTable("majors");
+
+        modelBuilder.Entity<Department>()
+            .HasIndex(d => d.Code)
+            .IsUnique();
+
+        modelBuilder.Entity<Major>()
+            .HasIndex(m => m.Code)
+            .IsUnique();
+
+        modelBuilder.Entity<Major>()
+            .HasOne(m => m.Department)
+            .WithMany(d => d.Majors)
+            .HasForeignKey(m => m.DepartmentId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         // 2. Primary Keys & One-to-One Relationships
         modelBuilder.Entity<StudentProfile>()
@@ -85,6 +107,10 @@ public class LmsDbContext : DbContext
             .HasConversion<string>();
 
         modelBuilder.Entity<QuizQuestion>()
+            .Property(q => q.QuestionType)
+            .HasConversion<string>();
+
+        modelBuilder.Entity<QuestionBank>()
             .Property(q => q.QuestionType)
             .HasConversion<string>();
 
@@ -243,6 +269,18 @@ public class LmsDbContext : DbContext
             .HasOne(n => n.User)
             .WithMany(u => u.Notifications)
             .HasForeignKey(n => n.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<QuestionBank>()
+            .HasOne(qb => qb.Course)
+            .WithMany()
+            .HasForeignKey(qb => qb.CourseId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<QuestionBankOption>()
+            .HasOne(qbo => qbo.Question)
+            .WithMany(qb => qb.Options)
+            .HasForeignKey(qbo => qbo.QuestionId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // 5. Automatic snake_case column mapping
