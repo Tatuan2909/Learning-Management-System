@@ -23,11 +23,16 @@ public class DashboardService : IDashboardService
     {
         var now = DateTime.UtcNow;
 
-        // 1. Get courses student is enrolled in
-        var enrolledCourseIds = await _db.Enrollments
-            .Where(e => e.StudentId == studentId)
+        // 1. Get courses student is actively enrolled in
+        var activeEnrolledCourseIds = await _db.Enrollments
+            .Where(e => e.StudentId == studentId && e.Status == "ACTIVE")
             .Select(e => e.CourseId)
             .ToListAsync();
+
+        if (!activeEnrolledCourseIds.Any())
+        {
+            return new List<UpcomingDeadlineDto>();
+        }
 
         // 2. Query assignments in enrolled courses where student HAS NOT submitted and DueDate > now
         var submittedAssignmentIds = await _db.Submissions
@@ -35,14 +40,29 @@ public class DashboardService : IDashboardService
             .Select(s => s.AssignmentId)
             .ToListAsync();
 
+        // Also get completed lesson IDs for this student
+        var completedLessonIds = await _db.LessonProgresses
+            .Where(lp => lp.Enrollment.StudentId == studentId && lp.IsCompleted)
+            .Select(lp => lp.LessonId)
+            .ToListAsync();
+
+        // Also get lessons where student has submitted quiz attempts
+        var submittedQuizLessonIds = await _db.QuizAttempts
+            .Where(qa => qa.StudentId == studentId && qa.SubmittedAt != null)
+            .Select(qa => qa.Quiz.LessonId)
+            .ToListAsync();
+
+        var excludedLessonIds = completedLessonIds.Union(submittedQuizLessonIds).ToHashSet();
+
         var upcomingAssignments = await _db.Assignments
             .Include(a => a.Course)
             .Include(a => a.Lesson)
-            .Where(a => enrolledCourseIds.Contains(a.CourseId) 
+            .Where(a => activeEnrolledCourseIds.Contains(a.CourseId) 
                         && !submittedAssignmentIds.Contains(a.Id) 
                         && a.DueDate > now
                         && a.LessonId != null
-                        && a.Lesson != null)
+                        && a.Lesson != null
+                        && (!a.LessonId.HasValue || !excludedLessonIds.Contains(a.LessonId.Value)))
             .Select(a => new UpcomingDeadlineDto
             {
                 Id = a.Id,

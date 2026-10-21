@@ -20,6 +20,7 @@ builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IQuizService, QuizService>();
 builder.Services.AddSingleton<ISystemSettingsService, SystemSettingsService>();
+builder.Services.AddSingleton<IPasswordHasher, PasswordHasher>();
 
 // 3. Configure JWT Authentication
 var secretKey = builder.Configuration["JwtSettings:Secret"] ?? "SuperSecretKeyForLmsSystemTokenAuthentication2026!@#";

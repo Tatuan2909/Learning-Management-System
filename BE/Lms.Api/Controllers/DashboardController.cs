@@ -2,14 +2,17 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Lms.Api.Extensions;
 using Lms.Application.Interfaces;
 using Lms.Domain.Entities;
 using Lms.Infrastructure.Data;
 
 namespace Lms.Api.Controllers;
 
+[Authorize]
 [ApiController]
 [Route("api/student")]
 public class DashboardController : ControllerBase
@@ -30,7 +33,14 @@ public class DashboardController : ControllerBase
     [HttpGet("upcoming-deadlines")]
     public async Task<IActionResult> GetUpcomingDeadlines([FromQuery] Guid? studentId)
     {
-        var targetStudentId = studentId ?? Guid.Parse("33333333-3333-3333-3333-333333333333");
+        var currentUserId = User.GetUserId();
+        var targetStudentId = User.IsAdmin() || User.IsTeacher()
+            ? (studentId ?? currentUserId ?? Guid.Empty)
+            : (currentUserId ?? studentId ?? Guid.Empty);
+
+        if (targetStudentId == Guid.Empty)
+            return Unauthorized(new { message = "Chưa đăng nhập hoặc không xác định được danh tính sinh viên." });
+
         var result = await _dashboardService.GetUpcomingDeadlinesAsync(targetStudentId);
         return Ok(result);
     }
@@ -41,7 +51,13 @@ public class DashboardController : ControllerBase
     [HttpGet("transcript")]
     public async Task<IActionResult> GetStudentTranscript([FromQuery] Guid? studentId)
     {
-        var targetStudentId = studentId ?? Guid.Parse("33333333-3333-3333-3333-333333333333");
+        var currentUserId = User.GetUserId();
+        var targetStudentId = User.IsAdmin() || User.IsTeacher()
+            ? (studentId ?? currentUserId ?? Guid.Empty)
+            : (currentUserId ?? studentId ?? Guid.Empty);
+
+        if (targetStudentId == Guid.Empty)
+            return Unauthorized(new { message = "Chưa đăng nhập hoặc không xác định được danh tính sinh viên." });
 
         var student = await _db.Users
             .Include(u => u.StudentProfile)
@@ -138,11 +154,14 @@ public class DashboardController : ControllerBase
                 att = Math.Round(e.ProgressPercentage / 10m, 2);
                 ass = gradedAssignmentScores.Any() ? Math.Round(gradedAssignmentScores.Average(), 2) : 0.0m;
                 exam = 0.0m;
-                total = Math.Round((att * wAtt + ass * wAss + exam * wExam) / totalWeight, 2);
+                var completedWeights = wAtt + (gradedAssignmentScores.Any() ? wAss : 0m);
+                total = completedWeights > 0
+                    ? Math.Round((att * wAtt + ass * (gradedAssignmentScores.Any() ? wAss : 0m)) / completedWeights, 2)
+                    : 0.0m;
                 var gradeCalc = CalculateGradeLetterAndGpa4(total);
-                letter = gradeCalc.letter;
+                letter = "Đang học";
                 gpa4 = gradeCalc.gpa4;
-                isPassed = total >= 4.0m;
+                isPassed = false;
             }
 
             courseItems.Add(new
@@ -170,17 +189,19 @@ public class DashboardController : ControllerBase
             });
         }
 
+        var finalizedItems = courseItems.Where(c => (bool)((dynamic)c).isFinalized).ToList();
         int totalCourses = courseItems.Count;
-        int passedCourses = courseItems.Count(c => (bool)((dynamic)c).isPassed);
-        int inProgressCourses = courseItems.Count(c => (string)((dynamic)c).status == "IN_PROGRESS");
-        int failedCourses = courseItems.Count(c => (string)((dynamic)c).status == "FAILED");
+        int passedCourses = finalizedItems.Count(c => (bool)((dynamic)c).isPassed);
+        int failedCourses = finalizedItems.Count(c => !(bool)((dynamic)c).isPassed);
+        int inProgressCourses = courseItems.Count - finalizedItems.Count;
 
-        double avgGpa10 = totalCourses > 0 
-            ? Math.Round(courseItems.Average(c => (double)((dynamic)c).totalScore), 2) 
+        var gpaBasis = finalizedItems.Any() ? finalizedItems : courseItems;
+        double avgGpa10 = gpaBasis.Any() 
+            ? Math.Round(gpaBasis.Average(c => (double)((dynamic)c).totalScore), 2) 
             : 0;
 
-        double avgGpa4 = totalCourses > 0 
-            ? Math.Round(courseItems.Average(c => (double)((dynamic)c).gpa4), 2) 
+        double avgGpa4 = gpaBasis.Any() 
+            ? Math.Round(gpaBasis.Average(c => (double)((dynamic)c).gpa4), 2) 
             : 0;
 
         int totalCredits = totalCourses * 3;
@@ -219,7 +240,13 @@ public class DashboardController : ControllerBase
     [HttpGet("courses/{courseId}/grades")]
     public async Task<IActionResult> GetCourseStudentGrades(Guid courseId, [FromQuery] Guid? studentId)
     {
-        var targetStudentId = studentId ?? Guid.Parse("33333333-3333-3333-3333-333333333333");
+        var currentUserId = User.GetUserId();
+        var targetStudentId = User.IsAdmin() || User.IsTeacher()
+            ? (studentId ?? currentUserId ?? Guid.Empty)
+            : (currentUserId ?? studentId ?? Guid.Empty);
+
+        if (targetStudentId == Guid.Empty)
+            return Unauthorized(new { message = "Chưa đăng nhập hoặc không xác định được danh tính sinh viên." });
 
         var enrollment = await _db.Enrollments
             .Include(e => e.Course)
@@ -279,14 +306,39 @@ public class DashboardController : ControllerBase
             });
         }
 
-        decimal att = fg != null ? fg.AttendanceScore : Math.Round(enrollment.ProgressPercentage / 10m, 2);
-        decimal ass = fg != null ? fg.AssignmentsScore : (gradedScores.Any() ? Math.Round(gradedScores.Average(), 2) : 0.0m);
-        decimal exam = fg != null ? fg.FinalExamScore : 0.0m;
-        decimal total = fg != null ? fg.TotalScore : Math.Round((att * wAtt + ass * wAss + exam * wExam) / totalWeight, 2);
-        var gradeCalc = CalculateGradeLetterAndGpa4(total);
-        string letter = fg?.LetterGrade ?? gradeCalc.letter;
-        decimal gpa4 = gradeCalc.gpa4;
-        bool isPassed = fg != null ? fg.IsPassed : total >= 4.0m;
+        decimal att;
+        decimal ass;
+        decimal exam;
+        decimal total;
+        string letter;
+        decimal gpa4;
+        bool isPassed;
+
+        if (fg != null)
+        {
+            att = fg.AttendanceScore;
+            ass = fg.AssignmentsScore;
+            exam = fg.FinalExamScore;
+            total = fg.TotalScore;
+            var gradeCalc = CalculateGradeLetterAndGpa4(total);
+            letter = fg.LetterGrade ?? gradeCalc.letter;
+            gpa4 = gradeCalc.gpa4;
+            isPassed = fg.IsPassed;
+        }
+        else
+        {
+            att = Math.Round(enrollment.ProgressPercentage / 10m, 2);
+            ass = gradedScores.Any() ? Math.Round(gradedScores.Average(), 2) : 0.0m;
+            exam = 0.0m;
+            var completedWeights = wAtt + (gradedScores.Any() ? wAss : 0m);
+            total = completedWeights > 0
+                ? Math.Round((att * wAtt + ass * (gradedScores.Any() ? wAss : 0m)) / completedWeights, 2)
+                : 0.0m;
+            var gradeCalc = CalculateGradeLetterAndGpa4(total);
+            letter = "Đang học";
+            gpa4 = gradeCalc.gpa4;
+            isPassed = false;
+        }
 
         return Ok(new
         {

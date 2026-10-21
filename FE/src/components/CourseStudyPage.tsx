@@ -76,6 +76,7 @@ export interface CurriculumItem {
   isLocked: boolean;
   quizId?: string;
   assignmentId?: string;
+  hasPassword?: boolean;
   password?: string;
   bodyMarkdown?: string;
 }
@@ -258,6 +259,7 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, studentId, initialA
           isLocked: i.isLocked,
           quizId: i.quizId,
           assignmentId: i.assignmentId,
+          hasPassword: i.hasPassword,
           password: i.password,
           bodyMarkdown: i.bodyMarkdown
         }))
@@ -413,24 +415,25 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, studentId, initialA
   };
 
 
-  const handleUnlockQuiz = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleUnlockQuiz = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!selectedActivity || selectedActivity.type !== 'QUIZ') return;
 
-    const expectedPassword = selectedActivity.password?.trim();
-    if (expectedPassword) {
-      if (quizPasswordInput.trim() !== expectedPassword) {
-        setQuizPasswordError('Mật khẩu bài trắc nghiệm chưa đúng. Vui lòng kiểm tra lại.');
-        return;
-      }
-    }
+    try {
+      const targetQuizId = selectedActivity.quizId || selectedActivity.id;
+      await api.post(`/quiz/${targetQuizId}/verify-password`, {
+        password: quizPasswordInput.trim()
+      });
 
-    setUnlockedQuizKeys((prev) => ({
-      ...prev,
-      [getQuizAccessKey(selectedActivity)]: true
-    }));
-    setQuizPasswordInput('');
-    setQuizPasswordError('');
+      setUnlockedQuizKeys((prev) => ({
+        ...prev,
+        [getQuizAccessKey(selectedActivity)]: true
+      }));
+      setQuizPasswordInput('');
+      setQuizPasswordError('');
+    } catch (err: any) {
+      setQuizPasswordError(err.response?.data?.message || 'Mật khẩu bài trắc nghiệm chưa đúng. Vui lòng kiểm tra lại.');
+    }
   };
 
   // Handle Quiz Passed callback -> Marks completed & Refreshes dynamic course progress from database
@@ -1184,7 +1187,7 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, studentId, initialA
                         {item.isLocked && (
                           <Lock className="w-3 h-3 flex-shrink-0 text-slate-400" />
                         )}
-                        {item.type === 'QUIZ' && !item.isLocked && !!item.password?.trim() && !unlockedQuizKeys[getQuizAccessKey(item)] && (
+                        {item.type === 'QUIZ' && !item.isLocked && (item.hasPassword || !!item.password?.trim()) && !unlockedQuizKeys[getQuizAccessKey(item)] && (
                           <KeyRound className={`w-3 h-3 flex-shrink-0 ${isCurrent ? 'text-white' : 'text-indigo-500'}`} />
                         )}
                       </button>
@@ -1428,7 +1431,7 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, studentId, initialA
               {/* 1. QUIZ DEDICATED PAGE */}
               {selectedActivity.type === 'QUIZ' && (
                 <div className="w-full space-y-6">
-                  {!selectedActivity.password?.trim() || unlockedQuizKeys[getQuizAccessKey(selectedActivity)] ? (
+                  {!(selectedActivity.hasPassword || !!selectedActivity.password?.trim()) || unlockedQuizKeys[getQuizAccessKey(selectedActivity)] ? (
                     <PostLessonQuiz
                       quizId={selectedActivity.quizId}
                       onBack={() => setSelectedActivity(null)}
@@ -1920,7 +1923,7 @@ export const CourseStudyPage: React.FC<Props> = ({ courseId, studentId, initialA
                                       <span className="text-[11px] text-slate-400">
                                         Loại: {item.type} {item.subtitle ? `• ${item.subtitle}` : ''}
                                       </span>
-                                      {item.type === 'QUIZ' && !item.isLocked && !!item.password?.trim() && !unlockedQuizKeys[getQuizAccessKey(item)] && (
+                                      {item.type === 'QUIZ' && !item.isLocked && (item.hasPassword || !!item.password?.trim()) && !unlockedQuizKeys[getQuizAccessKey(item)] && (
                                         <span className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-700">
                                           <KeyRound className="h-3 w-3" />
                                           Cần mật khẩu

@@ -7,6 +7,8 @@ using Lms.Application.Interfaces;
 using Lms.Infrastructure.Data;
 
 using Lms.Domain.Enums;
+using Lms.Api.Extensions;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Lms.Api.Controllers;
 
@@ -17,25 +19,44 @@ public class AuthController : ControllerBase
     private readonly LmsDbContext _db;
     private readonly IJwtService _jwtService;
     private readonly ISystemSettingsService _systemSettings;
+    private readonly IPasswordHasher _passwordHasher;
 
-    public AuthController(LmsDbContext db, IJwtService jwtService, ISystemSettingsService systemSettings)
+    public AuthController(
+        LmsDbContext db, 
+        IJwtService jwtService, 
+        ISystemSettingsService systemSettings,
+        IPasswordHasher passwordHasher)
     {
         _db = db;
         _jwtService = jwtService;
         _systemSettings = systemSettings;
+        _passwordHasher = passwordHasher;
     }
 
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
+        var identifier = (request.Email ?? "").Trim();
+        var prefix = identifier.Contains('@') ? identifier.Split('@')[0] : identifier;
+
         var user = await _db.Users
             .Include(u => u.StudentProfile)
             .Include(u => u.TeacherProfile)
-            .FirstOrDefaultAsync(u => u.Email == request.Email);
+            .FirstOrDefaultAsync(u => 
+                u.Email == identifier ||
+                u.Email == prefix ||
+                (u.StudentProfile != null && (u.StudentProfile.StudentCode == identifier || u.StudentProfile.StudentCode == prefix)) ||
+                (u.TeacherProfile != null && (u.TeacherProfile.TeacherCode == identifier || u.TeacherProfile.TeacherCode == prefix)));
 
-        if (user == null || user.PasswordHash != request.Password) // Simple check for demo
+        if (user == null || !_passwordHasher.VerifyPassword(request.Password, user.PasswordHash))
         {
-            return Unauthorized(new { message = "Email hoặc mật khẩu không chính xác." });
+            return Unauthorized(new { message = "Tên đăng nhập / Mã định danh hoặc mật khẩu không chính xác." });
+        }
+
+        // Automatic security upgrade: If stored password was plain-text seed, re-hash with BCrypt immediately
+        if (!user.PasswordHash.StartsWith("$2"))
+        {
+            user.PasswordHash = _passwordHasher.HashPassword(request.Password);
         }
 
         if (!user.IsActive)
@@ -79,14 +100,24 @@ public class AuthController : ControllerBase
     [HttpPost("admin-login")]
     public async Task<IActionResult> AdminLogin([FromBody] LoginRequest request)
     {
+        var identifier = (request.Email ?? "").Trim();
+        var prefix = identifier.Contains('@') ? identifier.Split('@')[0] : identifier;
+
         var user = await _db.Users
             .Include(u => u.StudentProfile)
             .Include(u => u.TeacherProfile)
-            .FirstOrDefaultAsync(u => u.Email == request.Email);
+            .FirstOrDefaultAsync(u => 
+                u.Role == UserRole.ADMIN && (u.Email == identifier || u.Email == prefix));
 
-        if (user == null || user.PasswordHash != request.Password)
+        if (user == null || !_passwordHasher.VerifyPassword(request.Password, user.PasswordHash))
         {
-            return Unauthorized(new { message = "Email hoặc mật khẩu Quản trị viên không chính xác." });
+            return Unauthorized(new { message = "Tên đăng nhập hoặc mật khẩu Quản trị viên không chính xác." });
+        }
+
+        // Automatic security upgrade: If stored password was plain-text seed, re-hash with BCrypt immediately
+        if (!user.PasswordHash.StartsWith("$2"))
+        {
+            user.PasswordHash = _passwordHasher.HashPassword(request.Password);
         }
 
         if (user.Role != UserRole.ADMIN)
@@ -164,23 +195,30 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
-    /// Đổi mật khẩu tài khoản trong CSDL
+    /// Đổi mật khẩu tài khoản trong CSDL (Yêu cầu xác thực JWT)
     /// </summary>
+    [Authorize]
     [HttpPost("change-password")]
     public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
     {
-        if (request.UserId == Guid.Empty)
+        var authenticatedUserId = User.GetUserId();
+        if (authenticatedUserId == null)
         {
-            return BadRequest(new { message = "UserId không hợp lệ." });
+            return Unauthorized(new { message = "Không xác thực được người dùng từ token." });
         }
 
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == request.UserId);
+        // Ngăn chặn giả mạo: Người dùng thông thường chỉ được phép đổi mật khẩu của chính mình
+        var targetUserId = User.IsAdmin() && request.UserId != Guid.Empty
+            ? request.UserId
+            : authenticatedUserId.Value;
+
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == targetUserId);
         if (user == null)
         {
             return NotFound(new { message = "Không tìm thấy người dùng trong CSDL." });
         }
 
-        if (user.PasswordHash != request.CurrentPassword)
+        if (!_passwordHasher.VerifyPassword(request.CurrentPassword, user.PasswordHash))
         {
             return BadRequest(new { message = "Mật khẩu hiện tại không chính xác." });
         }
@@ -190,20 +228,30 @@ public class AuthController : ControllerBase
             return BadRequest(new { message = "Mật khẩu mới phải có ít nhất 6 ký tự." });
         }
 
-        user.PasswordHash = request.NewPassword;
+        user.PasswordHash = _passwordHasher.HashPassword(request.NewPassword);
         user.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
-        return Ok(new { message = "Đổi mật khẩu thành công trong cơ sở dữ liệu." });
+        return Ok(new { message = "Đổi mật khẩu thành công và đã được mã hóa an toàn trong cơ sở dữ liệu." });
     }
 
     /// <summary>
     /// Lấy thông tin tài khoản và hồ sơ chi tiết (Student/Teacher Profile)
     /// </summary>
+    [Authorize]
     [HttpGet("me")]
     public async Task<IActionResult> GetProfile([FromQuery] Guid? userId)
     {
-        var targetId = userId ?? Guid.Parse("33333333-3333-3333-3333-333333333333");
+        var authenticatedUserId = User.GetUserId();
+        if (authenticatedUserId == null)
+        {
+            return Unauthorized(new { message = "Không xác thực được người dùng từ token." });
+        }
+
+        // Người dùng chỉ xem được thông tin của mình trừ khi là Quản trị viên
+        var targetId = User.IsAdmin() && userId.HasValue
+            ? userId.Value
+            : authenticatedUserId.Value;
 
         var user = await _db.Users
             .Include(u => u.StudentProfile)

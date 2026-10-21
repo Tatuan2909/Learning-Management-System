@@ -7,5 +7,7 @@ public class SubmitQuizRequest
 {
     public Guid QuizId { get; set; }
     public Guid StudentId { get; set; }
+    public DateTime? StartedAt { get; set; }
+    public string? Password { get; set; }
     public List<QuestionAnswerDto> Answers { get; set; } = new();
 }

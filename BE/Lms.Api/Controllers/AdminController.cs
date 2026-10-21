@@ -8,20 +8,27 @@ using Lms.Domain.Entities;
 using Lms.Domain.Enums;
 
 using Lms.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Lms.Api.Controllers;
 
+[Authorize(Roles = "ADMIN")]
 [ApiController]
 [Route("api/[controller]")]
 public class AdminController : ControllerBase
 {
     private readonly LmsDbContext _db;
     private readonly ISystemSettingsService _systemSettings;
+    private readonly IPasswordHasher _passwordHasher;
 
-    public AdminController(LmsDbContext db, ISystemSettingsService systemSettings)
+    public AdminController(
+        LmsDbContext db, 
+        ISystemSettingsService systemSettings,
+        IPasswordHasher passwordHasher)
     {
         _db = db;
         _systemSettings = systemSettings;
+        _passwordHasher = passwordHasher;
     }
 
     /// <summary>
@@ -92,24 +99,17 @@ public class AdminController : ControllerBase
             role = UserRole.STUDENT;
         }
 
-        var user = new User
-        {
-            Id = Guid.NewGuid(),
-            Email = request.Email.Trim(),
-            FullName = request.FullName.Trim(),
-            PasswordHash = "password123",
-            Role = role,
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
+        string defaultPassword;
+        StudentProfile? studentProfile = null;
+        TeacherProfile? teacherProfile = null;
 
         if (role == UserRole.STUDENT)
         {
-            user.StudentProfile = new StudentProfile
+            var studentCode = !string.IsNullOrWhiteSpace(request.Code) ? request.Code.Trim() : "SV" + new Random().Next(1000000, 9999999);
+            defaultPassword = studentCode;
+            studentProfile = new StudentProfile
             {
-                UserId = user.Id,
-                StudentCode = !string.IsNullOrWhiteSpace(request.Code) ? request.Code.Trim() : "SV" + new Random().Next(1000000, 9999999),
+                StudentCode = studentCode,
                 AdministrativeClass = !string.IsNullOrWhiteSpace(request.DepartmentOrClass) ? request.DepartmentOrClass.Trim() : "CNTT-K65",
                 Major = "Công nghệ Thông tin",
                 EnrollmentYear = DateTime.UtcNow.Year
@@ -117,13 +117,42 @@ public class AdminController : ControllerBase
         }
         else if (role == UserRole.TEACHER)
         {
-            user.TeacherProfile = new TeacherProfile
+            var teacherCode = !string.IsNullOrWhiteSpace(request.Code) ? request.Code.Trim() : "GV" + new Random().Next(100, 999);
+            defaultPassword = teacherCode;
+            teacherProfile = new TeacherProfile
             {
-                UserId = user.Id,
-                TeacherCode = !string.IsNullOrWhiteSpace(request.Code) ? request.Code.Trim() : "GV" + new Random().Next(100, 999),
+                TeacherCode = teacherCode,
                 Department = !string.IsNullOrWhiteSpace(request.DepartmentOrClass) ? request.DepartmentOrClass.Trim() : "Khoa Công nghệ Thông tin",
                 AcademicTitle = "Tiến sĩ"
             };
+        }
+        else
+        {
+            defaultPassword = "admin";
+        }
+
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            Email = request.Email.Trim(),
+            FullName = request.FullName.Trim(),
+            PasswordHash = _passwordHasher.HashPassword(defaultPassword),
+            Role = role,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        if (studentProfile != null)
+        {
+            studentProfile.UserId = user.Id;
+            user.StudentProfile = studentProfile;
+        }
+
+        if (teacherProfile != null)
+        {
+            teacherProfile.UserId = user.Id;
+            user.TeacherProfile = teacherProfile;
         }
 
         _db.Users.Add(user);
@@ -252,14 +281,24 @@ public class AdminController : ControllerBase
     [HttpPost("users/{userId}/reset-password")]
     public async Task<IActionResult> ResetPassword(Guid userId, [FromBody] ResetPasswordAdminDto? request)
     {
-        var user = await _db.Users.FindAsync(userId);
+        var user = await _db.Users
+            .Include(u => u.StudentProfile)
+            .Include(u => u.TeacherProfile)
+            .FirstOrDefaultAsync(u => u.Id == userId);
+
         if (user == null) return NotFound(new { message = "Người dùng không tồn tại." });
+
+        var defaultPassword = user.Role == UserRole.TEACHER
+            ? (user.TeacherProfile?.TeacherCode ?? "GV001")
+            : user.Role == UserRole.ADMIN
+                ? "admin"
+                : (user.StudentProfile?.StudentCode ?? "SV2024001");
 
         var newPassword = !string.IsNullOrWhiteSpace(request?.NewPassword)
             ? request.NewPassword.Trim()
-            : (user.Role == UserRole.TEACHER ? "teacher123" : user.Role == UserRole.ADMIN ? "admin123" : "student123");
+            : defaultPassword;
 
-        user.PasswordHash = newPassword;
+        user.PasswordHash = _passwordHasher.HashPassword(newPassword);
         user.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 

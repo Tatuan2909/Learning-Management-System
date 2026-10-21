@@ -57,6 +57,16 @@ public class QuizService : IQuizService
         };
     }
 
+    public async Task<bool> VerifyQuizPasswordAsync(Guid quizId, string? password)
+    {
+        var quiz = await _db.Quizzes
+            .FirstOrDefaultAsync(q => q.Id == quizId || q.LessonId == quizId);
+        if (quiz == null) return false;
+
+        if (string.IsNullOrEmpty(quiz.Password)) return true;
+        return string.Equals(quiz.Password.Trim(), password?.Trim(), StringComparison.Ordinal);
+    }
+
     public async Task<SubmitQuizResponse> SubmitQuizAsync(SubmitQuizRequest request)
     {
         var quiz = await _db.Quizzes
@@ -68,20 +78,62 @@ public class QuizService : IQuizService
         if (quiz == null)
             throw new KeyNotFoundException("Quiz không tồn tại.");
 
-        decimal totalMaxPoints = quiz.Questions.Sum(q => q.Points);
-        if (totalMaxPoints <= 0) totalMaxPoints = 10.00m;
+        // 1. Kiểm tra ghi danh khóa học của sinh viên
+        var enrollment = await _db.Enrollments
+            .FirstOrDefaultAsync(e => e.CourseId == quiz.Lesson.CourseId && e.StudentId == request.StudentId);
 
-        // Count previous attempts for attempt_number
+        if (enrollment == null)
+        {
+            throw new InvalidOperationException("Sinh viên chưa ghi danh khóa học này để làm bài trắc nghiệm.");
+        }
+
+        if (enrollment.Status == "SUSPENDED")
+        {
+            throw new InvalidOperationException("Tài khoản ghi danh của bạn trong khóa học này đang bị tạm ngưng.");
+        }
+
+        // 2. Kiểm tra mật khẩu bài thi nếu có cấu hình
+        if (!string.IsNullOrEmpty(quiz.Password))
+        {
+            if (string.IsNullOrEmpty(request.Password) || !string.Equals(quiz.Password.Trim(), request.Password.Trim(), StringComparison.Ordinal))
+            {
+                throw new UnauthorizedAccessException("Mật khẩu bài trắc nghiệm không chính xác.");
+            }
+        }
+
+        // 3. Kiểm tra số lần làm bài tối đa (MaxAttempts)
         int attemptCount = await _db.QuizAttempts
             .CountAsync(qa => qa.QuizId == quiz.Id && qa.StudentId == request.StudentId);
+
+        if (quiz.MaxAttempts.HasValue && quiz.MaxAttempts.Value > 0 && attemptCount >= quiz.MaxAttempts.Value)
+        {
+            throw new InvalidOperationException($"Bạn đã vượt quá số lần làm bài tối đa cho phép ({quiz.MaxAttempts.Value} lần).");
+        }
+
+        // 4. Kiểm tra thời gian làm bài (TimeLimitMinutes)
+        var startedAt = request.StartedAt ?? DateTime.UtcNow.AddMinutes(-1);
+        var submittedAt = DateTime.UtcNow;
+
+        if (quiz.TimeLimitMinutes.HasValue && quiz.TimeLimitMinutes.Value > 0)
+        {
+            // Cho phép độ trễ mạng tối đa 2 phút
+            var allowedDuration = TimeSpan.FromMinutes(quiz.TimeLimitMinutes.Value + 2);
+            if (submittedAt - startedAt > allowedDuration)
+            {
+                throw new InvalidOperationException("Thời gian làm bài đã vượt quá giới hạn quy định của bài thi.");
+            }
+        }
+
+        decimal totalMaxPoints = quiz.Questions.Sum(q => q.Points);
+        if (totalMaxPoints <= 0) totalMaxPoints = 10.00m;
 
         var attempt = new QuizAttempt
         {
             QuizId = quiz.Id,
             StudentId = request.StudentId,
             AttemptNumber = attemptCount + 1,
-            StartedAt = DateTime.UtcNow.AddMinutes(-5),
-            SubmittedAt = DateTime.UtcNow
+            StartedAt = startedAt,
+            SubmittedAt = submittedAt
         };
 
         decimal earnedPoints = 0.00m;
@@ -101,15 +153,34 @@ public class QuizService : IQuizService
                 earnedPoints += question.Points;
             }
 
-            attempt.Answers.Add(new QuizAttemptAnswer
+            if (selectedOptionIds.Any())
             {
-                Id = Guid.NewGuid(),
-                AttemptId = attempt.Id,
-                QuestionId = question.Id,
-                SelectedOptionId = selectedOptionIds.FirstOrDefault(),
-                IsCorrect = isQuestionCorrect,
-                PointsEarned = earnedQPoints
-            });
+                // Lưu từng phương án đã chọn để phản ánh chính xác cả câu hỏi chọn nhiều đáp án
+                foreach (var optId in selectedOptionIds)
+                {
+                    attempt.Answers.Add(new QuizAttemptAnswer
+                    {
+                        Id = Guid.NewGuid(),
+                        AttemptId = attempt.Id,
+                        QuestionId = question.Id,
+                        SelectedOptionId = optId,
+                        IsCorrect = isQuestionCorrect,
+                        PointsEarned = earnedQPoints
+                    });
+                }
+            }
+            else
+            {
+                attempt.Answers.Add(new QuizAttemptAnswer
+                {
+                    Id = Guid.NewGuid(),
+                    AttemptId = attempt.Id,
+                    QuestionId = question.Id,
+                    SelectedOptionId = null,
+                    IsCorrect = false,
+                    PointsEarned = 0m
+                });
+            }
         }
 
         // Score percentage / calculated out of max_score
@@ -124,10 +195,6 @@ public class QuizService : IQuizService
 
         if (isPassed)
         {
-            // Find student's enrollment for the course
-            var enrollment = await _db.Enrollments
-                .FirstOrDefaultAsync(e => e.CourseId == quiz.Lesson.CourseId && e.StudentId == request.StudentId);
-
             if (enrollment != null)
             {
                 var progress = await _db.LessonProgresses
@@ -197,10 +264,13 @@ public class QuizService : IQuizService
             SubmittedAt = attempt.SubmittedAt,
             Questions = quiz.Questions.OrderBy(q => q.OrderIndex).Select(q =>
             {
-                var ans = attempt.Answers.FirstOrDefault(a => a.QuestionId == q.Id);
-                var selectedIds = ans?.SelectedOptionId.HasValue == true
-                    ? new List<Guid> { ans.SelectedOptionId.Value }
-                    : new List<Guid>();
+                var qAnswers = attempt.Answers.Where(a => a.QuestionId == q.Id).ToList();
+                var selectedIds = qAnswers
+                    .Where(a => a.SelectedOptionId.HasValue)
+                    .Select(a => a.SelectedOptionId!.Value)
+                    .Distinct()
+                    .ToList();
+                var firstAns = qAnswers.FirstOrDefault();
 
                 return new QuizReviewQuestionDto
                 {
@@ -208,8 +278,8 @@ public class QuizService : IQuizService
                     QuestionText = q.QuestionText,
                     QuestionType = q.QuestionType.ToString(),
                     Points = (double)q.Points,
-                    PointsEarned = ans != null ? (double)ans.PointsEarned : 0.0,
-                    IsCorrect = ans?.IsCorrect ?? false,
+                    PointsEarned = firstAns != null ? (double)firstAns.PointsEarned : 0.0,
+                    IsCorrect = qAnswers.Any(a => a.IsCorrect),
                     Explanation = q.Explanation,
                     SelectedOptionIds = selectedIds,
                     Options = q.Options.Select(o => new QuizReviewOptionDto

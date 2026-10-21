@@ -178,17 +178,17 @@ export const LoginPage: React.FC<Props> = ({ onLoginSuccess, onOpenAdminLogin })
             <form className="space-y-5" onSubmit={handleSubmit}>
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                  Địa chỉ Email
+                  Tên đăng nhập / Mã SV / Mã GV
                 </label>
                 <div className="relative rounded-xl shadow-2xs">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                     <Mail className="h-5 w-5" />
                   </div>
                   <input
-                    type="email"
+                    type="text"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="student@lms.edu.vn hoặc teacher@lms.edu.vn"
+                    placeholder="Nhập Mã SV (ví dụ: SV2024001) hoặc Mã GV (ví dụ: GV001)"
                     className="block w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
                   />
                 </div>

@@ -87,10 +87,10 @@ interface TranscriptData {
 
 interface Props {
   user: AuthUser;
-  onOpenCourseStudy: (courseId: string) => void;
+  onOpenCourseStudy?: (courseId: string) => void;
 }
 
-export const StudentGradesPage: React.FC<Props> = ({ user, onOpenCourseStudy }) => {
+export const StudentGradesPage: React.FC<Props> = ({ user, onOpenCourseStudy: _onOpenCourseStudy }) => {
   const { t } = useLanguage();
   const [data, setData] = useState<TranscriptData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -493,29 +493,6 @@ export const StudentGradesPage: React.FC<Props> = ({ user, onOpenCourseStudy }) 
                 {/* Expanded Details: Breakdown & Practice Assignments */}
                 {isExpanded && (
                   <div className="p-6 bg-slate-50/50 space-y-6">
-                    {/* Weight Distribution & Formula Box */}
-                    <div className="bg-white p-4 rounded-xl border border-slate-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-xs">
-                      <div className="space-y-1">
-                        <h4 className="font-bold text-slate-900 flex items-center gap-1.5">
-                          <TrendingUp className="w-4 h-4 text-blue-600" />
-                          {t('formulaTitle')}
-                        </h4>
-                        <p className="text-slate-600">
-                          {course.weightAttendance}% {t('attendanceScore')} + {course.weightAssignments}% {t('assignmentScore')} + {course.weightFinalExam}% {t('examScore')}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-3">
-                        <button
-                          onClick={() => onOpenCourseStudy(course.courseId)}
-                          className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all shadow-xs"
-                        >
-                          <BookOpen className="w-3.5 h-3.5" />
-                          <span>{t('enterStudyPage')}</span>
-                        </button>
-                      </div>
-                    </div>
-
                     {/* Assignments Breakdown Table */}
                     <div className="space-y-3">
                       <h4 className="font-bold text-sm text-slate-900 flex items-center gap-2">

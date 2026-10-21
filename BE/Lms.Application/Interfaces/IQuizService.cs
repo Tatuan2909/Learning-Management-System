@@ -10,4 +10,5 @@ public interface IQuizService
     Task<SubmitQuizResponse> SubmitQuizAsync(SubmitQuizRequest request);
     Task<QuizReviewDto?> GetQuizReviewAsync(Guid attemptId);
     Task<QuizAttemptSummaryDto?> GetLatestAttemptAsync(Guid quizId, Guid studentId);
+    Task<bool> VerifyQuizPasswordAsync(Guid quizId, string? password);
 }

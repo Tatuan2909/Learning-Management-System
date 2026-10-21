@@ -7,9 +7,12 @@ using Lms.Application.DTOs;
 using Lms.Domain.Entities;
 using Lms.Domain.Enums;
 using Lms.Infrastructure.Data;
+using Microsoft.AspNetCore.Authorization;
+using Lms.Api.Extensions;
 
 namespace Lms.Api.Controllers;
 
+[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 public class AssignmentsController : ControllerBase
@@ -19,6 +22,34 @@ public class AssignmentsController : ControllerBase
     public AssignmentsController(LmsDbContext db)
     {
         _db = db;
+    }
+
+    private static void ValidateUploadedFiles(Assignment assignment, List<IFormFile>? files)
+    {
+        if (files == null || files.Count == 0) return;
+
+        var allowed = (assignment.AllowedExtensions ?? ".zip,.rar,.7z,.pdf,.docx,.doc,.txt,.png,.jpg,.jpeg")
+            .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(e => e.Trim().ToLowerInvariant())
+            .ToHashSet();
+
+        const long maxFileSize = 50 * 1024 * 1024; // 50MB per file
+
+        foreach (var file in files)
+        {
+            if (file.Length <= 0) continue;
+
+            if (file.Length > maxFileSize)
+            {
+                throw new InvalidOperationException($"Tệp '{file.FileName}' vượt quá dung lượng tối đa cho phép (50MB).");
+            }
+
+            var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+            if (!string.IsNullOrEmpty(ext) && !allowed.Contains(ext) && !allowed.Contains(".*"))
+            {
+                throw new InvalidOperationException($"Phần mở rộng '{ext}' của tệp '{file.FileName}' không được chấp nhận. Định dạng cho phép: {assignment.AllowedExtensions}");
+            }
+        }
     }
 
     private static string GetSubmissionUploadsFolder()
@@ -172,10 +203,13 @@ public class AssignmentsController : ControllerBase
         List<IFormFile>? files,
         bool replaceFiles)
     {
-        if (studentId == Guid.Empty)
-            return BadRequest(new { message = "Thieu studentId." });
+        var currentUserId = User.GetUserId();
+        var targetStudentId = User.IsAdmin() && studentId != Guid.Empty ? studentId : (currentUserId ?? studentId);
 
-        if (submission.StudentId != studentId)
+        if (targetStudentId == Guid.Empty)
+            return Unauthorized(new { message = "Thieu studentId hoac chua xac thuc." });
+
+        if (submission.StudentId != targetStudentId && !User.IsAdmin())
             return Forbid();
 
         if (IsSubmissionLocked(submission))
@@ -185,15 +219,20 @@ public class AssignmentsController : ControllerBase
         if (assignment == null)
             return NotFound(new { message = "Khong tim thay bai tap." });
 
+        try
+        {
+            ValidateUploadedFiles(assignment, files);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+
+        var filesToDelete = new List<SubmissionFile>();
         if (replaceFiles)
         {
-            var existingFiles = submission.Files.ToList();
-            foreach (var file in existingFiles)
-            {
-                DeleteStoredSubmissionFile(file);
-            }
-
-            _db.SubmissionFiles.RemoveRange(existingFiles);
+            filesToDelete = submission.Files.ToList();
+            _db.SubmissionFiles.RemoveRange(filesToDelete);
             submission.Files.Clear();
             submission.FileUrl = null;
         }
@@ -218,8 +257,14 @@ public class AssignmentsController : ControllerBase
         submission.SubmittedAt = DateTime.UtcNow;
 
         await SaveUploadedFilesAsync(submission, files);
-        await SetLinkedLessonProgressAsync(assignment, studentId, true);
+        await SetLinkedLessonProgressAsync(assignment, targetStudentId, true);
         await _db.SaveChangesAsync();
+
+        // Xóa file vật lý cũ trên đĩa CHỈ SAU KHI lưu cơ sở dữ liệu thành công
+        foreach (var file in filesToDelete)
+        {
+            DeleteStoredSubmissionFile(file);
+        }
 
         _db.Entry(submission).Collection(s => s.Files).IsLoaded = false;
         await _db.Entry(submission).Collection(s => s.Files).LoadAsync();
@@ -229,14 +274,17 @@ public class AssignmentsController : ControllerBase
 
     private async Task<IActionResult> DeleteSubmissionCore(Submission submission, Guid studentId)
     {
-        if (studentId == Guid.Empty)
-            return BadRequest(new { message = "Thieu studentId." });
+        var currentUserId = User.GetUserId();
+        var targetStudentId = User.IsAdmin() && studentId != Guid.Empty ? studentId : (currentUserId ?? studentId);
 
-        if (submission.StudentId != studentId)
+        if (targetStudentId == Guid.Empty)
+            return Unauthorized(new { message = "Thiếu studentId hoặc chưa xác thực." });
+
+        if (submission.StudentId != targetStudentId && !User.IsAdmin())
             return Forbid();
 
         if (IsSubmissionLocked(submission))
-            return BadRequest(new { message = "Bai nop da duoc cham diem, khong the xoa." });
+            return BadRequest(new { message = "Bài nộp đã được chấm điểm, không thể xóa." });
 
         var assignment = submission.Assignment ?? await _db.Assignments.FindAsync(submission.AssignmentId);
         var submissionId = submission.Id;
@@ -252,14 +300,14 @@ public class AssignmentsController : ControllerBase
 
         if (assignment != null)
         {
-            await SetLinkedLessonProgressAsync(assignment, studentId, false);
+            await SetLinkedLessonProgressAsync(assignment, targetStudentId, false);
         }
 
         await _db.SaveChangesAsync();
 
         return Ok(new
         {
-            message = "Da xoa bai nop thanh cong.",
+            message = "Đã xóa bài nộp thành công.",
             submissionId
         });
     }
@@ -279,11 +327,14 @@ public class AssignmentsController : ControllerBase
 
         SubmissionDto? mySubmission = null;
 
-        if (studentId.HasValue)
+        var currentUserId = User.GetUserId();
+        var targetStudentId = User.IsAdmin() || User.IsTeacher() ? studentId : (currentUserId ?? studentId);
+
+        if (targetStudentId.HasValue)
         {
             var sub = await _db.Submissions
                 .Include(s => s.Files)
-                .FirstOrDefaultAsync(s => s.AssignmentId == id && s.StudentId == studentId.Value);
+                .FirstOrDefaultAsync(s => s.AssignmentId == id && s.StudentId == targetStudentId.Value);
 
             if (sub != null)
             {
@@ -352,9 +403,29 @@ public class AssignmentsController : ControllerBase
         if (assignment == null)
             return NotFound(new { message = "Không tìm thấy bài tập." });
 
+        var targetStudentId = User.IsAdmin() && request.StudentId != Guid.Empty
+            ? request.StudentId
+            : (User.GetUserId() ?? request.StudentId);
+
+        if (targetStudentId == Guid.Empty)
+            return Unauthorized(new { message = "Không xác định được danh tính sinh viên." });
+
+        var enrollment = await _db.Enrollments
+            .FirstOrDefaultAsync(e => e.CourseId == assignment.CourseId && e.StudentId == targetStudentId);
+
+        if (enrollment == null || enrollment.Status != "ACTIVE")
+        {
+            return BadRequest(new { message = "Bạn chưa ghi danh hoặc trạng thái ghi danh không hoạt động trong khóa học này." });
+        }
+
         var submission = await _db.Submissions
             .Include(s => s.Files)
-            .FirstOrDefaultAsync(s => s.AssignmentId == id && s.StudentId == request.StudentId);
+            .FirstOrDefaultAsync(s => s.AssignmentId == id && s.StudentId == targetStudentId);
+
+        if (submission != null && IsSubmissionLocked(submission))
+        {
+            return BadRequest(new { message = "Bài nộp đã được chấm điểm, không thể chỉnh sửa." });
+        }
 
         var isLate = DateTime.UtcNow > assignment.DueDate;
 
@@ -363,7 +434,7 @@ public class AssignmentsController : ControllerBase
             submission = new Submission
             {
                 AssignmentId = id,
-                StudentId = request.StudentId,
+                StudentId = targetStudentId,
                 SubmissionText = request.SubmissionText,
                 GitRepoUrl = request.GitRepoUrl,
                 FileUrl = request.FileUrl,
@@ -389,41 +460,13 @@ public class AssignmentsController : ControllerBase
                 FileName = request.FileName,
                 FileUrl = request.FileUrl,
                 FileSize = request.FileSize ?? 1024,
-                FileType = "attachment"
+                FileType = "attachment",
+                UploadedAt = DateTime.UtcNow
             };
             _db.SubmissionFiles.Add(subFile);
         }
 
-        // Also mark linked lesson as completed if applicable
-        if (assignment.LessonId.HasValue)
-        {
-            var enrollment = await _db.Enrollments
-                .FirstOrDefaultAsync(e => e.CourseId == assignment.CourseId && e.StudentId == request.StudentId);
-
-            if (enrollment != null)
-            {
-                var progress = await _db.LessonProgresses
-                    .FirstOrDefaultAsync(lp => lp.EnrollmentId == enrollment.Id && lp.LessonId == assignment.LessonId.Value);
-
-                if (progress == null)
-                {
-                    progress = new LessonProgress
-                    {
-                        EnrollmentId = enrollment.Id,
-                        LessonId = assignment.LessonId.Value,
-                        IsCompleted = true,
-                        CompletedAt = DateTime.UtcNow
-                    };
-                    _db.LessonProgresses.Add(progress);
-                }
-                else
-                {
-                    progress.IsCompleted = true;
-                    progress.CompletedAt = DateTime.UtcNow;
-                }
-            }
-        }
-
+        await SetLinkedLessonProgressAsync(assignment, targetStudentId, true);
         await _db.SaveChangesAsync();
 
         return Ok(new
@@ -450,9 +493,38 @@ public class AssignmentsController : ControllerBase
         if (assignment == null)
             return NotFound(new { message = "Không tìm thấy bài tập." });
 
+        var targetStudentId = User.IsAdmin() && studentId != Guid.Empty
+            ? studentId
+            : (User.GetUserId() ?? studentId);
+
+        if (targetStudentId == Guid.Empty)
+            return Unauthorized(new { message = "Không xác định được danh tính sinh viên." });
+
+        var enrollment = await _db.Enrollments
+            .FirstOrDefaultAsync(e => e.CourseId == assignment.CourseId && e.StudentId == targetStudentId);
+
+        if (enrollment == null || enrollment.Status != "ACTIVE")
+        {
+            return BadRequest(new { message = "Bạn chưa ghi danh hoặc trạng thái ghi danh không hoạt động trong khóa học này." });
+        }
+
         var submission = await _db.Submissions
             .Include(s => s.Files)
-            .FirstOrDefaultAsync(s => s.AssignmentId == id && s.StudentId == studentId);
+            .FirstOrDefaultAsync(s => s.AssignmentId == id && s.StudentId == targetStudentId);
+
+        if (submission != null && IsSubmissionLocked(submission))
+        {
+            return BadRequest(new { message = "Bài nộp đã được chấm điểm, không thể chỉnh sửa." });
+        }
+
+        try
+        {
+            ValidateUploadedFiles(assignment, files);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
 
         var isLate = DateTime.UtcNow > assignment.DueDate;
 
@@ -461,7 +533,7 @@ public class AssignmentsController : ControllerBase
             submission = new Submission
             {
                 AssignmentId = id,
-                StudentId = studentId,
+                StudentId = targetStudentId,
                 SubmissionText = submissionText,
                 GitRepoUrl = gitRepoUrl,
                 Status = isLate ? SubmissionStatus.LATE : SubmissionStatus.SUBMITTED,
@@ -477,96 +549,13 @@ public class AssignmentsController : ControllerBase
             submission.SubmittedAt = DateTime.UtcNow;
         }
 
-        // Process uploaded physical files
-        if (files != null && files.Count > 0)
-        {
-            var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "submissions");
-            if (!Directory.Exists(uploadsFolder))
-            {
-                Directory.CreateDirectory(uploadsFolder);
-            }
-
-            foreach (var file in files)
-            {
-                if (file.Length > 0)
-                {
-                    var originalFileName = Path.GetFileName(file.FileName);
-                    var extension = Path.GetExtension(originalFileName);
-                    var safeFileName = $"{Guid.NewGuid():N}{extension}";
-                    var filePath = Path.Combine(uploadsFolder, safeFileName);
-
-                    using (var stream = new FileStream(filePath, FileMode.Create))
-                    {
-                        await file.CopyToAsync(stream);
-                    }
-
-                    var relativeUrl = $"/uploads/submissions/{safeFileName}";
-                    submission.FileUrl = relativeUrl;
-
-                    var subFile = new SubmissionFile
-                    {
-                        Submission = submission,
-                        FileName = originalFileName,
-                        FileUrl = relativeUrl,
-                        FileSize = file.Length,
-                        FileType = file.ContentType ?? "application/octet-stream",
-                        UploadedAt = DateTime.UtcNow
-                    };
-                    _db.SubmissionFiles.Add(subFile);
-                }
-            }
-        }
-
-        // Also mark linked lesson as completed if applicable
-        if (assignment.LessonId.HasValue)
-        {
-            var enrollment = await _db.Enrollments
-                .FirstOrDefaultAsync(e => e.CourseId == assignment.CourseId && e.StudentId == studentId);
-
-            if (enrollment != null)
-            {
-                var progress = await _db.LessonProgresses
-                    .FirstOrDefaultAsync(lp => lp.EnrollmentId == enrollment.Id && lp.LessonId == assignment.LessonId.Value);
-
-                if (progress == null)
-                {
-                    progress = new LessonProgress
-                    {
-                        EnrollmentId = enrollment.Id,
-                        LessonId = assignment.LessonId.Value,
-                        IsCompleted = true,
-                        CompletedAt = DateTime.UtcNow
-                    };
-                    _db.LessonProgresses.Add(progress);
-                }
-                else
-                {
-                    progress.IsCompleted = true;
-                    progress.CompletedAt = DateTime.UtcNow;
-                }
-            }
-        }
+        await SaveUploadedFilesAsync(submission, files);
+        await SetLinkedLessonProgressAsync(assignment, targetStudentId, true);
 
         await _db.SaveChangesAsync();
         await _db.Entry(submission).Collection(s => s.Files).LoadAsync();
 
-        return Ok(new
-        {
-            message = isLate ? "Đã nộp bài tập (Nộp muộn) thành công!" : "Đã nộp bài tập thành công!",
-            submissionId = submission.Id,
-            status = submission.Status.ToString(),
-            submittedAt = submission.SubmittedAt,
-            fileUrl = submission.FileUrl,
-            gitRepoUrl = submission.GitRepoUrl,
-            files = submission.Files.Select(f => new
-            {
-                id = f.Id,
-                fileName = f.FileName,
-                fileUrl = f.FileUrl,
-                fileSize = f.FileSize,
-                fileType = f.FileType
-            }).ToList()
-        });
+        return Ok(ToSubmissionResponse(submission, isLate ? "Đã nộp bài tập (Nộp muộn) thành công!" : "Đã nộp bài tập thành công!"));
     }
 
     /// <summary>
@@ -605,17 +594,20 @@ public class AssignmentsController : ControllerBase
             .FirstOrDefaultAsync(a => a.LessonId == lessonId);
 
         if (assignment == null)
-            return NotFound(new { message = "Khong tim thay bai tap cua bai hoc." });
+            return NotFound(new { message = "Không tìm thấy bài tập của bài học." });
+
+        var currentUserId = User.GetUserId();
+        var targetStudentId = User.IsAdmin() && studentId != Guid.Empty ? studentId : (currentUserId ?? studentId);
 
         var submission = await _db.Submissions
             .Include(s => s.Assignment)
             .Include(s => s.Files)
-            .FirstOrDefaultAsync(s => s.AssignmentId == assignment.Id && s.StudentId == studentId);
+            .FirstOrDefaultAsync(s => s.AssignmentId == assignment.Id && s.StudentId == targetStudentId);
 
         if (submission == null)
-            return NotFound(new { message = "Sinh vien chua nop bai." });
+            return NotFound(new { message = "Sinh viên chưa nộp bài." });
 
-        return await UpdateSubmissionCore(submission, studentId, submissionText, gitRepoUrl, files, replaceFiles);
+        return await UpdateSubmissionCore(submission, targetStudentId, submissionText, gitRepoUrl, files, replaceFiles);
     }
 
     [HttpDelete("submissions/{submissionId}")]
@@ -627,7 +619,7 @@ public class AssignmentsController : ControllerBase
             .FirstOrDefaultAsync(s => s.Id == submissionId);
 
         if (submission == null)
-            return NotFound(new { message = "Khong tim thay bai nop." });
+            return NotFound(new { message = "Không tìm thấy bài nộp." });
 
         return await DeleteSubmissionCore(submission, studentId);
     }
@@ -639,17 +631,20 @@ public class AssignmentsController : ControllerBase
             .FirstOrDefaultAsync(a => a.LessonId == lessonId);
 
         if (assignment == null)
-            return NotFound(new { message = "Khong tim thay bai tap cua bai hoc." });
+            return NotFound(new { message = "Không tìm thấy bài tập của bài học." });
+
+        var currentUserId = User.GetUserId();
+        var targetStudentId = User.IsAdmin() && studentId != Guid.Empty ? studentId : (currentUserId ?? studentId);
 
         var submission = await _db.Submissions
             .Include(s => s.Assignment)
             .Include(s => s.Files)
-            .FirstOrDefaultAsync(s => s.AssignmentId == assignment.Id && s.StudentId == studentId);
+            .FirstOrDefaultAsync(s => s.AssignmentId == assignment.Id && s.StudentId == targetStudentId);
 
         if (submission == null)
-            return NotFound(new { message = "Sinh vien chua nop bai." });
+            return NotFound(new { message = "Sinh viên chưa nộp bài." });
 
-        return await DeleteSubmissionCore(submission, studentId);
+        return await DeleteSubmissionCore(submission, targetStudentId);
     }
 
     [HttpPost("by-lesson/{lessonId}/submit-files")]
@@ -660,6 +655,11 @@ public class AssignmentsController : ControllerBase
         [FromForm] string? gitRepoUrl,
         [FromForm] List<IFormFile>? files)
     {
+        var currentUserId = User.GetUserId();
+        var targetStudentId = User.IsAdmin() && studentId != Guid.Empty ? studentId : (currentUserId ?? studentId);
+        if (targetStudentId == Guid.Empty)
+            return Unauthorized(new { message = "Không xác định được danh tính sinh viên." });
+
         var assignment = await _db.Assignments
             .FirstOrDefaultAsync(a => a.LessonId == lessonId);
 
@@ -682,7 +682,7 @@ public class AssignmentsController : ControllerBase
             await _db.SaveChangesAsync();
         }
 
-        return await SubmitAssignmentFiles(assignment.Id, studentId, submissionText, gitRepoUrl, files);
+        return await SubmitAssignmentFiles(assignment.Id, targetStudentId, submissionText, gitRepoUrl, files);
     }
 
     /// <summary>
@@ -691,6 +691,11 @@ public class AssignmentsController : ControllerBase
     [HttpPost("by-lesson/{lessonId}/submit")]
     public async Task<IActionResult> SubmitAssignmentByLesson(Guid lessonId, [FromBody] SubmitAssignmentRequest request)
     {
+        var currentUserId = User.GetUserId();
+        var targetStudentId = User.IsAdmin() && request.StudentId != Guid.Empty ? request.StudentId : (currentUserId ?? request.StudentId);
+        if (targetStudentId == Guid.Empty)
+            return Unauthorized(new { message = "Không xác định được danh tính sinh viên." });
+
         var assignment = await _db.Assignments
             .FirstOrDefaultAsync(a => a.LessonId == lessonId);
 
@@ -713,6 +718,7 @@ public class AssignmentsController : ControllerBase
             await _db.SaveChangesAsync();
         }
 
+        request.StudentId = targetStudentId;
         return await SubmitAssignment(assignment.Id, request);
     }
 }

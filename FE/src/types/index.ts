@@ -48,6 +48,7 @@ export interface LessonSummary {
   quizPassed: boolean;
   quizId?: string;
   assignmentId?: string;
+  hasPassword?: boolean;
   password?: string;
 }
 

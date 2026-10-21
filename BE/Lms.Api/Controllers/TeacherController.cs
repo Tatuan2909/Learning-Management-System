@@ -6,9 +6,12 @@ using Microsoft.EntityFrameworkCore;
 using Lms.Infrastructure.Data;
 using Lms.Domain.Entities;
 using Lms.Domain.Enums;
+using Lms.Api.Extensions;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Lms.Api.Controllers;
 
+[Authorize(Roles = "TEACHER,ADMIN")]
 [ApiController]
 [Route("api/[controller]")]
 public class TeacherController : ControllerBase
@@ -26,7 +29,12 @@ public class TeacherController : ControllerBase
     [HttpGet("courses")]
     public async Task<IActionResult> GetTeacherCourses([FromQuery] Guid? teacherId)
     {
-        var targetTeacherId = teacherId ?? Guid.Parse("22222222-2222-2222-2222-222222222222");
+        var currentUserId = User.GetUserId();
+        if (currentUserId == null) return Unauthorized(new { message = "Không xác thực được token." });
+
+        var targetTeacherId = User.IsAdmin() && teacherId.HasValue 
+            ? teacherId.Value 
+            : currentUserId.Value;
 
         var courses = await _db.Courses
             .Include(c => c.Enrollments)
@@ -58,7 +66,12 @@ public class TeacherController : ControllerBase
     [HttpPost("courses")]
     public async Task<IActionResult> CreateCourse([FromBody] CreateTeacherCourseDto request, [FromQuery] Guid? teacherId)
     {
-        var targetTeacherId = teacherId ?? Guid.Parse("22222222-2222-2222-2222-222222222222");
+        var currentUserId = User.GetUserId();
+        if (currentUserId == null) return Unauthorized(new { message = "Không xác thực được token." });
+
+        var targetTeacherId = User.IsAdmin() && teacherId.HasValue 
+            ? teacherId.Value 
+            : currentUserId.Value;
 
         var course = new Course
         {
@@ -1377,13 +1390,32 @@ public class TeacherController : ControllerBase
     [HttpPost("submissions/{submissionId}/grade")]
     public async Task<IActionResult> GradeSubmission(Guid submissionId, [FromBody] GradeSubmissionRequestDto request, [FromQuery] Guid? teacherId)
     {
-        var submission = await _db.Submissions.FindAsync(submissionId);
+        var submission = await _db.Submissions
+            .Include(s => s.Assignment)
+                .ThenInclude(a => a.Course)
+            .FirstOrDefaultAsync(s => s.Id == submissionId);
+
         if (submission == null) return NotFound("Không tìm thấy bài nộp.");
+
+        var currentUserId = User.GetUserId();
+        if (currentUserId == null) return Unauthorized(new { message = "Không xác thực được token." });
+
+        // Giảng viên chỉ được chấm bài của khóa học mình phụ trách (trừ Admin)
+        if (!User.IsAdmin() && submission.Assignment.Course.TeacherId != currentUserId.Value)
+        {
+            return Forbid();
+        }
+
+        var maxScore = submission.Assignment.MaxScore;
+        if (request.Grade < 0m || request.Grade > maxScore)
+        {
+            return BadRequest($"Điểm số không hợp lệ. Điểm phải nằm trong thang điểm từ 0 đến {maxScore}.");
+        }
 
         submission.Grade = request.Grade;
         submission.Feedback = request.Feedback;
         submission.Status = SubmissionStatus.GRADED;
-        submission.GradedBy = teacherId ?? Guid.Parse("22222222-2222-2222-2222-222222222222");
+        submission.GradedBy = currentUserId.Value;
         submission.GradedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();

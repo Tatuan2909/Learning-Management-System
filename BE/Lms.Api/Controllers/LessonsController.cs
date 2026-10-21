@@ -3,11 +3,14 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
 using Lms.Domain.Entities;
 using Lms.Infrastructure.Data;
+using Lms.Api.Extensions;
 
 namespace Lms.Api.Controllers;
 
+[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 public class LessonsController : ControllerBase
@@ -20,7 +23,7 @@ public class LessonsController : ControllerBase
     }
 
     /// <summary>
-    /// Lấy chi tiết hoạt động/bài học theo ID
+    /// Lấy chi tiết hoạt động/bài học theo ID (Yêu cầu xác thực và ghi danh hợp lệ)
     /// </summary>
     [HttpGet("{id}")]
     public async Task<IActionResult> GetLessonDetail(Guid id, [FromQuery] Guid? studentId)
@@ -34,13 +37,19 @@ public class LessonsController : ControllerBase
         if (lesson == null)
             return NotFound(new { message = "Không tìm thấy bài học." });
 
+        var currentUserId = User.GetUserId();
+        bool isPrivileged = User.IsAdmin() || (currentUserId.HasValue && lesson.Course.TeacherId == currentUserId.Value);
+
+        var targetStudentId = User.IsAdmin() && studentId.HasValue ? studentId.Value : currentUserId;
+
+        Enrollment? enrollment = null;
         bool isCompleted = false;
         bool quizPassed = false;
 
-        if (studentId.HasValue)
+        if (targetStudentId.HasValue)
         {
-            var enrollment = await _db.Enrollments
-                .FirstOrDefaultAsync(e => e.CourseId == lesson.CourseId && e.StudentId == studentId.Value);
+            enrollment = await _db.Enrollments
+                .FirstOrDefaultAsync(e => e.CourseId == lesson.CourseId && e.StudentId == targetStudentId.Value);
 
             if (enrollment != null)
             {
@@ -52,6 +61,25 @@ public class LessonsController : ControllerBase
                     isCompleted = progress.IsCompleted;
                     quizPassed = progress.QuizPassed;
                 }
+            }
+        }
+
+        // Kiểm tra quyền hạn của sinh viên: Phải có ghi danh ACTIVE
+        if (!isPrivileged)
+        {
+            if (enrollment == null)
+            {
+                return StatusCode(403, new { message = "Bạn chưa ghi danh vào khóa học này để truy cập nội dung bài học." });
+            }
+
+            if (enrollment.Status == "SUSPENDED")
+            {
+                return StatusCode(403, new { message = "Tài khoản của bạn trong khóa học này đang bị tạm ngưng." });
+            }
+
+            if (lesson.IsLocked || (lesson.Section != null && lesson.Section.IsLocked))
+            {
+                return StatusCode(403, new { message = "Bài học hoặc chương mục này đang bị khóa bởi Giảng viên." });
             }
         }
 
@@ -82,7 +110,7 @@ public class LessonsController : ControllerBase
     }
 
     /// <summary>
-    /// Đánh dấu đã hoàn thành bài học (cho video, pdf, scorm...) và cập nhật tổng % tiến độ khóa học
+    /// Đánh dấu đã hoàn thành bài học và cập nhật % tiến độ khóa học (Chỉ áp dụng khi sinh viên đã ghi danh ACTIVE)
     /// </summary>
     [HttpPost("{id}/complete")]
     public async Task<IActionResult> MarkCompleted(Guid id, [FromBody] StudentIdRequest request)
@@ -90,23 +118,35 @@ public class LessonsController : ControllerBase
         var lesson = await _db.Lessons.FindAsync(id);
         if (lesson == null) return NotFound(new { message = "Không tìm thấy bài học." });
 
+        if (lesson.IsLocked)
+        {
+            return BadRequest(new { message = "Không thể đánh dấu hoàn thành bài học đang bị khóa." });
+        }
+
+        var currentUserId = User.GetUserId();
+        var targetStudentId = User.IsAdmin() && request.StudentId != Guid.Empty
+            ? request.StudentId
+            : (currentUserId ?? request.StudentId);
+
+        if (targetStudentId == Guid.Empty)
+        {
+            return Unauthorized(new { message = "Không xác thực được danh tính người dùng." });
+        }
+
         var enrollment = await _db.Enrollments
             .Include(e => e.Course)
                 .ThenInclude(c => c.Lessons)
-            .FirstOrDefaultAsync(e => e.CourseId == lesson.CourseId && e.StudentId == request.StudentId);
+            .FirstOrDefaultAsync(e => e.CourseId == lesson.CourseId && e.StudentId == targetStudentId);
 
+        // Bỏ việc tự tạo ghi danh: Bắt buộc sinh viên phải ghi danh chính thức trước
         if (enrollment == null)
         {
-            // Auto enroll if not enrolled
-            enrollment = new Enrollment
-            {
-                CourseId = lesson.CourseId,
-                StudentId = request.StudentId,
-                Status = "ACTIVE",
-                ProgressPercentage = 0m
-            };
-            _db.Enrollments.Add(enrollment);
-            await _db.SaveChangesAsync();
+            return BadRequest(new { message = "Bạn chưa ghi danh khóa học này. Vui lòng ghi danh trước khi học bài." });
+        }
+
+        if (enrollment.Status == "SUSPENDED")
+        {
+            return StatusCode(403, new { message = "Tài khoản của bạn trong khóa học này đang bị tạm ngưng." });
         }
 
         var progress = await _db.LessonProgresses
