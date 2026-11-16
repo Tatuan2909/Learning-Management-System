@@ -1,0 +1,736 @@
+import React, { useState, useEffect, Suspense } from 'react';
+import { BookOpen, GraduationCap, LayoutDashboard, Award, Bell, Sparkles, Menu, X, Edit3, Users, Activity, FileText, Settings, Building2, Landmark } from 'lucide-react';
+import { UpcomingDeadlinesWidget } from './components/UpcomingDeadlinesWidget';
+import { ProfileDropdown } from './components/ProfileDropdown';
+import { NotificationBell } from './components/NotificationBell';
+import { UpcomingDeadline, AuthUser, CourseItem } from './types';
+import api from './api/axios';
+import { signalRService } from './services/signalRService';
+import { useLanguage } from './context/LanguageContext';
+
+// Lazy loading route components for code splitting & bundle performance
+const CoursesPage = React.lazy(() => import('./components/CoursesPage').then(m => ({ default: m.CoursesPage })));
+const CourseStudyPage = React.lazy(() => import('./components/CourseStudyPage').then(m => ({ default: m.CourseStudyPage })));
+const LoginPage = React.lazy(() => import('./components/LoginPage').then(m => ({ default: m.LoginPage })));
+const AdminLoginPage = React.lazy(() => import('./components/AdminLoginPage').then(m => ({ default: m.AdminLoginPage })));
+const ProfilePage = React.lazy(() => import('./components/ProfilePage').then(m => ({ default: m.ProfilePage })));
+const TeacherDashboard = React.lazy(() => import('./components/TeacherDashboard').then(m => ({ default: m.TeacherDashboard })));
+const AdminDashboard = React.lazy(() => import('./components/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
+const StudentGradesPage = React.lazy(() => import('./components/StudentGradesPage').then(m => ({ default: m.StudentGradesPage })));
+
+const PageLoader: React.FC = () => (
+  <div className="min-h-[400px] flex items-center justify-center">
+    <div className="flex flex-col items-center gap-3">
+      <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+      <span className="text-xs font-semibold text-slate-500">Đang tải giao diện...</span>
+    </div>
+  </div>
+);
+
+export const App: React.FC = () => {
+  const { t, language } = useLanguage();
+  const [user, setUser] = useState<AuthUser | null>(() => {
+    const saved = localStorage.getItem('user_info');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  });
+
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'my-courses' | 'courses' | 'grades' | 'profile' | 'study'>('dashboard');
+  const [teacherTab, setTeacherTab] = useState<'overview' | 'courses'>('overview');
+  const [adminTab, setAdminTab] = useState<'overview' | 'users' | 'departments' | 'majors' | 'courses' | 'logs' | 'settings'>('overview');
+  const [studyCourseId, setStudyCourseId] = useState<string>('44444444-4444-4444-4444-444444444444');
+  const [currentCourse, setCurrentCourse] = useState<CourseItem | null>(null);
+  const [loadingCurrentCourse, setLoadingCurrentCourse] = useState<boolean>(true);
+  const [selectedActivityId, setSelectedActivityId] = useState<string | undefined>(undefined);
+  const [selectedDeadline, setSelectedDeadline] = useState<UpcomingDeadline | null>(null);
+  const [activeLesson, setActiveLesson] = useState<number>(1);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [courseAnnouncements, setCourseAnnouncements] = useState<any[]>([]);
+  const [isAdminPortal, setIsAdminPortal] = useState<boolean>(() => {
+    return typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
+  });
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setIsAdminPortal(window.location.pathname.startsWith('/admin'));
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  useEffect(() => {
+    if (user && user.role === 'STUDENT') {
+      setLoadingCurrentCourse(true);
+      api.get<CourseItem[]>('/courses/my-courses?studentId=' + user.userId)
+        .then((res) => {
+          if (res.data && res.data.length > 0) {
+            setCurrentCourse(res.data[0]);
+            setStudyCourseId(res.data[0].id);
+          } else {
+            setCurrentCourse(null);
+          }
+        })
+        .catch((err) => {
+          console.error('Lỗi tải khóa học người dùng:', err);
+          setCurrentCourse(null);
+        })
+        .finally(() => {
+          setLoadingCurrentCourse(false);
+        });
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (currentCourse) {
+      api.get(`/courses/${currentCourse.id}/announcements`)
+        .then((res) => setCourseAnnouncements(res.data || []))
+        .catch(() => setCourseAnnouncements([]));
+    } else {
+      setCourseAnnouncements([]);
+    }
+  }, [currentCourse]);
+
+  // Force permanent clean Light Mode & clear obsolete legacy keys
+  useEffect(() => {
+    document.documentElement.classList.remove('dark');
+    localStorage.setItem('theme', 'light');
+    try {
+      localStorage.removeItem('lms_practice_submissions');
+      localStorage.removeItem('lms_enrolled_courses');
+      localStorage.removeItem('lms_course_passwords');
+      localStorage.removeItem('lms_lesson_quiz_attempts');
+    } catch {}
+  }, []);
+
+  const resetNavigationState = () => {
+    setActiveTab('dashboard');
+    setTeacherTab('overview');
+    setAdminTab('overview');
+    setCurrentCourse(null);
+    setLoadingCurrentCourse(true);
+    setCourseAnnouncements([]);
+    setSelectedActivityId(undefined);
+    setSelectedDeadline(null);
+    setMobileMenuOpen(false);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await api.post('/auth/logout');
+    } catch {}
+    const wasAdmin = user?.role === 'ADMIN';
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('user_info');
+    await signalRService.stopConnection();
+    resetNavigationState();
+    setUser(null);
+    if (wasAdmin) {
+      setIsAdminPortal(true);
+      window.history.pushState({}, '', '/admin/login');
+    } else {
+      setIsAdminPortal(false);
+      window.history.pushState({}, '', '/');
+    }
+  };
+
+  const handleLoginSuccess = (loggedInUser: AuthUser) => {
+    resetNavigationState();
+    setUser(loggedInUser);
+    if (loggedInUser.role === 'ADMIN') {
+      setAdminTab('overview');
+      window.history.pushState({}, '', '/');
+    }
+  };
+
+  const handleOpenStudyPage = (courseId: string, activityId?: string) => {
+    setStudyCourseId(courseId);
+    setSelectedActivityId(activityId);
+    setActiveTab('study');
+  };
+
+  if (!user) {
+    if (isAdminPortal) {
+      return (
+        <Suspense fallback={<PageLoader />}>
+          <AdminLoginPage
+            onLoginSuccess={handleLoginSuccess}
+            onBackToUserLogin={() => {
+              setIsAdminPortal(false);
+              window.history.pushState({}, '', '/');
+            }}
+          />
+        </Suspense>
+      );
+    }
+    return (
+      <Suspense fallback={<PageLoader />}>
+        <LoginPage
+          onLoginSuccess={handleLoginSuccess}
+        />
+      </Suspense>
+    );
+  }
+
+  const isRoleDashboardActive = activeTab === 'dashboard' || (user.role !== 'STUDENT' && activeTab !== 'profile');
+
+  // Dedicated full-page Course Player View
+  if (activeTab === 'study' && user.role === 'STUDENT') {
+    return (
+      <Suspense fallback={<PageLoader />}>
+        <CourseStudyPage
+          courseId={studyCourseId}
+          studentId={user.userId}
+          initialActivityId={selectedActivityId}
+          onBack={() => {
+            setSelectedActivityId(undefined);
+            setActiveTab('my-courses');
+          }}
+        />
+      </Suspense>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#f8fafc] text-slate-800 flex flex-col w-full font-sans antialiased">
+      {/* Calm White Header / Navbar */}
+      <header className="bg-white text-slate-800 border-b border-slate-200/90 sticky top-0 z-50 shadow-2xs w-full">
+        <div className="w-full px-4 sm:px-6 lg:px-10 h-16 flex items-center justify-between gap-4">
+          
+          {/* Left Section: Logo & Mobile Toggle */}
+          <div className="flex items-center gap-3 md:gap-8 flex-1 min-w-0">
+            {/* Mobile Nav Hamburger */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden p-2 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200"
+            >
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+
+            {/* Logo */}
+            <div
+              className="flex items-center gap-2.5 cursor-pointer flex-shrink-0"
+              onClick={() => {
+                setActiveTab('dashboard');
+                if (user.role === 'TEACHER') setTeacherTab('overview');
+                if (user.role === 'ADMIN') setAdminTab('overview');
+              }}
+            >
+              <div className="p-2 bg-blue-600 rounded-xl shadow-xs">
+                <GraduationCap className="w-5 h-5 text-white" />
+              </div>
+              <div className="hidden sm:block">
+                <h1 className="font-extrabold text-base leading-none tracking-tight text-slate-900">{t('lmsTitle')}</h1>
+                <span className="text-[10px] text-blue-600 font-mono font-medium mt-0.5 inline-block">{t('lmsSubtitle')}</span>
+              </div>
+            </div>
+
+            {/* Desktop Navigation Links */}
+            <nav className="hidden md:flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
+              {/* Teacher Navigation Tabs */}
+              {user.role === 'TEACHER' && (
+                <>
+                  <button
+                    onClick={() => { setActiveTab('dashboard'); setTeacherTab('overview'); }}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+                      isRoleDashboardActive && teacherTab === 'overview'
+                        ? 'bg-blue-600 text-white shadow-2xs'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <Award className="w-4 h-4" />
+                    <span>{t('teacherOverview')}</span>
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab('dashboard'); setTeacherTab('courses'); }}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+                      isRoleDashboardActive && teacherTab === 'courses'
+                        ? 'bg-blue-600 text-white shadow-2xs'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <BookOpen className="w-4 h-4" />
+                    <span>{t('assignedCourses')}</span>
+                  </button>
+                </>
+              )}
+
+              {/* Admin Navigation Tabs */}
+              {user.role === 'ADMIN' && (
+                <>
+                  <button
+                    onClick={() => { setActiveTab('dashboard'); setAdminTab('overview'); }}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+                      isRoleDashboardActive && adminTab === 'overview'
+                        ? 'bg-blue-600 text-white shadow-2xs'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <Activity className="w-4 h-4" />
+                    <span>{t('systemOverview')}</span>
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab('dashboard'); setAdminTab('users'); }}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+                      isRoleDashboardActive && adminTab === 'users'
+                        ? 'bg-blue-600 text-white shadow-2xs'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <Users className="w-4 h-4" />
+                    <span>{t('userManagement')}</span>
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab('dashboard'); setAdminTab('departments'); }}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+                      isRoleDashboardActive && adminTab === 'departments'
+                        ? 'bg-blue-600 text-white shadow-2xs'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <Building2 className="w-4 h-4" />
+                    <span>{t('departmentManagement')}</span>
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab('dashboard'); setAdminTab('majors'); }}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+                      isRoleDashboardActive && adminTab === 'majors'
+                        ? 'bg-blue-600 text-white shadow-2xs'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <GraduationCap className="w-4 h-4" />
+                    <span>{t('majorManagement')}</span>
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab('dashboard'); setAdminTab('courses'); }}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+                      isRoleDashboardActive && adminTab === 'courses'
+                        ? 'bg-blue-600 text-white shadow-2xs'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <BookOpen className="w-4 h-4" />
+                    <span>{t('courseManagement')}</span>
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab('dashboard'); setAdminTab('logs'); }}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+                      isRoleDashboardActive && adminTab === 'logs'
+                        ? 'bg-blue-600 text-white shadow-2xs'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <FileText className="w-4 h-4" />
+                    <span>{t('securityLogs')}</span>
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab('dashboard'); setAdminTab('settings'); }}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+                      isRoleDashboardActive && adminTab === 'settings'
+                        ? 'bg-blue-600 text-white shadow-2xs'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <Settings className="w-4 h-4" />
+                    <span>{t('systemSettings')}</span>
+                  </button>
+                </>
+              )}
+
+              {/* Student Navigation Tabs */}
+              {user.role === 'STUDENT' && (
+                <>
+                  <button
+                    onClick={() => setActiveTab('dashboard')}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+                      activeTab === 'dashboard'
+                        ? 'bg-blue-600 text-white shadow-2xs'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <LayoutDashboard className="w-4 h-4" />
+                    <span>{t('dashboard')}</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('my-courses')}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+                      activeTab === 'my-courses'
+                        ? 'bg-blue-600 text-white shadow-2xs'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <BookOpen className="w-4 h-4" />
+                    <span>{t('myCourses')}</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('courses')}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+                      activeTab === 'courses'
+                        ? 'bg-blue-600 text-white shadow-2xs'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    <span>{t('allCourses')}</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('grades')}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+                      activeTab === 'grades'
+                        ? 'bg-blue-600 text-white shadow-2xs'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <Award className="w-4 h-4" />
+                    <span>{t('grades')}</span>
+                  </button>
+                </>
+              )}
+            </nav>
+          </div>
+
+          {/* Right Section: Notification Bell & User Profile Dropdown Menu */}
+          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 pl-3 border-l border-slate-200">
+            <NotificationBell
+              userId={user.userId}
+              onNavigateToUrl={(url) => {
+                if (url.includes('/course/')) {
+                  setActiveTab('my-courses');
+                }
+              }}
+            />
+            <ProfileDropdown
+              user={user}
+              onLogout={handleLogout}
+              onOpenProfilePage={() => setActiveTab('profile')}
+            />
+          </div>
+
+        </div>
+
+        {/* Mobile Navigation Dropdown Menu */}
+        {mobileMenuOpen && (
+          <div className="md:hidden bg-white border-b border-slate-200 px-4 py-3 space-y-1.5 shadow-md">
+            {/* Teacher Mobile Tabs */}
+            {user.role === 'TEACHER' && (
+              <>
+                <button
+                  onClick={() => { setActiveTab('dashboard'); setTeacherTab('overview'); setMobileMenuOpen(false); }}
+                  className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
+                    isRoleDashboardActive && teacherTab === 'overview' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <Award className="w-4 h-4" />
+                  <span>{t('teacherOverview')}</span>
+                </button>
+                <button
+                  onClick={() => { setActiveTab('dashboard'); setTeacherTab('courses'); setMobileMenuOpen(false); }}
+                  className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
+                    isRoleDashboardActive && teacherTab === 'courses' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <BookOpen className="w-4 h-4" />
+                  <span>{t('assignedCourses')}</span>
+                </button>
+              </>
+            )}
+
+            {/* Admin Mobile Tabs */}
+            {user.role === 'ADMIN' && (
+              <>
+                <button
+                  onClick={() => { setActiveTab('dashboard'); setAdminTab('overview'); setMobileMenuOpen(false); }}
+                  className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
+                    isRoleDashboardActive && adminTab === 'overview' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <Activity className="w-4 h-4" />
+                  <span>{t('systemOverview')}</span>
+                </button>
+                <button
+                  onClick={() => { setActiveTab('dashboard'); setAdminTab('users'); setMobileMenuOpen(false); }}
+                  className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
+                    isRoleDashboardActive && adminTab === 'users' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <Users className="w-4 h-4" />
+                  <span>{t('userManagement')}</span>
+                </button>
+                <button
+                  onClick={() => { setActiveTab('dashboard'); setAdminTab('departments'); setMobileMenuOpen(false); }}
+                  className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
+                    isRoleDashboardActive && adminTab === 'departments' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <Building2 className="w-4 h-4" />
+                  <span>{t('departmentManagement')}</span>
+                </button>
+                <button
+                  onClick={() => { setActiveTab('dashboard'); setAdminTab('majors'); setMobileMenuOpen(false); }}
+                  className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
+                    isRoleDashboardActive && adminTab === 'majors' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <GraduationCap className="w-4 h-4" />
+                  <span>{t('majorManagement')}</span>
+                </button>
+                <button
+                  onClick={() => { setActiveTab('dashboard'); setAdminTab('courses'); setMobileMenuOpen(false); }}
+                  className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
+                    isRoleDashboardActive && adminTab === 'courses' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <BookOpen className="w-4 h-4" />
+                  <span>{t('courseManagement')}</span>
+                </button>
+                <button
+                  onClick={() => { setActiveTab('dashboard'); setAdminTab('logs'); setMobileMenuOpen(false); }}
+                  className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
+                    isRoleDashboardActive && adminTab === 'logs' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <FileText className="w-4 h-4" />
+                  <span>{t('securityLogs')}</span>
+                </button>
+                <button
+                  onClick={() => { setActiveTab('dashboard'); setAdminTab('settings'); setMobileMenuOpen(false); }}
+                  className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
+                    isRoleDashboardActive && adminTab === 'settings' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <Settings className="w-4 h-4" />
+                  <span>{t('systemSettings')}</span>
+                </button>
+              </>
+            )}
+
+            {/* Student Mobile Tabs */}
+            {user.role === 'STUDENT' && (
+              <>
+                <button
+                  onClick={() => { setActiveTab('dashboard'); setMobileMenuOpen(false); }}
+                  className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
+                    activeTab === 'dashboard' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <LayoutDashboard className="w-4 h-4" />
+                  <span>{t('dashboard')}</span>
+                </button>
+                <button
+                  onClick={() => { setActiveTab('my-courses'); setMobileMenuOpen(false); }}
+                  className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
+                    activeTab === 'my-courses' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <BookOpen className="w-4 h-4" />
+                  <span>{t('myCourses')}</span>
+                </button>
+                <button
+                  onClick={() => { setActiveTab('courses'); setMobileMenuOpen(false); }}
+                  className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
+                    activeTab === 'courses' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <Sparkles className="w-4 h-4" />
+                  <span>{t('allCourses')}</span>
+                </button>
+                <button
+                  onClick={() => { setActiveTab('grades'); setMobileMenuOpen(false); }}
+                  className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
+                    activeTab === 'grades' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <Award className="w-4 h-4" />
+                  <span>{t('grades')}</span>
+                </button>
+              </>
+            )}
+          </div>
+        )}
+      </header>
+
+      {/* Full-width Main Content Area */}
+      <main className="flex-1 w-full px-3 sm:px-6 lg:px-10 py-6 sm:py-8">
+        <Suspense fallback={<PageLoader />}>
+        {isRoleDashboardActive && (
+          user.role === 'ADMIN' ? (
+            <AdminDashboard user={user} activeTab={adminTab} onTabChange={setAdminTab} />
+          ) : user.role === 'TEACHER' ? (
+            <TeacherDashboard user={user} activeTab={teacherTab} onTabChange={setTeacherTab} />
+          ) : (
+            <div className="space-y-8">
+              {/* Softer, Gentle, Eye-friendly Welcome Banner */}
+              <div className="bg-gradient-to-r from-blue-50/90 via-indigo-50/40 to-slate-50 rounded-3xl p-6 sm:p-8 text-slate-800 shadow-2xs border border-blue-100/80 relative overflow-hidden w-full">
+                <div className="relative z-10 max-w-3xl">
+                  <span className="bg-blue-100/80 text-blue-700 text-[11px] sm:text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider inline-block border border-blue-200/60">
+                    {t('semesterNotice')}
+                  </span>
+                  <h2 className="text-2xl sm:text-3xl font-extrabold mt-3 leading-tight text-slate-900">
+                    {t('hello')}, {user.fullName}!
+                  </h2>
+                  <p className="text-slate-600 text-xs sm:text-sm mt-2 leading-relaxed">
+                    {t('welcomeSubtext')}
+                  </p>
+                </div>
+              </div>
+
+              {/* Full-width Responsive Grid Layout: Deadlines & Overview */}
+              <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 sm:gap-8 w-full">
+                {/* Left Column (2 Cols): Widget Deadlines */}
+                <div className="xl:col-span-2 space-y-6">
+                  <UpcomingDeadlinesWidget
+                    studentId={user.userId}
+                    onSelectDeadline={(deadline) => {
+                      setSelectedDeadline(deadline);
+                      handleOpenStudyPage(currentCourse?.id || '44444444-4444-4444-4444-444444444444');
+                    }}
+                  />
+                </div>
+
+                {/* Right Column (1 Col): Class Announcements & Progress */}
+                <div className="space-y-6">
+                  {/* Quick My Courses Card - Calmer Subtle Blue */}
+                  <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
+                    <span className="text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-100 px-2.5 py-0.5 rounded-full uppercase">
+                      {t('currentEnrolledCourse')}
+                    </span>
+                    {loadingCurrentCourse ? (
+                      <div className="py-4 space-y-2">
+                        <div className="h-4 bg-slate-100 rounded animate-pulse w-3/4"></div>
+                        <div className="h-3 bg-slate-100 rounded animate-pulse w-1/2"></div>
+                      </div>
+                    ) : currentCourse ? (
+                      <>
+                        <h4 className="font-extrabold text-base text-slate-900 leading-snug">
+                          {currentCourse.courseCode} - {currentCourse.title}
+                        </h4>
+                        <p className="text-xs text-slate-500">
+                          {t('lecturerLabel')}: {currentCourse.teacherName || 'TS. Nguyễn Văn A'} • {t('progressLabel')}: {currentCourse.progressPercentage ?? 0}%
+                        </p>
+                        <button
+                          onClick={() => handleOpenStudyPage(currentCourse.id)}
+                          className="w-full mt-2 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-2xs"
+                        >
+                          <BookOpen className="w-3.5 h-3.5" />
+                          <span>{t('goToStudyPage')}</span>
+                        </button>
+                      </>
+                    ) : (
+                      <div className="py-2 text-center space-y-3">
+                        <p className="text-xs text-slate-500">{t('noEnrolledCourseYet')}</p>
+                        <button
+                          onClick={() => setActiveTab('courses')}
+                          className="w-full py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs rounded-xl transition-all"
+                        >
+                          {t('exploreCourses')}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Announcements Card */}
+                  <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2 text-slate-900 font-bold">
+                        <Bell className="w-5 h-5 text-blue-600" />
+                        <h3>{t('classAnnouncements')}</h3>
+                      </div>
+                      <span className="bg-blue-50 text-blue-700 text-xs px-2.5 py-0.5 rounded-full font-bold border border-blue-100">{t('latest')}</span>
+                    </div>
+
+                    {courseAnnouncements && courseAnnouncements.length > 0 ? (
+                      <div className="space-y-3">
+                        {courseAnnouncements.slice(0, 2).map((ann: any) => (
+                          <div key={ann.id} className="p-4 rounded-xl bg-amber-50/60 border border-amber-200/80 text-sm space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-amber-900">{ann.title}</span>
+                              <span className="text-[11px] text-amber-700 font-semibold">{ann.createdAt}</span>
+                            </div>
+                            <p className="text-xs text-slate-700 leading-relaxed">
+                              {ann.content}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-slate-500 italic py-2 text-center">{t('noLecturerAnnouncements')}</p>
+                    )}
+                  </div>
+
+                  {/* Progress Overview Card */}
+                  <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
+                    <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                      <Award className="w-5 h-5 text-indigo-600" />
+                      {t('courseProgressTitle')} {currentCourse ? currentCourse.courseCode : ''}
+                    </h3>
+
+                    {currentCourse ? (
+                      <div>
+                        <div className="flex justify-between text-xs font-semibold mb-1">
+                          <span className="text-slate-600 truncate max-w-[200px]">{currentCourse.title}</span>
+                          <span className="text-blue-600 font-bold">{currentCourse.progressPercentage ?? 0}% {t('completedLabel')}</span>
+                        </div>
+                        <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden border border-slate-200">
+                          <div
+                            className="bg-blue-600 h-full rounded-full transition-all"
+                            style={{ width: `${currentCourse.progressPercentage ?? 0}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-slate-500 italic text-center py-2">{t('noProgressData')}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )
+        )}
+
+        {user.role === 'STUDENT' && activeTab === 'my-courses' && (
+          <CoursesPage
+            initialFilter="ENROLLED"
+            studentId={user.userId}
+            onSelectLessonForQuiz={(courseId, activityId) => handleOpenStudyPage(courseId, activityId)}
+          />
+        )}
+
+        {user.role === 'STUDENT' && activeTab === 'courses' && (
+          <CoursesPage
+            initialFilter="ALL"
+            studentId={user.userId}
+            onSelectLessonForQuiz={(courseId, activityId) => handleOpenStudyPage(courseId, activityId)}
+          />
+        )}
+
+        {user.role === 'STUDENT' && activeTab === 'grades' && (
+          <StudentGradesPage
+            user={user}
+            onOpenCourseStudy={(courseId) => handleOpenStudyPage(courseId)}
+          />
+        )}
+
+        {activeTab === 'profile' && (
+          <ProfilePage user={user} />
+        )}
+        </Suspense>
+      </main>
+
+      {/* Footer */}
+      <footer className="bg-white border-t border-slate-200 py-6 text-center text-xs text-slate-500 w-full mt-auto">
+        <div className="w-full px-4">
+          <p>© 2026 LMS Web Application.</p>
+        </div>
+      </footer>
+    </div>
+  );
+};
+
+export default App;

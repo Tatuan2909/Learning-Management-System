@@ -1,4 +1,4 @@
-﻿-- ===================================================================================
+-- ===================================================================================
 -- HỆ THỐNG QUẢN LÝ HỌC TẬP (LEARNING MANAGEMENT SYSTEM - LMS FULLSTACK DATABASE)
 -- TẬP TIN CƠ SỞ DỮ LIỆU HOÀN CHỈNH & DUY NHẤT (MASTER DATABASE DDL & SEED SCRIPT)
 -- Bao gồm: Khởi tạo CSDL, 24 Bảng DDL, Khóa chính / Khóa ngoại, Chỉ mục hiệu năng cao,
@@ -259,7 +259,7 @@ CREATE TABLE dbo.quizzes (
     title NVARCHAR(255) NOT NULL,
     description NVARCHAR(MAX) NULL,
     password VARCHAR(100) NULL,
-    passing_score NUMERIC(4,2) NOT NULL DEFAULT 7.00,
+    passing_score NUMERIC(4,2) NOT NULL DEFAULT 5.00,
     max_score NUMERIC(4,2) NOT NULL DEFAULT 10.00,
     time_limit_minutes INT NULL,
     max_attempts INT DEFAULT 3,
@@ -1006,17 +1006,17 @@ GO
 -- 12. BẢNG QUIZZES (11 bài trắc nghiệm)
 INSERT INTO dbo.quizzes (id, lesson_id, title, description, password, passing_score, max_score, time_limit_minutes, max_attempts, shuffle_questions, created_at)
 VALUES
-('77770000-0000-0000-0000-000000000001', '55555555-0001-0000-0000-000000000006', N'Trắc nghiệm ôn tập Tuần 1: React Native Core Components', N'Đánh giá hiểu biết về JSX, View, Text, StyleSheet và Flexbox trong React Native.', '123456', 7.00, 10.00, 20, 3, 1, GETDATE()),
-('77770000-0000-0000-0000-000000000002', '55555555-0002-0000-0000-000000000003', N'Bài kiểm tra trắc nghiệm: Kiến trúc Web API & JWT Auth', N'Kiểm tra kiến thức REST API methods (GET, POST, PUT, DELETE) và cơ chế Token Bearer.', '123456', 7.00, 10.00, 15, 3, 1, GETDATE()),
-('77770000-0000-0000-0000-000000000003', '55555555-0003-0000-0000-000000000003', N'Trắc nghiệm Đánh giá: Giải thuật Học máy Cơ bản', N'Đánh giá hàm mất mát Loss Function, Gradient Descent và độ đo Accuracy/Precision.', '123456', 6.50, 10.00, 25, 2, 1, GETDATE()),
-('77770000-0000-0000-0000-000000000004', '55555555-0004-0000-0000-000000000002', N'Trắc nghiệm: Độ phức tạp thuật toán O(logN) và O(N)', N'Các câu hỏi phân tích Big-O Notation, Heap Sort, Quick Sort và Dijkstra.', '123456', 7.00, 10.00, 20, 3, 1, GETDATE()),
-('77770000-0000-0000-0000-000000000005', '55555555-0005-0000-0000-000000000002', N'Trắc nghiệm An ninh Mạng: Top 10 OWASP', N'Phòng chống giả mạo CSRF, tràn bộ đệm và mã hóa mật khẩu an toàn.', '123456', 7.00, 10.00, 15, 3, 1, GETDATE()),
-('77770000-0000-0000-0000-000000000006', '55555555-0006-0000-0000-000000000002', N'Trắc nghiệm: Quản trị Docker & Kubernetes Cluster', N'Kiến thức về Pod, Service, Ingress, Persistent Volume và Deployment.', '123456', 7.00, 10.00, 20, 2, 1, GETDATE()),
-('77770000-0000-0000-0000-000000000007', '55555555-0007-0000-0000-000000000002', N'Trắc nghiệm: Giao thức ngoại vi I2C và SPI', N'Đặc tính tốc độ Baudrate, Master-Slave và thanh ghi điều khiển ngắt.', '123456', 7.00, 10.00, 15, 3, 1, GETDATE()),
-('77770000-0000-0000-0000-000000000008', '55555555-0008-0000-0000-000000000002', N'Trắc nghiệm: Động học Robot công nghiệp', N'Tọa độ Euler, Ma trận đồng nhất và không gian làm việc Work Envelope.', '123456', 6.50, 10.00, 20, 2, 1, GETDATE()),
-('77770000-0000-0000-0000-000000000009', '55555555-0009-0000-0000-000000000002', N'Trắc nghiệm: Khởi nghiệp & Phát triển sản phẩm', N'Chi phí CAC, Giá trị vòng đời LTV, Điểm hòa vốn và định giá sản phẩm số.', '123456', 7.00, 10.00, 20, 3, 1, GETDATE()),
-('77770000-0000-0000-0000-000000000010', '55555555-0014-0000-0000-000000000002', N'Trắc nghiệm: Nguyên lý UX Design & Luật Fitts', N'Độ tương phản màu WCAG, phân cấp thị giác và thiết kế giao diện thân thiện di động.', '123456', 7.00, 10.00, 15, 3, 1, GETDATE()),
-('77770000-0000-0000-0000-000000000011', '55555555-0011-0000-0000-000000000002', N'Quiz: Academic English Vocabulary & Grammar', N'Academic vocabulary, technical terms and reading comprehension questions.', '123456', 7.00, 10.00, 20, 3, 1, GETDATE());
+('77770000-0000-0000-0000-000000000001', '55555555-0001-0000-0000-000000000006', N'Trắc nghiệm ôn tập Tuần 1: React Native Core Components', N'Đánh giá hiểu biết về JSX, View, Text, StyleSheet và Flexbox trong React Native.', '123456', 5.00, 10.00, 20, 3, 1, GETDATE()),
+('77770000-0000-0000-0000-000000000002', '55555555-0002-0000-0000-000000000003', N'Bài kiểm tra trắc nghiệm: Kiến trúc Web API & JWT Auth', N'Kiểm tra kiến thức REST API methods (GET, POST, PUT, DELETE) và cơ chế Token Bearer.', '123456', 5.00, 10.00, 15, 3, 1, GETDATE()),
+('77770000-0000-0000-0000-000000000003', '55555555-0003-0000-0000-000000000003', N'Trắc nghiệm Đánh giá: Giải thuật Học máy Cơ bản', N'Đánh giá hàm mất mát Loss Function, Gradient Descent và độ đo Accuracy/Precision.', '123456', 5.00, 10.00, 25, 2, 1, GETDATE()),
+('77770000-0000-0000-0000-000000000004', '55555555-0004-0000-0000-000000000002', N'Trắc nghiệm: Độ phức tạp thuật toán O(logN) và O(N)', N'Các câu hỏi phân tích Big-O Notation, Heap Sort, Quick Sort và Dijkstra.', '123456', 5.00, 10.00, 20, 3, 1, GETDATE()),
+('77770000-0000-0000-0000-000000000005', '55555555-0005-0000-0000-000000000002', N'Trắc nghiệm An ninh Mạng: Top 10 OWASP', N'Phòng chống giả mạo CSRF, tràn bộ đệm và mã hóa mật khẩu an toàn.', '123456', 5.00, 10.00, 15, 3, 1, GETDATE()),
+('77770000-0000-0000-0000-000000000006', '55555555-0006-0000-0000-000000000002', N'Trắc nghiệm: Quản trị Docker & Kubernetes Cluster', N'Kiến thức về Pod, Service, Ingress, Persistent Volume và Deployment.', '123456', 5.00, 10.00, 20, 2, 1, GETDATE()),
+('77770000-0000-0000-0000-000000000007', '55555555-0007-0000-0000-000000000002', N'Trắc nghiệm: Giao thức ngoại vi I2C và SPI', N'Đặc tính tốc độ Baudrate, Master-Slave và thanh ghi điều khiển ngắt.', '123456', 5.00, 10.00, 15, 3, 1, GETDATE()),
+('77770000-0000-0000-0000-000000000008', '55555555-0008-0000-0000-000000000002', N'Trắc nghiệm: Động học Robot công nghiệp', N'Tọa độ Euler, Ma trận đồng nhất và không gian làm việc Work Envelope.', '123456', 5.00, 10.00, 20, 2, 1, GETDATE()),
+('77770000-0000-0000-0000-000000000009', '55555555-0009-0000-0000-000000000002', N'Trắc nghiệm: Khởi nghiệp & Phát triển sản phẩm', N'Chi phí CAC, Giá trị vòng đời LTV, Điểm hòa vốn và định giá sản phẩm số.', '123456', 5.00, 10.00, 20, 3, 1, GETDATE()),
+('77770000-0000-0000-0000-000000000010', '55555555-0014-0000-0000-000000000002', N'Trắc nghiệm: Nguyên lý UX Design & Luật Fitts', N'Độ tương phản màu WCAG, phân cấp thị giác và thiết kế giao diện thân thiện di động.', '123456', 5.00, 10.00, 15, 3, 1, GETDATE()),
+('77770000-0000-0000-0000-000000000011', '55555555-0011-0000-0000-000000000002', N'Quiz: Academic English Vocabulary & Grammar', N'Academic vocabulary, technical terms and reading comprehension questions.', '123456', 5.00, 10.00, 20, 3, 1, GETDATE());
 GO
 
 -- 13. BẢNG QUIZ_QUESTIONS (24 câu hỏi)
