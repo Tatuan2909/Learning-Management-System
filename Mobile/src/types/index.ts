@@ -180,3 +180,168 @@ export interface StudentGradeRow {
   letterGrade: 'A' | 'B' | 'C' | 'D' | 'F';
   progressPercentage: number;
 }
+
+// Course Study & Activity Types
+export type ActivityType =
+  | 'OVERVIEW'
+  | 'SCORM'
+  | 'PDF'
+  | 'DOCX'
+  | 'LINK'
+  | 'ANNOUNCEMENT'
+  | 'PRACTICE'
+  | 'QUIZ'
+  | 'VIDEO'
+  | 'LECTURE'
+  | 'TEXT';
+
+export interface CurriculumItem {
+  id: string;
+  title: string;
+  subtitle?: string;
+  type: ActivityType;
+  contentUrl?: string;
+  isCompleted: boolean;
+  isLocked: boolean;
+  quizId?: string;
+  assignmentId?: string;
+  hasPassword?: boolean;
+  password?: string;
+  bodyMarkdown?: string;
+}
+
+export interface SectionSummary {
+  id: string;
+  title: string;
+  description?: string[];
+  isExpanded: boolean;
+  isLocked: boolean;
+  items: CurriculumItem[];
+}
+
+export interface CourseDetail {
+  id: string;
+  courseCode: string;
+  title: string;
+  description?: string;
+  thumbnailUrl?: string;
+  teacherName: string;
+  progressPercentage: number;
+  isEnrolled: boolean;
+  sections: SectionSummary[];
+}
+
+export interface QuizOption {
+  optionId: string;
+  optionText: string;
+}
+
+export interface QuizQuestion {
+  questionId: string;
+  questionText: string;
+  questionType: 'SINGLE_CHOICE' | 'MULTIPLE_CHOICE' | 'TRUE_FALSE';
+  points: number;
+  explanation?: string;
+  options: QuizOption[];
+}
+
+export interface QuizDetail {
+  quizId: string;
+  lessonId: string;
+  title: string;
+  passingScore: number;
+  timeLimitMinutes: number;
+  questions: QuizQuestion[];
+}
+
+export interface QuestionAnswer {
+  questionId: string;
+  selectedOptionIds: string[];
+}
+
+export interface SubmitQuizResponse {
+  quizAttemptId: string;
+  score: number;
+  passingScore: number;
+  isPassed: boolean;
+  lessonProgressUpdated: boolean;
+  message: string;
+}
+
+export interface QuizAttemptSummary {
+  attemptId: string;
+  quizId: string;
+  attemptNumber: number;
+  scoreAchieved: number;
+  passingScore: number;
+  maxScore: number;
+  isPassed: boolean;
+  submittedAt?: string;
+}
+
+export interface QuizReviewOption {
+  optionId: string;
+  optionText: string;
+  isCorrect: boolean;
+  explanation?: string;
+}
+
+export interface QuizReviewQuestion {
+  questionId: string;
+  questionText: string;
+  questionType: string;
+  points: number;
+  pointsEarned: number;
+  isCorrect: boolean;
+  explanation?: string;
+  selectedOptionIds: string[];
+  options: QuizReviewOption[];
+}
+
+export interface QuizReview {
+  attemptId: string;
+  quizId: string;
+  title: string;
+  attemptNumber: number;
+  scoreAchieved: number;
+  passingScore: number;
+  maxScore: number;
+  isPassed: boolean;
+  submittedAt?: string;
+  questions: QuizReviewQuestion[];
+}
+
+export interface SubmissionFile {
+  id: string;
+  fileName: string;
+  fileUrl: string;
+  fileSize: number;
+  fileType?: string;
+}
+
+export interface SubmissionDetail {
+  id: string;
+  submissionText?: string;
+  gitRepoUrl?: string;
+  fileUrl?: string;
+  status: 'DRAFT' | 'SUBMITTED' | 'LATE' | 'GRADED';
+  grade?: number;
+  feedback?: string;
+  submittedAt: string;
+  files?: SubmissionFile[];
+}
+
+export interface AssignmentDetail {
+  id: string;
+  courseId: string;
+  lessonId?: string;
+  title: string;
+  instructions: string;
+  attachmentUrl?: string;
+  dueDate: string;
+  maxScore: number;
+  allowGitRepo: boolean;
+  allowedExtensions?: string;
+  mySubmission?: SubmissionDetail;
+}
+

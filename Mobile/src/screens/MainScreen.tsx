@@ -11,12 +11,15 @@ import { ProfileScreen } from './ProfileScreen';
 import { TeacherDashboardScreen } from './TeacherDashboardScreen';
 import { TeacherCoursesScreen } from './TeacherCoursesScreen';
 import { TeacherGradingScreen } from './TeacherGradingScreen';
+import { CourseStudyScreen } from './CourseStudyScreen';
 import { api } from '../api/client';
 
 export const MainScreen: React.FC = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('home');
   const [unreadCount, setUnreadCount] = useState<number>(0);
+  const [studyingCourseId, setStudyingCourseId] = useState<string | null>(null);
+  const [initialActivityId, setInitialActivityId] = useState<string | undefined>(undefined);
 
   const isTeacher = user?.role === 'TEACHER';
 
@@ -57,7 +60,13 @@ export const MainScreen: React.FC = () => {
     // 2. Student Views (Default)
     switch (activeTab) {
       case 'courses':
-        return <CoursesScreen />;
+        return (
+          <CoursesScreen
+            onNavigateCourse={(courseId) => {
+              setStudyingCourseId(courseId);
+            }}
+          />
+        );
       case 'grades':
         return <GradesScreen />;
       case 'notifications':
@@ -66,9 +75,33 @@ export const MainScreen: React.FC = () => {
         return <ProfileScreen />;
       case 'home':
       default:
-        return <DashboardScreen onNavigate={setActiveTab} />;
+        return (
+          <DashboardScreen
+            onNavigate={setActiveTab}
+            onNavigateCourse={(courseId) => {
+              setStudyingCourseId(courseId);
+            }}
+          />
+        );
     }
   };
+
+  // If a student is currently studying a course, show full-screen CourseStudyScreen
+  if (!isTeacher && studyingCourseId) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <CourseStudyScreen
+          courseId={studyingCourseId}
+          initialActivityId={initialActivityId}
+          onBack={() => {
+            setStudyingCourseId(null);
+            setInitialActivityId(undefined);
+            setActiveTab('courses');
+          }}
+        />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>

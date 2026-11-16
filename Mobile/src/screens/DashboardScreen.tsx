@@ -16,9 +16,10 @@ import { UpcomingDeadline, EnrolledCourseSummary } from '../types';
 
 interface DashboardScreenProps {
   onNavigate?: (tab: 'home' | 'courses' | 'grades' | 'notifications' | 'profile') => void;
+  onNavigateCourse?: (courseId: string) => void;
 }
 
-export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigate }) => {
+export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigate, onNavigateCourse }) => {
   const { user } = useAuth();
 
   const [deadlines, setDeadlines] = useState<UpcomingDeadline[]>([]);
@@ -328,7 +329,9 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ onNavigate }) 
                     <TouchableOpacity
                       style={styles.courseEnterButton}
                       onPress={() => {
-                        if (onNavigate) {
+                        if (onNavigateCourse) {
+                          onNavigateCourse(c.id);
+                        } else if (onNavigate) {
                           onNavigate('courses');
                         } else {
                           Alert.alert('Khóa học', `Đang mở môn học: ${c.title}`);
