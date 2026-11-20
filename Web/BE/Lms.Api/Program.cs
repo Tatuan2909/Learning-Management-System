@@ -115,11 +115,18 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
+app.UseCors("AllowFrontend");
+
 // 6. Configure HTTP Pipeline
 app.UseStaticFiles(new StaticFileOptions
 {
     OnPrepareResponse = ctx =>
     {
+        // Cho phép truy cập file tĩnh (PDF, tài liệu, video) từ mọi Client / WebView trên Mobile
+        ctx.Context.Response.Headers.Append("Access-Control-Allow-Origin", "*");
+        ctx.Context.Response.Headers.Append("Access-Control-Allow-Headers", "*");
+        ctx.Context.Response.Headers.Append("Access-Control-Allow-Methods", "GET, OPTIONS");
+
         // Bảo mật: Chặn tải trực tiếp file bài nộp sinh viên qua URL tĩnh công khai (phải qua API xác thực)
         if (ctx.Context.Request.Path.StartsWithSegments("/uploads/submissions"))
         {
@@ -130,8 +137,6 @@ app.UseStaticFiles(new StaticFileOptions
 });
 app.UseSwagger();
 app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "LMS Web API v1"));
-
-app.UseCors("AllowFrontend");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

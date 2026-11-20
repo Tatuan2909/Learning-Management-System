@@ -1839,9 +1839,13 @@ public class TeacherController : ControllerBase
         return Ok(new
         {
             totalCourses,
+            assignedCoursesCount = totalCourses,
             totalStudents,
+            totalStudentsCount = totalStudents,
             pendingSubmissions,
+            pendingSubmissionsCount = pendingSubmissions,
             averageProgress,
+            averagePassRate = averageProgress,
             recentSubmissions
         });
     }

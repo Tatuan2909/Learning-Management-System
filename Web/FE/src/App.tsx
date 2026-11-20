@@ -43,6 +43,7 @@ export const App: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<'dashboard' | 'my-courses' | 'courses' | 'grades' | 'profile' | 'study'>('dashboard');
   const [teacherTab, setTeacherTab] = useState<'overview' | 'courses'>('overview');
+  const [teacherCourseId, setTeacherCourseId] = useState<string | null>(null);
   const [adminTab, setAdminTab] = useState<'overview' | 'users' | 'departments' | 'majors' | 'courses' | 'logs' | 'settings'>('overview');
   const [studyCourseId, setStudyCourseId] = useState<string>('44444444-4444-4444-4444-444444444444');
   const [currentCourse, setCurrentCourse] = useState<CourseItem | null>(null);
@@ -111,6 +112,7 @@ export const App: React.FC = () => {
   const resetNavigationState = () => {
     setActiveTab('dashboard');
     setTeacherTab('overview');
+    setTeacherCourseId(null);
     setAdminTab('overview');
     setCurrentCourse(null);
     setLoadingCurrentCourse(true);
@@ -248,7 +250,11 @@ export const App: React.FC = () => {
                     <span>{t('teacherOverview')}</span>
                   </button>
                   <button
-                    onClick={() => { setActiveTab('dashboard'); setTeacherTab('courses'); }}
+                    onClick={() => {
+                      setActiveTab('dashboard');
+                      setTeacherTab('courses');
+                      setTeacherCourseId(null);
+                    }}
                     className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
                       isRoleDashboardActive && teacherTab === 'courses'
                         ? 'bg-blue-600 text-white shadow-2xs'
@@ -431,7 +437,12 @@ export const App: React.FC = () => {
                   <span>{t('teacherOverview')}</span>
                 </button>
                 <button
-                  onClick={() => { setActiveTab('dashboard'); setTeacherTab('courses'); setMobileMenuOpen(false); }}
+                  onClick={() => {
+                    setActiveTab('dashboard');
+                    setTeacherTab('courses');
+                    setTeacherCourseId(null);
+                    setMobileMenuOpen(false);
+                  }}
                   className={`w-full p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 ${
                     isRoleDashboardActive && teacherTab === 'courses' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
                   }`}
@@ -563,7 +574,13 @@ export const App: React.FC = () => {
           user.role === 'ADMIN' ? (
             <AdminDashboard user={user} activeTab={adminTab} onTabChange={setAdminTab} />
           ) : user.role === 'TEACHER' ? (
-            <TeacherDashboard user={user} activeTab={teacherTab} onTabChange={setTeacherTab} />
+            <TeacherDashboard
+              user={user}
+              activeTab={teacherTab}
+              onTabChange={setTeacherTab}
+              selectedCourseId={teacherCourseId}
+              onSelectCourse={setTeacherCourseId}
+            />
           ) : (
             <div className="space-y-8">
               {/* Softer, Gentle, Eye-friendly Welcome Banner */}

@@ -30,6 +30,7 @@ import {
   AssignmentDetail
 } from '../types';
 import { parseVideoUrl, parseDocumentUrl } from '../utils/mediaHelper';
+import { getBackendRootUrl } from '../api/config';
 
 interface CourseStudyScreenProps {
   courseId: string;
@@ -38,6 +39,262 @@ interface CourseStudyScreenProps {
 }
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+const getVideoPlayerConfig = (videoInfo: {
+  embedUrl: string | null;
+  isDirectVideo?: boolean;
+  isGoogleDrive?: boolean;
+  isYouTube?: boolean;
+  videoId?: string;
+}) => {
+  if (videoInfo.isDirectVideo && videoInfo.embedUrl) {
+    return {
+      source: {
+        html: `
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+              <style>
+                * { margin:0; padding:0; box-sizing:border-box; }
+                body, html { width:100%; height:100%; background:#000; overflow:hidden; display:flex; align-items:center; justify-content:center; }
+                video { width:100%; height:100%; object-fit:contain; }
+              </style>
+            </head>
+            <body>
+              <video controls playsinline webkit-playsinline src="${videoInfo.embedUrl}"></video>
+            </body>
+          </html>
+        `
+      }
+    };
+  }
+
+  if (videoInfo.isGoogleDrive && videoInfo.embedUrl) {
+    return {
+      source: {
+        html: `
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+              <style>
+                * { margin:0; padding:0; box-sizing:border-box; }
+                body, html { width:100%; height:100%; background:#000; overflow:hidden; }
+                iframe { width:100%; height:100%; border:none; }
+              </style>
+            </head>
+            <body>
+              <iframe
+                src="${videoInfo.embedUrl}"
+                frameborder="0"
+                allow="autoplay; encrypted-media; fullscreen"
+                allowfullscreen
+              ></iframe>
+            </body>
+          </html>
+        `,
+        baseUrl: 'https://drive.google.com'
+      }
+    };
+  }
+
+  // YouTube / Other Embeds
+  const ytEmbed =
+    videoInfo.embedUrl ||
+    `https://www.youtube-nocookie.com/embed/${videoInfo.videoId}?enablejsapi=1&playsinline=1&rel=0&modestbranding=1`;
+  return {
+    source: {
+      html: `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+            <style>
+              * { margin:0; padding:0; box-sizing:border-box; }
+              body, html { width:100%; height:100%; background:#000; overflow:hidden; }
+              iframe { width:100%; height:100%; border:none; }
+            </style>
+          </head>
+          <body>
+            <iframe
+              src="${ytEmbed}"
+              frameborder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowfullscreen
+              webkitallowfullscreen
+              mozallowfullscreen
+            ></iframe>
+          </body>
+        </html>
+      `,
+      baseUrl: 'https://www.youtube-nocookie.com'
+    }
+  };
+};
+
+const getPdfViewerHtml = (docUrl: string, fileName?: string) => {
+  const backendRoot = getBackendRootUrl();
+  const localPdfJs = `${backendRoot}/lib/pdfjs/pdf.min.js`;
+  const localWorker = `${backendRoot}/lib/pdfjs/pdf.worker.min.js`;
+
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0, user-scalable=yes">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      background-color: #334155;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      width: 100%;
+      min-height: 100%;
+      padding: 10px 8px;
+    }
+    #loading-container {
+      color: #FFFFFF;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 40px 10px;
+      text-align: center;
+    }
+    .spinner {
+      border: 3px solid rgba(255,255,255,0.2);
+      border-top: 3px solid #38BDF8;
+      border-radius: 50%;
+      width: 28px;
+      height: 28px;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 12px auto;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    #canvas-container {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+    .pdf-page-canvas {
+      width: 100% !important;
+      max-width: 650px;
+      height: auto !important;
+      background: #FFFFFF;
+      border-radius: 6px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+    }
+    .page-indicator {
+      color: #CBD5E1;
+      font-size: 11px;
+      font-weight: 700;
+      margin-top: 4px;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    #error-container {
+      display: none;
+      background-color: #FEF2F2;
+      border: 1px solid #FCA5A5;
+      border-radius: 8px;
+      padding: 14px;
+      margin: 16px 8px;
+      color: #991B1B;
+      text-align: center;
+      font-size: 12px;
+      line-height: 18px;
+    }
+  </style>
+  <script src="${localPdfJs}"></script>
+</head>
+<body>
+  <div id="loading-container">
+    <div class="spinner"></div>
+    <span>Đang hiển thị đề cương trực tiếp...</span>
+  </div>
+  <div id="error-container"></div>
+  <div id="canvas-container"></div>
+
+  <script>
+    (function() {
+      try {
+        if (typeof pdfjsLib === 'undefined') {
+          var script = document.createElement('script');
+          script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+          script.onload = initPdf;
+          script.onerror = function() {
+            showError('Không thể tải thư viện đọc PDF.');
+          };
+          document.head.appendChild(script);
+        } else {
+          initPdf();
+        }
+
+        function initPdf() {
+          pdfjsLib.GlobalWorkerOptions.workerSrc = '${localWorker}';
+          var loadingTask = pdfjsLib.getDocument({
+            url: '${docUrl}',
+            cMapPacked: true
+          });
+
+          loadingTask.promise.then(function(pdf) {
+            var loader = document.getElementById('loading-container');
+            if (loader) loader.style.display = 'none';
+            var container = document.getElementById('canvas-container');
+
+            for (var pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+              (function(pNum) {
+                pdf.getPage(pNum).then(function(page) {
+                  var scale = 2.0;
+                  var viewport = page.getViewport({ scale: scale });
+
+                  var canvas = document.createElement('canvas');
+                  canvas.className = 'pdf-page-canvas';
+                  var context = canvas.getContext('2d');
+                  canvas.height = viewport.height;
+                  canvas.width = viewport.width;
+
+                  if (pdf.numPages > 1) {
+                    var label = document.createElement('div');
+                    label.className = 'page-indicator';
+                    label.innerText = 'Trang ' + pNum + ' / ' + pdf.numPages;
+                    container.appendChild(label);
+                  }
+
+                  container.appendChild(canvas);
+
+                  page.render({
+                    canvasContext: context,
+                    viewport: viewport
+                  });
+                });
+              })(pageNum);
+            }
+          }).catch(function(err) {
+            showError('Lỗi đọc tài liệu: ' + (err.message || 'Không thể hiển thị PDF'));
+          });
+        }
+
+        function showError(msg) {
+          var loader = document.getElementById('loading-container');
+          if (loader) loader.style.display = 'none';
+          var errDiv = document.getElementById('error-container');
+          if (errDiv) {
+            errDiv.style.display = 'block';
+            errDiv.innerText = msg;
+          }
+        }
+      } catch (ex) {
+        showError('Lỗi ứng dụng: ' + ex.message);
+      }
+    })();
+  </script>
+</body>
+</html>
+  `;
+};
 
 export const CourseStudyScreen: React.FC<CourseStudyScreenProps> = ({
   courseId,
@@ -220,9 +477,13 @@ export const CourseStudyScreen: React.FC<CourseStudyScreenProps> = ({
     }
 
     try {
-      await api.post(`/courses/lessons/${itemId}/complete`, { studentId });
+      await api.post(`/lessons/${itemId}/complete`, { studentId });
     } catch {
-      // ignore
+      try {
+        await api.post(`/courses/lessons/${itemId}/complete`, { studentId });
+      } catch {
+        // ignore
+      }
     }
   };
 
@@ -543,8 +804,14 @@ export const CourseStudyScreen: React.FC<CourseStudyScreenProps> = ({
   // Pre-parse media info if active activity has contentUrl
   const videoInfo = selectedActivity ? parseVideoUrl(selectedActivity.contentUrl) : null;
   const docInfo = selectedActivity ? parseDocumentUrl(selectedActivity.contentUrl, selectedActivity.type) : null;
-  const isVideoType = selectedActivity?.type === 'VIDEO' || selectedActivity?.type === 'LECTURE' || selectedActivity?.type === 'SCORM';
-  const isDocType = selectedActivity?.type === 'PDF' || selectedActivity?.type === 'DOCX';
+  const isVideoType =
+    selectedActivity?.type === 'VIDEO' ||
+    selectedActivity?.type === 'SCORM' ||
+    Boolean(videoInfo?.isYouTube || videoInfo?.isDirectVideo || videoInfo?.isGoogleDrive);
+  const isDocType =
+    selectedActivity?.type === 'PDF' ||
+    selectedActivity?.type === 'DOCX' ||
+    Boolean(docInfo?.originalUrl && (docInfo.fileExt === 'PDF' || docInfo.fileExt === 'DOCX' || docInfo.originalUrl.includes('/docs/')));
   const isQuizLocked = Boolean(selectedActivity?.hasPassword && !unlockedQuizKeys[selectedActivity.quizId || selectedActivity.id]);
 
   return (
@@ -1400,88 +1667,142 @@ export const CourseStudyScreen: React.FC<CourseStudyScreenProps> = ({
               // SUB-VIEW 3: BÀI GIẢNG / VIDEO / TÀI LIỆU (PDF, DOCX, TEXT)
               // ==========================================================
               <View style={styles.lessonReaderContainer}>
-                {/* 1. In-app Video Player with WebView */}
-                {isVideoType && videoInfo?.embedUrl ? (
-                  <View style={styles.mediaCard}>
-                    <View style={styles.mediaCardHeader}>
-                      <View style={styles.mediaBadgeVideo}>
-                        <Feather name="play-circle" size={14} color="#2563EB" />
-                        <Text style={styles.mediaBadgeVideoText}>Bài giảng Video</Text>
+                {/* 1. In-app Direct Video Player (Hỗ trợ YouTube, Google Drive, MP4 trực tiếp trong box) */}
+                {isVideoType ? (
+                  videoInfo?.embedUrl ? (
+                    <View style={styles.mediaCard}>
+                      <View style={styles.mediaCardHeader}>
+                        <View style={styles.mediaBadgeVideo}>
+                          <Feather name="play-circle" size={15} color="#2563EB" />
+                          <Text style={styles.mediaBadgeVideoText}>
+                            {videoInfo.isGoogleDrive ? 'Video Google Drive' : 'Video bài giảng trực tiếp'}
+                          </Text>
+                        </View>
+
+                        <View style={styles.mediaBadgeLiveBox}>
+                          <View style={styles.liveIndicatorDot} />
+                          <Text style={styles.mediaBadgeLiveText}>Trực tiếp trên ứng dụng</Text>
+                        </View>
                       </View>
 
-                      {videoInfo.originalUrl ? (
-                        <TouchableOpacity
-                          style={styles.openExternalBtn}
-                          onPress={() => Linking.openURL(videoInfo.originalUrl)}
-                          activeOpacity={0.7}
-                        >
-                          <Feather name="external-link" size={13} color="#2563EB" />
-                          <Text style={styles.openExternalText}>Mở ứng dụng ngoài</Text>
-                        </TouchableOpacity>
-                      ) : null}
+                      {/* Embedded 16:9 Video Player */}
+                      <View style={styles.videoPlayerBox}>
+                        <WebView
+                          key={videoInfo.embedUrl}
+                          source={getVideoPlayerConfig(videoInfo).source}
+                          style={styles.videoWebView}
+                          allowsFullscreenVideo
+                          allowsInlineMediaPlayback
+                          mediaPlaybackRequiresUserAction={true}
+                          javaScriptEnabled
+                          domStorageEnabled
+                          scrollEnabled={false}
+                          originWhitelist={['*']}
+                          mixedContentMode="always"
+                          userAgent={
+                            Platform.OS === 'android'
+                              ? 'Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36'
+                              : 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'
+                          }
+                          renderLoading={() => (
+                            <View style={styles.webViewLoader}>
+                              <ActivityIndicator size="small" color="#2563EB" />
+                              <Text style={styles.webViewLoaderText}>Đang nạp video bài giảng...</Text>
+                            </View>
+                          )}
+                          startInLoadingState
+                        />
+                      </View>
                     </View>
-
-                    {/* Embedded 16:9 Video Player */}
-                    <View style={styles.videoPlayerBox}>
-                      <WebView
-                        source={{ uri: videoInfo.embedUrl }}
-                        style={styles.videoWebView}
-                        allowsFullscreenVideo
-                        javaScriptEnabled
-                        domStorageEnabled
-                        originWhitelist={['*']}
-                        renderLoading={() => (
-                          <View style={styles.webViewLoader}>
-                            <ActivityIndicator size="small" color="#2563EB" />
-                            <Text style={styles.webViewLoaderText}>Đang tải video...</Text>
-                          </View>
-                        )}
-                        startInLoadingState
-                      />
-                    </View>
-                  </View>
-                ) : null}
-
-                {/* 2. In-app Document Reader (PDF / DOCX) with WebView */}
-                {isDocType && docInfo?.embedUrl ? (
-                  <View style={styles.mediaCard}>
-                    <View style={styles.mediaCardHeader}>
-                      <View style={styles.mediaBadgeDoc}>
-                        <Feather name="file-text" size={14} color="#0D9488" />
-                        <Text style={styles.mediaBadgeDocText}>
-                          {selectedActivity.type === 'PDF' ? 'Tài liệu PDF' : 'Tài liệu Word'}
+                  ) : (
+                    <View style={styles.mediaCard}>
+                      <View style={styles.mediaCardHeader}>
+                        <View style={styles.mediaBadgeVideo}>
+                          <Feather name="play-circle" size={15} color="#64748B" />
+                          <Text style={styles.mediaBadgeVideoEmptyText}>Bài giảng Video</Text>
+                        </View>
+                        <View style={styles.mediaBadgeEmptyTag}>
+                          <Text style={styles.mediaBadgeEmptyTagText}>Chưa có link</Text>
+                        </View>
+                      </View>
+                      <View style={styles.videoEmptyBox}>
+                        <Feather name="video-off" size={32} color="#94A3B8" />
+                        <Text style={styles.videoEmptyTitle}>Chưa có liên kết video hoặc URL không khả dụng</Text>
+                        <Text style={styles.videoEmptySub}>
+                          Giảng viên có thể cập nhật đường link video trong Bảng điều khiển giảng viên.
                         </Text>
                       </View>
+                    </View>
+                  )
+                ) : null}
 
-                      <View style={styles.docActionsRight}>
-                        {docInfo.originalUrl ? (
-                          <TouchableOpacity
-                            style={styles.openExternalBtn}
-                            onPress={() => Linking.openURL(docInfo.originalUrl)}
-                            activeOpacity={0.7}
+                {/* 2. In-app Direct Document Reader (Hiển thị đề cương và tài liệu trực tiếp trong box) */}
+                {isDocType && docInfo?.originalUrl ? (
+                  <View style={styles.docDirectCard}>
+                    <View style={styles.docDirectHeader}>
+                      <View
+                        style={[
+                          styles.docDirectIconBox,
+                          docInfo.fileExt === 'PDF' ? styles.docIconBoxPdf : styles.docIconBoxWord
+                        ]}
+                      >
+                        <Feather
+                          name="file-text"
+                          size={20}
+                          color={docInfo.fileExt === 'PDF' ? '#E11D48' : '#2563EB'}
+                        />
+                      </View>
+
+                      <View style={styles.docDirectMeta}>
+                        <View style={styles.docBadgeRow}>
+                          <View
+                            style={[
+                              styles.docTypeBadge,
+                              docInfo.fileExt === 'PDF' ? styles.docBadgePdf : styles.docBadgeWord
+                            ]}
                           >
-                            <Feather name="external-link" size={13} color="#0D9488" />
-                            <Text style={[styles.openExternalText, { color: '#0D9488' }]}>
-                              Mở toàn màn hình
+                            <Text
+                              style={[
+                                styles.docTypeBadgeText,
+                                docInfo.fileExt === 'PDF' ? styles.docBadgePdfText : styles.docBadgeWordText
+                              ]}
+                            >
+                              {docInfo.fileExt === 'PDF' ? 'ĐỀ CƯƠNG / TÀI LIỆU PDF' : 'TÀI LIỆU WORD'}
                             </Text>
-                          </TouchableOpacity>
-                        ) : null}
+                          </View>
+                          <View style={styles.docLiveBadge}>
+                            <Feather name="check" size={11} color="#16A34A" />
+                            <Text style={styles.docLiveBadgeText}>Xem trực tiếp</Text>
+                          </View>
+                        </View>
+
+                        <Text style={styles.docDirectFileName} numberOfLines={1}>
+                          {docInfo.fileName}
+                        </Text>
                       </View>
                     </View>
 
-                    {/* Embedded Document Viewer */}
+                    {/* The In-box Document Viewer (Hiển thị trực tiếp các trang PDF/Đề cương) */}
                     <View style={styles.documentViewerBox}>
                       <WebView
-                        source={{ uri: docInfo.embedUrl }}
+                        source={
+                          Platform.OS === 'ios'
+                            ? { uri: docInfo.originalUrl }
+                            : {
+                                html: getPdfViewerHtml(docInfo.originalUrl, docInfo.fileName),
+                                baseUrl: getBackendRootUrl()
+                              }
+                        }
                         style={styles.docWebView}
+                        originWhitelist={['*']}
                         javaScriptEnabled
                         domStorageEnabled
                         scalesPageToFit
-                        originWhitelist={['*']}
+                        mixedContentMode="always"
                         renderLoading={() => (
                           <View style={styles.webViewLoader}>
                             <ActivityIndicator size="small" color="#0D9488" />
-                            <Text style={styles.webViewLoaderText}>Đang mở tài liệu...</Text>
+                            <Text style={styles.webViewLoaderText}>Đang nạp đề cương trực tiếp...</Text>
                           </View>
                         )}
                         startInLoadingState
@@ -1490,11 +1811,45 @@ export const CourseStudyScreen: React.FC<CourseStudyScreenProps> = ({
                   </View>
                 ) : null}
 
-                {/* 3. Text Reading Card (ONLY displayed if bodyMarkdown actually exists) */}
-                {selectedActivity.bodyMarkdown && selectedActivity.bodyMarkdown.trim() ? (
-                  <View style={styles.markdownCard}>
-                    <Text style={styles.markdownText}>{selectedActivity.bodyMarkdown}</Text>
-                  </View>
+                {/* 3. Text & Reading Material Section (Chỉ hiển thị khi KHÔNG phải video hay file tài liệu) */}
+                {!isVideoType && !isDocType ? (
+                  selectedActivity.bodyMarkdown && selectedActivity.bodyMarkdown.trim() ? (
+                    <View style={styles.markdownCard}>
+                      <View style={styles.markdownHeader}>
+                        <Feather name="book-open" size={16} color="#2563EB" />
+                        <Text style={styles.markdownHeaderTitle}>Nội dung bài giảng & Lý thuyết</Text>
+                      </View>
+                      <Text style={styles.markdownText}>{selectedActivity.bodyMarkdown}</Text>
+                    </View>
+                  ) : (
+                    /* Clean overview when activity is a lecture without video/document */
+                    <View style={styles.lectureOverviewCard}>
+                      <View style={styles.lectureOverviewHeader}>
+                        <View style={styles.lectureOverviewIconBox}>
+                          <Feather name="book-open" size={20} color="#2563EB" />
+                        </View>
+                        <View style={styles.lectureOverviewMeta}>
+                          <Text style={styles.lectureOverviewTag}>THÔNG TIN BÀI HỌC</Text>
+                          <Text style={styles.lectureOverviewTitle}>{selectedActivity.title}</Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.lectureOverviewBody}>
+                        <View style={styles.lectureOverviewItem}>
+                          <Feather name="user-check" size={14} color="#64748B" />
+                          <Text style={styles.lectureOverviewItemText}>
+                            Giảng viên phụ trách: {course?.teacherName || 'Chưa phân công'}
+                          </Text>
+                        </View>
+                        <View style={styles.lectureOverviewItem}>
+                          <Feather name="check-circle" size={14} color="#16A34A" />
+                          <Text style={styles.lectureOverviewItemText}>
+                            Hãy đọc kỹ tài liệu và nhấn nút "Đánh dấu đã hoàn thành" để mở khóa bài tiếp theo.
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  )
                 ) : null}
 
                 {/* Completion Toggle Button */}
@@ -2300,6 +2655,75 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6
   },
+  mediaBadgeLiveBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6
+  },
+  liveIndicatorDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#16A34A'
+  },
+  mediaBadgeLiveText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#16A34A'
+  },
+  mediaBadgeVideoEmptyText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#64748B'
+  },
+  mediaBadgeEmptyTag: {
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6
+  },
+  mediaBadgeEmptyTagText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#64748B'
+  },
+  videoEmptyBox: {
+    padding: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#F8FAFC'
+  },
+  videoEmptyTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#475569',
+    textAlign: 'center'
+  },
+  videoEmptySub: {
+    fontSize: 11,
+    color: '#94A3B8',
+    textAlign: 'center',
+    lineHeight: 16
+  },
+  docLiveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6
+  },
+  docLiveBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#16A34A'
+  },
   videoPlayerBox: {
     width: '100%',
     height: Math.round((SCREEN_WIDTH - 32) * (9 / 16)), // 16:9 aspect ratio
@@ -2312,12 +2736,17 @@ const styles = StyleSheet.create({
   },
   documentViewerBox: {
     width: '100%',
-    height: 480,
-    backgroundColor: '#FFFFFF'
+    height: 520,
+    backgroundColor: '#334155',
+    borderRadius: 10,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#475569',
+    marginTop: 6
   },
   docWebView: {
     flex: 1,
-    backgroundColor: '#FFFFFF'
+    backgroundColor: '#334155'
   },
   webViewLoader: {
     position: 'absolute',
@@ -2900,6 +3329,139 @@ const styles = StyleSheet.create({
   lessonReaderContainer: {
     gap: 14
   },
+
+  // Direct Document Card Styles
+  docDirectCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 16,
+    gap: 14,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2
+  },
+  docDirectHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12
+  },
+  docDirectIconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  docIconBoxPdf: {
+    backgroundColor: '#FFE4E6'
+  },
+  docIconBoxWord: {
+    backgroundColor: '#EFF6FF'
+  },
+  docDirectMeta: {
+    flex: 1,
+    gap: 4
+  },
+  docBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 2
+  },
+  docTypeBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6
+  },
+  docBadgePdf: {
+    backgroundColor: '#FFF1F2'
+  },
+  docBadgeWord: {
+    backgroundColor: '#EFF6FF'
+  },
+  docTypeBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5
+  },
+  docBadgePdfText: {
+    color: '#E11D48'
+  },
+  docBadgeWordText: {
+    color: '#2563EB'
+  },
+  docDirectServerTag: {
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: '500'
+  },
+  docDirectFileName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0F172A',
+    lineHeight: 20
+  },
+  docDirectSubHint: {
+    fontSize: 12,
+    color: '#64748B',
+    lineHeight: 16
+  },
+  docDirectActionRow: {
+    flexDirection: 'row',
+    gap: 10
+  },
+  docOpenDirectBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#2563EB',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    shadowColor: '#2563EB',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    elevation: 3
+  },
+  docOpenDirectBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF'
+  },
+  docDownloadBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 10
+  },
+  docDownloadBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#2563EB'
+  },
+  docEmbeddedBox: {
+    width: '100%',
+    height: 380,
+    borderRadius: 10,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginTop: 6
+  },
+
   markdownCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
@@ -2907,10 +3469,79 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
     padding: 16
   },
+  markdownHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9'
+  },
+  markdownHeaderTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1E293B'
+  },
   markdownText: {
     fontSize: 14,
     lineHeight: 22,
     color: '#1E293B'
+  },
+
+  // Lecture Overview Styles
+  lectureOverviewCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 16,
+    gap: 12
+  },
+  lectureOverviewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12
+  },
+  lectureOverviewIconBox: {
+    width: 42,
+    height: 42,
+    borderRadius: 10,
+    backgroundColor: '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  lectureOverviewMeta: {
+    flex: 1
+  },
+  lectureOverviewTag: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#64748B',
+    letterSpacing: 0.5,
+    marginBottom: 2
+  },
+  lectureOverviewTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0F172A'
+  },
+  lectureOverviewBody: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
+    padding: 12,
+    gap: 8
+  },
+  lectureOverviewItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8
+  },
+  lectureOverviewItemText: {
+    fontSize: 12,
+    color: '#475569',
+    flex: 1,
+    lineHeight: 18
   },
   completeLessonButton: {
     flexDirection: 'row',

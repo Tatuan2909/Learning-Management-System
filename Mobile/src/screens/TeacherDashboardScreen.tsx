@@ -124,54 +124,82 @@ export const TeacherDashboardScreen: React.FC<TeacherDashboardScreenProps> = ({ 
           </Text>
         </View>
 
-        {/* 4 Overview Stat Cards */}
-        <View style={styles.statGrid}>
-          {/* Card 1: Assigned Courses */}
-          <View style={styles.statCard}>
-            <View style={[styles.statIconWrap, { backgroundColor: '#EFF6FF' }]}>
-              <Feather name="book-open" size={16} color="#2563EB" />
+        {/* Consolidated Grouped Stats Card (Thu gọn 4 chỉ số vào 1 cụm thống nhất) */}
+        <View style={styles.groupedStatsCard}>
+          {/* Nhóm 1: Quản lý môn học & Sinh viên */}
+          <View style={styles.statsGroupRow}>
+            {/* Item 1: Môn phụ trách */}
+            <View style={styles.compactStatItem}>
+              <View style={[styles.compactStatIcon, { backgroundColor: '#EFF6FF' }]}>
+                <Feather name="book-open" size={15} color="#2563EB" />
+              </View>
+              <View style={styles.compactStatMeta}>
+                <Text style={styles.compactStatLabel}>Môn phụ trách</Text>
+                <View style={styles.compactStatValueRow}>
+                  <Text style={[styles.compactStatValue, { color: '#2563EB' }]}>
+                    {overview?.assignedCoursesCount ?? overview?.totalCourses ?? courses.length}
+                  </Text>
+                  <Text style={styles.compactStatUnit}>môn</Text>
+                </View>
+              </View>
             </View>
-            <Text style={styles.statLabel}>MÔN PHỤ TRÁCH</Text>
-            <Text style={[styles.statValue, { color: '#2563EB' }]}>
-              {overview?.assignedCoursesCount ?? courses.length}
-            </Text>
-            <Text style={styles.statSubtext}>Học phần học kỳ này</Text>
+
+            <View style={styles.compactStatDividerV} />
+
+            {/* Item 2: Tổng sinh viên */}
+            <View style={styles.compactStatItem}>
+              <View style={[styles.compactStatIcon, { backgroundColor: '#ECFDF5' }]}>
+                <Feather name="users" size={15} color="#059669" />
+              </View>
+              <View style={styles.compactStatMeta}>
+                <Text style={styles.compactStatLabel}>Tổng sinh viên</Text>
+                <View style={styles.compactStatValueRow}>
+                  <Text style={[styles.compactStatValue, { color: '#059669' }]}>
+                    {overview?.totalStudentsCount ?? overview?.totalStudents ?? (courses.length > 0 ? courses.reduce((acc, c) => acc + (c.enrolledStudents || 0), 0) : 0)}
+                  </Text>
+                  <Text style={styles.compactStatUnit}>SV</Text>
+                </View>
+              </View>
+            </View>
           </View>
 
-          {/* Card 2: Total Students */}
-          <View style={styles.statCard}>
-            <View style={[styles.statIconWrap, { backgroundColor: '#ECFDF5' }]}>
-              <Feather name="users" size={16} color="#059669" />
-            </View>
-            <Text style={styles.statLabel}>TỔNG SINH VIÊN</Text>
-            <Text style={[styles.statValue, { color: '#059669' }]}>
-              {overview?.totalStudentsCount ?? 0}
-            </Text>
-            <Text style={styles.statSubtext}>Đã ghi danh tham gia</Text>
-          </View>
+          <View style={styles.compactStatDividerH} />
 
-          {/* Card 3: Pending Submissions */}
-          <View style={styles.statCard}>
-            <View style={[styles.statIconWrap, { backgroundColor: '#FFFBEB' }]}>
-              <Feather name="clock" size={16} color="#D97706" />
+          {/* Nhóm 2: Bài cần chấm & Tiến độ trung bình */}
+          <View style={styles.statsGroupRow}>
+            {/* Item 3: Bài cần chấm */}
+            <View style={styles.compactStatItem}>
+              <View style={[styles.compactStatIcon, { backgroundColor: '#FFFBEB' }]}>
+                <Feather name="clock" size={15} color="#D97706" />
+              </View>
+              <View style={styles.compactStatMeta}>
+                <Text style={styles.compactStatLabel}>Bài cần chấm</Text>
+                <View style={styles.compactStatValueRow}>
+                  <Text style={[styles.compactStatValue, { color: '#D97706' }]}>
+                    {overview?.pendingSubmissionsCount ?? overview?.pendingSubmissions ?? pendingSubmissions.length}
+                  </Text>
+                  <Text style={styles.compactStatUnit}>bài</Text>
+                </View>
+              </View>
             </View>
-            <Text style={styles.statLabel}>BÀI CẦN CHẤM</Text>
-            <Text style={[styles.statValue, { color: '#D97706' }]}>
-              {overview?.pendingSubmissionsCount ?? pendingSubmissions.length}
-            </Text>
-            <Text style={styles.statSubtext}>Bài nộp đang chờ duyệt</Text>
-          </View>
 
-          {/* Card 4: Average Progress */}
-          <View style={styles.statCard}>
-            <View style={[styles.statIconWrap, { backgroundColor: '#F5F3FF' }]}>
-              <Feather name="trending-up" size={16} color="#7C3AED" />
+            <View style={styles.compactStatDividerV} />
+
+            {/* Item 4: Tiến độ trung bình */}
+            <View style={styles.compactStatItem}>
+              <View style={[styles.compactStatIcon, { backgroundColor: '#F5F3FF' }]}>
+                <Feather name="trending-up" size={15} color="#7C3AED" />
+              </View>
+              <View style={styles.compactStatMeta}>
+                <Text style={styles.compactStatLabel}>Tiến độ TB</Text>
+                <View style={styles.compactStatValueRow}>
+                  <Text style={[styles.compactStatValue, { color: '#7C3AED' }]}>
+                    {overview?.averagePassRate ?? overview?.averageProgress ?? 0}%
+                  </Text>
+                  <Text style={styles.compactStatUnit}>lớp</Text>
+                </View>
+              </View>
             </View>
-            <Text style={styles.statLabel}>TIẾN ĐỘ TB</Text>
-            <Text style={[styles.statValue, { color: '#7C3AED' }]}>
-              {overview?.averagePassRate ?? 0}%
-            </Text>
-            <Text style={styles.statSubtext}>Tỉ lệ hoàn thành lớp</Text>
           </View>
         </View>
 
@@ -218,9 +246,9 @@ export const TeacherDashboardScreen: React.FC<TeacherDashboardScreenProps> = ({ 
               <View style={styles.sectionIconBadge}>
                 <Feather name="file-text" size={18} color="#2563EB" />
               </View>
-              <View>
-                <Text style={styles.sectionTitle}>Bài nộp cần chấm điểm</Text>
-                <Text style={styles.sectionSubtitle}>Các bài tập và bài kiểm tra sinh viên vừa nộp</Text>
+              <View style={styles.sectionHeaderTextGroup}>
+                <Text style={styles.sectionTitle} numberOfLines={1}>Bài nộp cần chấm điểm</Text>
+                <Text style={styles.sectionSubtitle} numberOfLines={1}>Các bài tập và bài kiểm tra sinh viên vừa nộp</Text>
               </View>
             </View>
             {recentSubmissions.length > 0 && (
@@ -307,18 +335,19 @@ export const TeacherDashboardScreen: React.FC<TeacherDashboardScreenProps> = ({ 
               <View style={[styles.sectionIconBadge, { backgroundColor: '#EFF6FF' }]}>
                 <Feather name="book-open" size={18} color="#2563EB" />
               </View>
-              <View>
-                <Text style={styles.sectionTitle}>Khóa học đang phụ trách</Text>
-                <Text style={styles.sectionSubtitle}>Danh sách các lớp học phần được phân công</Text>
+              <View style={styles.sectionHeaderTextGroup}>
+                <Text style={styles.sectionTitle} numberOfLines={1}>Khóa học đang phụ trách</Text>
+                <Text style={styles.sectionSubtitle} numberOfLines={1}>Danh sách các lớp học phần được phân công</Text>
               </View>
             </View>
             {courses.length > 0 && (
               <TouchableOpacity
                 onPress={() => onNavigate && onNavigate('courses')}
                 activeOpacity={0.7}
+                style={{ flexShrink: 0 }}
               >
                 <View style={styles.countBadge}>
-                  <Text style={styles.countBadgeText}>Xem tất cả ({courses.length})</Text>
+                  <Text style={styles.countBadgeText}>Tất cả ({courses.length})</Text>
                 </View>
               </TouchableOpacity>
             )}
@@ -536,52 +565,74 @@ const styles = StyleSheet.create({
     marginTop: 6
   },
 
-  // Stat Grid
-  statGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: 16,
-    gap: 10,
-    marginBottom: 14
-  },
-  statCard: {
-    flex: 1,
-    minWidth: '46%',
+  // Grouped Stats Card (Thu gọn & gộp nhóm tinh tế)
+  groupedStatsCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    padding: 14,
+    marginHorizontal: 16,
+    marginBottom: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
     shadowColor: '#64748B',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 6,
-    elevation: 1
+    elevation: 2
   },
-  statIconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    justifyContent: 'center',
+  statsGroupRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8
+    justifyContent: 'space-between',
+    paddingVertical: 4
   },
-  statLabel: {
-    fontSize: 10,
+  compactStatItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 4
+  },
+  compactStatIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  compactStatMeta: {
+    flex: 1
+  },
+  compactStatLabel: {
+    fontSize: 11,
     fontWeight: '700',
     color: '#64748B',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5
+    marginBottom: 2
   },
-  statValue: {
-    fontSize: 22,
-    fontWeight: '800',
-    marginTop: 2
+  compactStatValueRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 4
   },
-  statSubtext: {
-    fontSize: 10,
-    color: '#94A3B8',
-    marginTop: 2
+  compactStatValue: {
+    fontSize: 18,
+    fontWeight: '800'
+  },
+  compactStatUnit: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#94A3B8'
+  },
+  compactStatDividerV: {
+    width: 1,
+    height: 32,
+    backgroundColor: '#F1F5F9'
+  },
+  compactStatDividerH: {
+    height: 1,
+    backgroundColor: '#F1F5F9',
+    marginVertical: 8
   },
 
   // Quick Nav Pills
@@ -645,7 +696,12 @@ const styles = StyleSheet.create({
   sectionHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10
+    gap: 10,
+    flex: 1,
+    marginRight: 8
+  },
+  sectionHeaderTextGroup: {
+    flex: 1
   },
   sectionIconBadge: {
     width: 36,
@@ -653,7 +709,8 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: '#EFF6FF',
     justifyContent: 'center',
-    alignItems: 'center'
+    alignItems: 'center',
+    flexShrink: 0
   },
   sectionTitle: {
     fontSize: 15,
@@ -671,7 +728,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 9,
     paddingVertical: 3,
     borderWidth: 1,
-    borderColor: '#DBEAFE'
+    borderColor: '#DBEAFE',
+    flexShrink: 0
   },
   countBadgeText: {
     fontSize: 11,

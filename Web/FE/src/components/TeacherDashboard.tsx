@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
+  ArrowLeft,
   BookOpen,
   PlusCircle,
   Award,
@@ -60,6 +61,8 @@ interface Props {
   user: AuthUser;
   activeTab?: 'overview' | 'courses';
   onTabChange?: (tab: 'overview' | 'courses') => void;
+  selectedCourseId?: string | null;
+  onSelectCourse?: (courseId: string | null) => void;
 }
 
 export interface TeacherCourse {
@@ -222,7 +225,9 @@ export interface TeacherQuizQuestion {
 export const TeacherDashboard: React.FC<Props> = ({
   user,
   activeTab: propActiveTab,
-  onTabChange
+  onTabChange,
+  selectedCourseId: propSelectedCourseId,
+  onSelectCourse
 }) => {
   // Main Tab: 'overview' or 'courses'
   const [internalActiveTab, setInternalActiveTab] = useState<'overview' | 'courses'>('overview');
@@ -236,7 +241,14 @@ export const TeacherDashboard: React.FC<Props> = ({
   };
 
   // State for which Course is currently opened
-  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
+  const [internalSelectedCourseId, setInternalSelectedCourseId] = useState<string | null>(null);
+  const selectedCourseId = propSelectedCourseId !== undefined ? propSelectedCourseId : internalSelectedCourseId;
+  const setSelectedCourseId = (courseId: string | null) => {
+    if (onSelectCourse) {
+      onSelectCourse(courseId);
+    }
+    setInternalSelectedCourseId(courseId);
+  };
 
   // Sub-tabs INSIDE a specific Course:
   // 'lessons' | 'students' | 'grading' | 'gradebook' | 'announcements'
@@ -282,9 +294,7 @@ export const TeacherDashboard: React.FC<Props> = ({
       setLoadingData(true);
       const res = await api.get<TeacherCourse[]>(`/teacher/courses?teacherId=${teacherId}`);
       setCourses(res.data || []);
-      if (res.data && res.data.length > 0 && !selectedCourseId) {
-        setSelectedCourseId(res.data[0].id);
-      }
+      // Giữ selectedCourseId = null mặc định để khi click vào Khóa học phụ trách sẽ hiện danh sách từng khóa học (giống Mobile app)
     } catch (err) {
       console.error('Lỗi tải danh sách khóa học giảng viên từ CSDL:', err);
     } finally {
@@ -945,7 +955,14 @@ export const TeacherDashboard: React.FC<Props> = ({
 
           {/* 4 Metric KPI Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 w-full">
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs flex items-center gap-4">
+            <div
+              onClick={() => {
+                setSelectedCourseId(null);
+                setMainTab('courses');
+              }}
+              className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs flex items-center gap-4 cursor-pointer hover:border-blue-300 hover:shadow-xs transition-all"
+              title="Xem danh sách tất cả các khóa học phụ trách"
+            >
               <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
                 <BookOpen className="w-6 h-6" />
               </div>
@@ -1074,13 +1091,26 @@ export const TeacherDashboard: React.FC<Props> = ({
                   <BookOpen className="w-5 h-5 text-indigo-600" />
                   Danh sách Khóa học đang giảng dạy
                 </h3>
-                <button
-                  onClick={() => setShowAddCourseModal(true)}
-                  className="text-xs bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1.5 rounded-xl flex items-center gap-1 shadow-xs transition-all"
-                >
-                  <PlusCircle className="w-3.5 h-3.5" />
-                  <span>Tạo khóa học</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setSelectedCourseId(null);
+                      setMainTab('courses');
+                    }}
+                    className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-3 py-1.5 rounded-xl flex items-center gap-1 border border-slate-200 transition-all"
+                    title="Xem danh sách từng khóa học một"
+                  >
+                    <span>Tất cả ({courses.length})</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => setShowAddCourseModal(true)}
+                    className="text-xs bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1.5 rounded-xl flex items-center gap-1 shadow-xs transition-all"
+                  >
+                    <PlusCircle className="w-3.5 h-3.5" />
+                    <span>Tạo khóa học</span>
+                  </button>
+                </div>
               </div>
 
               <div className="space-y-3">
@@ -1158,100 +1188,121 @@ export const TeacherDashboard: React.FC<Props> = ({
 
               {/* Courses Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
-                {courses.map((c) => {
-                  const pendingCount = submissions.filter((s) => s.courseId === c.id && s.status === 'SUBMITTED').length;
-                  const studentCount = studentsList.filter((st) => st.courseId === c.id).length;
-                  return (
-                    <div key={c.id} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200 uppercase">
-                            {c.courseCode}
-                          </span>
-                          <h4 className="font-extrabold text-slate-900 text-lg mt-2">{c.title}</h4>
-                          <span className="text-xs text-slate-500 block mt-0.5">{c.department}</span>
-                          <span
-                            className={`mt-2 inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold ${
-                              courseHasEnrollmentPassword(c)
-                                ? 'border-amber-200 bg-amber-50 text-amber-700'
-                                : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                {courses.length === 0 ? (
+                  <div className="col-span-2 bg-white p-12 text-center rounded-2xl border border-slate-200 shadow-2xs space-y-3">
+                    <BookOpen className="w-12 h-12 text-slate-300 mx-auto" />
+                    <h4 className="font-bold text-slate-700 text-base">Chưa có môn học phụ trách</h4>
+                    <p className="text-xs text-slate-500 max-w-md mx-auto">
+                      Bạn chưa được phân công môn học nào. Hãy bấm "Tạo Khóa học mới" hoặc liên hệ Quản trị viên để được phân công.
+                    </p>
+                  </div>
+                ) : (
+                  courses.map((c) => {
+                    const pendingCount = submissions.filter((s) => s.courseId === c.id && s.status === 'SUBMITTED').length;
+                    const studentCount = c.enrolledStudents || studentsList.filter((st) => st.courseId === c.id).length;
+                    return (
+                      <div
+                        key={c.id}
+                        className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs space-y-4 hover:border-blue-300 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+                        onClick={() => handleOpenCourse(c.id, 'lessons')}
+                      >
+                        <div className="space-y-4">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200 uppercase">
+                                {c.courseCode}
+                              </span>
+                              <h4 className="font-extrabold text-slate-900 text-lg mt-2 group-hover:text-blue-600 transition-colors">
+                                {c.title}
+                              </h4>
+                              <span className="text-xs text-slate-500 block mt-0.5">{c.department}</span>
+                              <span
+                                className={`mt-2 inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold ${
+                                  courseHasEnrollmentPassword(c)
+                                    ? 'border-amber-200 bg-amber-50 text-amber-700'
+                                    : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                                }`}
+                              >
+                                {courseHasEnrollmentPassword(c) ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
+                                {courseHasEnrollmentPassword(c) ? 'Có mật khẩu ghi danh' : 'Không yêu cầu mật khẩu'}
+                              </span>
+                            </div>
+                            <span className="text-xs text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full flex-shrink-0">
+                              Đang giảng dạy
+                            </span>
+                          </div>
+
+                          {/* Course Quick Stats */}
+                          <div className="p-3.5 rounded-xl bg-slate-50 text-xs space-y-1.5 text-slate-600 border border-slate-200">
+                            <div className="flex justify-between">
+                              <span>Sinh viên ghi danh:</span>
+                              <strong className="text-blue-700 font-bold">{studentCount} học viên</strong>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Số bài giảng:</span>
+                              <strong className="text-slate-900">{c.lessonsCount} bài học</strong>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Bài tập chờ chấm:</span>
+                              <strong className={pendingCount > 0 ? 'text-amber-600 font-bold' : 'text-slate-900'}>
+                                {pendingCount} bài nộp
+                              </strong>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Action buttons inside course card */}
+                        <div
+                          className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <button
+                            onClick={() => handleOpenCourse(c.id, 'lessons')}
+                            className="flex-1 py-2 px-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-xs"
+                          >
+                            <BookOpen className="w-3.5 h-3.5" />
+                            <span>Vào lớp & Quản lý</span>
+                          </button>
+                          <button
+                            onClick={() => handleOpenCourse(c.id, 'students')}
+                            className="py-2 px-3 bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold text-xs rounded-xl transition-all border border-slate-200"
+                          >
+                            Sinh viên ({studentCount})
+                          </button>
+                          <button
+                            onClick={() => openCoursePasswordModal(c)}
+                            className="py-2 px-3 bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold text-xs rounded-xl transition-all border border-slate-200 inline-flex items-center gap-1"
+                          >
+                            <Lock className="w-3.5 h-3.5" />
+                            <span>Mật khẩu</span>
+                          </button>
+                          <button
+                            onClick={() => handleOpenCourse(c.id, 'grading')}
+                            className={`py-2 px-3 font-bold text-xs rounded-xl transition-all border ${
+                              pendingCount > 0
+                                ? 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
+                                : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
                             }`}
                           >
-                            {courseHasEnrollmentPassword(c) ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
-                            {courseHasEnrollmentPassword(c) ? 'Có mật khẩu ghi danh' : 'Không yêu cầu mật khẩu'}
-                          </span>
-                        </div>
-                        <span className="text-xs text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">
-                          Đang giảng dạy
-                        </span>
-                      </div>
-
-                      {/* Course Quick Stats */}
-                      <div className="p-3.5 rounded-xl bg-slate-50 text-xs space-y-1.5 text-slate-600 border border-slate-200">
-                        <div className="flex justify-between">
-                          <span>Sinh viên ghi danh:</span>
-                          <strong className="text-blue-700 font-bold">{studentCount} học viên</strong>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Số bài giảng:</span>
-                          <strong className="text-slate-900">{c.lessonsCount} bài học</strong>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Bài tập chờ chấm:</span>
-                          <strong className={pendingCount > 0 ? 'text-amber-600 font-bold' : 'text-slate-900'}>
-                            {pendingCount} bài nộp
-                          </strong>
+                            Chấm bài ({pendingCount})
+                          </button>
+                          <button
+                            onClick={() => handleOpenCourse(c.id, 'gradebook')}
+                            className="py-2 px-3 bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold text-xs rounded-xl transition-all border border-slate-200"
+                          >
+                            Sổ điểm
+                          </button>
+                          <button
+                            onClick={() => handleOpenCourse(c.id, 'announcements')}
+                            className="py-2 px-3 bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold text-xs rounded-xl transition-all border border-slate-200"
+                          >
+                            Thông báo
+                          </button>
                         </div>
                       </div>
-
-                      {/* Action buttons inside course card */}
-                      <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
-                        <button
-                          onClick={() => handleOpenCourse(c.id, 'lessons')}
-                          className="flex-1 py-2 px-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-xs"
-                        >
-                          <BookOpen className="w-3.5 h-3.5" />
-                          <span>Vào lớp & Quản lý</span>
-                        </button>
-                        <button
-                          onClick={() => handleOpenCourse(c.id, 'students')}
-                          className="py-2 px-3 bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold text-xs rounded-xl transition-all border border-slate-200"
-                        >
-                          Sinh viên ({studentCount})
-                        </button>
-                        <button
-                          onClick={() => openCoursePasswordModal(c)}
-                          className="py-2 px-3 bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold text-xs rounded-xl transition-all border border-slate-200 inline-flex items-center gap-1"
-                        >
-                          <Lock className="w-3.5 h-3.5" />
-                          <span>Mật khẩu</span>
-                        </button>
-                        <button
-                          onClick={() => handleOpenCourse(c.id, 'grading')}
-                          className={`py-2 px-3 font-bold text-xs rounded-xl transition-all border ${
-                            pendingCount > 0
-                              ? 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
-                              : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
-                          }`}
-                        >
-                          Chấm bài ({pendingCount})
-                        </button>
-                        <button
-                          onClick={() => handleOpenCourse(c.id, 'gradebook')}
-                          className="py-2 px-3 bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold text-xs rounded-xl transition-all border border-slate-200"
-                        >
-                          Sổ điểm
-                        </button>
-                        <button
-                          onClick={() => handleOpenCourse(c.id, 'announcements')}
-                          className="py-2 px-3 bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold text-xs rounded-xl transition-all border border-slate-200"
-                        >
-                          Thông báo
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                )}
               </div>
             </div>
           ) : (
@@ -1261,6 +1312,14 @@ export const TeacherDashboard: React.FC<Props> = ({
               <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
                   <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setSelectedCourseId(null)}
+                      className="p-2 sm:px-3 sm:py-2 bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200 hover:border-blue-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs group flex-shrink-0"
+                      title="Quay lại danh sách khóa học phụ trách"
+                    >
+                      <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-0.5" />
+                      <span className="hidden sm:inline">Danh sách khóa học</span>
+                    </button>
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="px-2 py-0.5 rounded-md bg-blue-100 text-blue-700 text-xs font-extrabold uppercase">
@@ -1271,7 +1330,7 @@ export const TeacherDashboard: React.FC<Props> = ({
                         </h3>
                       </div>
                       <p className="text-xs text-slate-500 mt-0.5">
-                        {currentCourse.department} • {courseStudents.length} sinh viên • {courseLessons.length} bài giảng
+                        {currentCourse.department} • {courseStudents.length || currentCourse.enrolledStudents} sinh viên • {courseLessons.length || currentCourse.lessonsCount} bài giảng
                       </p>
                       <span
                         className={`mt-2 inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold ${
@@ -1297,10 +1356,17 @@ export const TeacherDashboard: React.FC<Props> = ({
                     </button>
                     <span className="text-xs text-slate-500 font-medium hidden md:inline">Đổi môn học:</span>
                     <select
-                      value={selectedCourseId}
-                      onChange={(e) => setSelectedCourseId(e.target.value)}
+                      value={selectedCourseId || ''}
+                      onChange={(e) => {
+                        if (e.target.value === '__LIST__') {
+                          setSelectedCourseId(null);
+                        } else {
+                          setSelectedCourseId(e.target.value);
+                        }
+                      }}
                       className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
+                      <option value="__LIST__">← Quay lại danh sách tất cả môn học</option>
                       {courses.map((c) => (
                         <option key={c.id} value={c.id}>
                           {c.courseCode} - {c.title}

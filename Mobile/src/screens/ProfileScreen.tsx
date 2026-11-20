@@ -12,10 +12,9 @@ import {
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../api/client';
-import { currentApiBaseUrl } from '../api/config';
 
 export const ProfileScreen: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
 
   const [profile, setProfile] = useState<any>(null);
   const [loadingProfile, setLoadingProfile] = useState(false);
@@ -82,17 +81,6 @@ export const ProfileScreen: React.FC = () => {
     } finally {
       setSubmittingPassword(false);
     }
-  };
-
-  const handleLogout = () => {
-    Alert.alert(
-      'Đăng xuất',
-      'Bạn có chắc chắn muốn đăng xuất khỏi tài khoản?',
-      [
-        { text: 'Hủy', style: 'cancel' },
-        { text: 'Đăng xuất', style: 'destructive', onPress: logout }
-      ]
-    );
   };
 
   const getRoleBadge = (role?: string) => {
@@ -303,31 +291,6 @@ export const ProfileScreen: React.FC = () => {
             )}
           </TouchableOpacity>
         </View>
-
-        {/* Server & System Connection Info */}
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <View style={[styles.cardHeaderIcon, { backgroundColor: '#F1F5F9' }]}>
-              <Feather name="server" size={18} color="#475569" />
-            </View>
-            <View>
-              <Text style={styles.cardTitle}>Kết nối máy chủ Backend</Text>
-              <Text style={styles.cardSubtitle}>Địa chỉ API đang kết nối</Text>
-            </View>
-          </View>
-          <View style={styles.serverInfoBox}>
-            <View style={styles.serverDot} />
-            <Text style={styles.serverUrlText} numberOfLines={1}>
-              {currentApiBaseUrl}
-            </Text>
-          </View>
-        </View>
-
-        {/* Logout Button */}
-        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.8}>
-          <Feather name="log-out" size={18} color="#DC2626" />
-          <Text style={styles.logoutBtnText}>Đăng xuất khỏi hệ thống</Text>
-        </TouchableOpacity>
       </ScrollView>
     </View>
   );
@@ -593,48 +556,5 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '700'
-  },
-
-  // Server Box
-  serverInfoBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#F8FAFC',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    padding: 12
-  },
-  serverDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#10B981'
-  },
-  serverUrlText: {
-    flex: 1,
-    fontSize: 12,
-    color: '#334155',
-    fontWeight: '600'
-  },
-
-  // Logout
-  logoutBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1,
-    borderColor: '#FECACA',
-    borderRadius: 14,
-    paddingVertical: 14,
-    marginTop: 4
-  },
-  logoutBtnText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#DC2626'
   }
 });

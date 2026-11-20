@@ -1,5 +1,5 @@
 /**
- * Utility helper to parse and transform video URLs (especially YouTube) into embeddable URLs.
+ * Utility helper to parse and transform video URLs (especially YouTube, Google Drive, direct MP4) into embeddable URLs.
  */
 
 export interface ParsedVideoInfo {
@@ -39,30 +39,28 @@ export const parseVideoUrl = (rawUrl?: string): ParsedVideoInfo => {
     };
   }
 
-  // 3. Google Drive
-  // https://drive.google.com/file/d/FILE_ID/view -> /preview
-  const gdriveMatch = targetUrl.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/i);
+  // 3. Google Drive (All formats: /file/d/ID, /open?id=ID, /uc?id=ID, docs.google.com/file/d/ID)
+  const gdriveMatch = targetUrl.match(/(?:drive|docs)\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:.*&)?id=)([a-zA-Z0-9_-]+)/i);
   if (gdriveMatch && gdriveMatch[1]) {
+    const gdriveId = gdriveMatch[1];
     return {
       isYouTube: false,
       isDirectVideo: false,
       isGoogleDrive: true,
-      embedUrl: `https://drive.google.com/file/d/${gdriveMatch[1]}/preview`,
+      embedUrl: `https://drive.google.com/file/d/${gdriveId}/preview`,
       originalUrl: url,
-      videoId: gdriveMatch[1]
+      videoId: gdriveId
     };
   }
 
-  // 4. YouTube URL parsing
+  // 4. YouTube URL parsing (All formats: watch?v=, embed/, youtu.be/, shorts/, live/, youtube-nocookie)
   let youtubeId: string | null = null;
 
-  // Case 4a: Already embed URL: youtube.com/embed/ID
-  const embedMatch = targetUrl.match(/youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/i);
+  const embedMatch = targetUrl.match(/youtube(?:-nocookie)?\.com\/embed\/([a-zA-Z0-9_-]{11})/i);
   if (embedMatch && embedMatch[1]) {
     youtubeId = embedMatch[1];
   }
 
-  // Case 4b: youtu.be/ID
   if (!youtubeId) {
     const shortMatch = targetUrl.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/i);
     if (shortMatch && shortMatch[1]) {
@@ -70,7 +68,6 @@ export const parseVideoUrl = (rawUrl?: string): ParsedVideoInfo => {
     }
   }
 
-  // Case 4c: youtube.com/watch?v=ID or /watch?feature=...&v=ID
   if (!youtubeId) {
     const watchMatch = targetUrl.match(/[?&]v=([a-zA-Z0-9_-]{11})/i);
     if (watchMatch && watchMatch[1]) {
@@ -78,23 +75,13 @@ export const parseVideoUrl = (rawUrl?: string): ParsedVideoInfo => {
     }
   }
 
-  // Case 4d: youtube.com/shorts/ID
   if (!youtubeId) {
-    const shortsMatch = targetUrl.match(/youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/i);
+    const shortsMatch = targetUrl.match(/youtube(?:-nocookie)?\.com\/(?:shorts|live)\/([a-zA-Z0-9_-]{11})/i);
     if (shortsMatch && shortsMatch[1]) {
       youtubeId = shortsMatch[1];
     }
   }
 
-  // Case 4e: youtube.com/live/ID
-  if (!youtubeId) {
-    const liveMatch = targetUrl.match(/youtube\.com\/live\/([a-zA-Z0-9_-]{11})/i);
-    if (liveMatch && liveMatch[1]) {
-      youtubeId = liveMatch[1];
-    }
-  }
-
-  // Case 4f: Direct 11-char ID
   if (!youtubeId && /^[a-zA-Z0-9_-]{11}$/.test(targetUrl)) {
     youtubeId = targetUrl;
   }
@@ -104,7 +91,7 @@ export const parseVideoUrl = (rawUrl?: string): ParsedVideoInfo => {
       isYouTube: true,
       isDirectVideo: false,
       isGoogleDrive: false,
-      embedUrl: `https://www.youtube.com/embed/${youtubeId}?rel=0&modestbranding=1&enablejsapi=1`,
+      embedUrl: `https://www.youtube-nocookie.com/embed/${youtubeId}?enablejsapi=1&playsinline=1&rel=0&modestbranding=1`,
       originalUrl: url,
       videoId: youtubeId
     };

@@ -150,10 +150,14 @@ export interface TeacherRecentSubmission {
 }
 
 export interface TeacherOverviewData {
-  assignedCoursesCount: number;
-  totalStudentsCount: number;
-  pendingSubmissionsCount: number;
-  averagePassRate: number;
+  totalCourses?: number;
+  assignedCoursesCount?: number;
+  totalStudents?: number;
+  totalStudentsCount?: number;
+  pendingSubmissions?: number;
+  pendingSubmissionsCount?: number;
+  averageProgress?: number;
+  averagePassRate?: number;
   recentSubmissions: TeacherRecentSubmission[];
 }
 

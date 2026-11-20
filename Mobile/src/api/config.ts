@@ -22,7 +22,7 @@ export const getAutoDetectedHost = (): string => {
   }
 
   // Fallback IP máy tính trên mạng Wi-Fi hiện tại
-  return '172.20.10.4';
+  return '192.168.1.192';
 };
 
 export const getDefaultApiUrl = (): string => {
@@ -30,7 +30,7 @@ export const getDefaultApiUrl = (): string => {
   return `http://${host}:5000/api`;
 };
 
-export const PHYSICAL_DEVICE_API_URL = 'http://172.20.10.4:5000/api';
+export const PHYSICAL_DEVICE_API_URL = 'http://192.168.1.192:5000/api';
 export const LOCALHOST_API_URL = 'http://localhost:5000/api';
 export const EMULATOR_API_URL = 'http://10.0.2.2:5000/api';
 
@@ -38,4 +38,27 @@ export let currentApiBaseUrl = getDefaultApiUrl();
 
 export const setApiBaseUrl = (url: string) => {
   currentApiBaseUrl = url.trim().replace(/\/+$/, '');
+};
+
+export const getBackendRootUrl = (): string => {
+  return currentApiBaseUrl.replace(/\/api\/?$/, '');
+};
+
+export const resolveMediaUrl = (rawUrl?: string): string => {
+  if (!rawUrl || !rawUrl.trim()) return '';
+  const url = rawUrl.trim();
+  const root = getBackendRootUrl();
+
+  // If relative path like /docs/de-cuong.pdf or /uploads/...
+  if (url.startsWith('/')) {
+    return `${root}${url}`;
+  }
+
+  // If localhost or 127.0.0.1 on physical device / emulator
+  if (url.includes('localhost:5000') || url.includes('127.0.0.1:5000')) {
+    const host = getAutoDetectedHost();
+    return url.replace(/localhost:5000|127\.0\.0\.1:5000/g, `${host}:5000`);
+  }
+
+  return url;
 };

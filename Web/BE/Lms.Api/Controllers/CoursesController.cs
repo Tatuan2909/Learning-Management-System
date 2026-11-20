@@ -142,7 +142,11 @@ public class CoursesController : ControllerBase
             return NotFound(new { message = "Khóa học hiện đang tạm đóng hoặc chưa được công khai." });
         }
 
-        var targetStudentId = User.IsAdmin() && studentId.HasValue ? studentId.Value : currentUserId;
+        var targetStudentId = currentUserId ?? (studentId.HasValue ? studentId.Value : null);
+        if (User.IsAdmin() && studentId.HasValue)
+        {
+            targetStudentId = studentId.Value;
+        }
 
         Enrollment? enrollment = null;
         List<LessonProgress> progresses = new();
@@ -301,6 +305,77 @@ public class CoursesController : ControllerBase
         });
 
         return Ok(result);
+    }
+
+    /// <summary>
+    /// Đánh dấu hoàn thành bài học (Alias cho /api/lessons/{id}/complete)
+    /// </summary>
+    [HttpPost("lessons/{id}/complete")]
+    public async Task<IActionResult> MarkLessonCompleteAlias(Guid id, [FromBody] StudentIdRequest request)
+    {
+        var lesson = await _db.Lessons.Include(l => l.Section).FirstOrDefaultAsync(l => l.Id == id);
+        if (lesson == null) return NotFound(new { message = "Không tìm thấy bài học." });
+
+        var currentUserId = User.GetUserId();
+        var targetStudentId = request.StudentId != Guid.Empty ? request.StudentId : (currentUserId ?? Guid.Empty);
+        if (targetStudentId == Guid.Empty)
+        {
+            return Unauthorized(new { message = "Không xác thực được danh tính người dùng." });
+        }
+
+        var enrollment = await _db.Enrollments
+            .Include(e => e.Course).ThenInclude(c => c.Lessons)
+            .FirstOrDefaultAsync(e => e.CourseId == lesson.CourseId && e.StudentId == targetStudentId);
+
+        if (enrollment == null || enrollment.Status != "ACTIVE")
+        {
+            return StatusCode(403, new { message = "Bạn cần có ghi danh ACTIVE trong khóa học này để đánh dấu hoàn thành bài học." });
+        }
+
+        var progress = await _db.LessonProgresses
+            .FirstOrDefaultAsync(lp => lp.EnrollmentId == enrollment.Id && lp.LessonId == id);
+
+        if (progress == null)
+        {
+            progress = new LessonProgress
+            {
+                EnrollmentId = enrollment.Id,
+                LessonId = id,
+                IsCompleted = true,
+                CompletedAt = DateTime.UtcNow
+            };
+            _db.LessonProgresses.Add(progress);
+        }
+        else
+        {
+            progress.IsCompleted = true;
+            progress.CompletedAt = DateTime.UtcNow;
+        }
+
+        await _db.SaveChangesAsync();
+
+        int totalLessons = await _db.Lessons.CountAsync(l => l.CourseId == lesson.CourseId);
+        if (totalLessons > 0)
+        {
+            int completedLessons = await _db.LessonProgresses
+                .CountAsync(lp => lp.EnrollmentId == enrollment.Id && lp.IsCompleted);
+
+            decimal percentage = Math.Round(((decimal)completedLessons / totalLessons) * 100m, 2);
+            enrollment.ProgressPercentage = percentage;
+            if (percentage >= 100m)
+            {
+                enrollment.IsCompleted = true;
+                enrollment.CompletedAt = DateTime.UtcNow;
+            }
+            await _db.SaveChangesAsync();
+        }
+
+        return Ok(new
+        {
+            message = "Đã cập nhật tiến độ học tập thành công!",
+            isCompleted = true,
+            courseProgress = enrollment.ProgressPercentage
+        });
     }
 }
 

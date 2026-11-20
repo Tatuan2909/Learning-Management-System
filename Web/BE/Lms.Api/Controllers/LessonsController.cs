@@ -40,7 +40,11 @@ public class LessonsController : ControllerBase
         var currentUserId = User.GetUserId();
         bool isPrivileged = User.IsAdmin() || (currentUserId.HasValue && lesson.Course.TeacherId == currentUserId.Value);
 
-        var targetStudentId = User.IsAdmin() && studentId.HasValue ? studentId.Value : currentUserId;
+        var targetStudentId = currentUserId ?? (studentId.HasValue ? studentId.Value : null);
+        if (User.IsAdmin() && studentId.HasValue)
+        {
+            targetStudentId = studentId.Value;
+        }
 
         Enrollment? enrollment = null;
         bool isCompleted = false;
